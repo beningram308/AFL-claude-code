@@ -1,0 +1,16 @@
+numpy
+scipy
+pandas
+pyarrow
+requests
+openpyxl
+pytest
+
+# Optional: ad-hoc SQL over the parquet data cache (afl_bot.data.storage.duckdb_connection)
+duckdb
+
+# Optional: historical player stats from the Fryzigg dataset (afl_bot.data.fryzigg)
+pyreadr
+
+# Optional: Bayesian Elo hyperparameter tuning (afl_bot.backtest.tuning.optuna_search_elo)
+optuna

@@ -1,0 +1,262 @@
+================================================================================
+FABLE REVIEW ROUND 2 — AFL MONTE CARLO SIM: ACCURACY UPGRADE PLAN FOR CLAUDE CODE
+================================================================================
+Date: 2026-06-12
+Scope: full review of the implemented afl_bot package (all 11 build-order steps
+from CLAUDE-CODE-RECOMMENDATIONS.txt are now in). NO CHANGES MADE — everything
+below is a recommendation, ordered by impact on the accuracy of priced multis.
+
+WHAT WAS VERIFIED THIS PASS
+- Read every module (data/, models/, ratings/, sim/, pricing/, build/,
+  backtest/, cli.py, config.py).
+- Re-ran the engine maths independently: margin/total means land exactly on
+  inputs; independent draw gives sigma ~36/36 (copula at -0.32 then produces
+  the documented ~39/31 split matching empirical 39.4/31.3); P(draw) ~1.1%;
+  pace coupling gives cross-team disposal-total corr ~+0.34; Dirichlet
+  allocation gives top-mid CoV ~0.28 vs ~0.26 target. All consistent with the
+  README's calibration claims.
+- Data cache is real: Fryzigg 128,800 player-game rows (80 cols, 2012+), DFS
+  5,244 rows for 2026 (incl. CBA/TOG), odds spreadsheet, weather, tips.
+- Last local pytest run recorded zero failures.
+
+VERDICT: the architecture is right (anti-leakage discipline, market-anchored
+H2H, correlated sim, schema-versioned cache all hold up). The remaining
+accuracy gaps are concentrated in (a) WHO gets priced (lineups), (b) props
+having never been backtested, and (c) correlations/effects that exist in one
+part of the pipeline but not another.
+
+--------------------------------------------------------------------------------
+P1 — LINEUPS + ACTIVE-PLAYER FILTER (biggest live-accuracy hole)
+--------------------------------------------------------------------------------
+WHAT: cli.py picks `usage_players` as the top-4 by MEAN DISPOSALS OVER THE
+ENTIRE 2012+ COMBINED LOG, and `LegCandidate.confirmed` defaults True;
+`SquiggleClient.get_lineup` exists but is never called.
+WHY: a retired/delisted/injured/managed player can be priced for a 2026 game
+purely on his career average. Every prop involving him is worthless, and he
+crowds a real current player out of the 4 priced slots. This dwarfs any
+modelling refinement.
+HOW:
+  1. Restrict the usage ranking to players with games in the CURRENT season
+     (DFS rows), falling back to last-season Fryzigg rows early in the year.
+  2. Call get_lineup(year, round) in run_round; set confirmed=False for anyone
+     not named; the multi builder already excludes them (plumbing exists).
+  3. Raise PLAYERS_PER_TEAM_SAMPLE from 4 once lineups gate the pool — price
+     the confirmed 22 (or at least 8-10) so the VALUE search has real breadth.
+
+--------------------------------------------------------------------------------
+P2 — PROP BACKTEST + PROP CALIBRATION (prove the numbers you bet on)
+--------------------------------------------------------------------------------
+WHAT: walk-forward backtesting exists only for Elo H2H. No prop probability the
+sim prints has ever been scored against history. H2H goes through the market
+blend; props are RAW model output feeding Kelly stakes directly.
+WHY: the per-leg probabilities in a multi MULTIPLY, so a +3% bias per prop leg
+compounds to a big overbet on a 3-leg multi. Calibration is the difference
+between "0.85 anchor" and an actual 85% hit rate.
+HOW: every profile function already takes (as_of_year, as_of_round) — the
+plumbing for this was deliberately built and is unused:
+  1. For each historical round (e.g. 2023-2025), rebuild profiles as-of that
+     round, price the standard lines (15/20/25 disposals, 1/2 goals, 4/6 marks,
+     3/5 tackles) for the actual players who played, and record hit/miss.
+  2. Report calibration curves per market type (the calibration_curve helper
+     exists), log loss, and Brier by probability bucket.
+  3. Fit an IsotonicCalibrator PER MARKET TYPE (player_disposals, player_goals,
+     ...) on those walk-forward predictions, exactly as done for H2H, and apply
+     it in run_round before legs are classified/staked.
+  4. Add the resulting metrics to the golden-file CI test so prop-model changes
+     surface their accuracy delta.
+Until this lands, treat prop edges as unproven — consider halving Kelly on
+prop legs vs H2H legs.
+
+--------------------------------------------------------------------------------
+P3 — WIRE SGM JOINT PRICING (the correlated sim is built but unused at the CLI)
+--------------------------------------------------------------------------------
+WHAT: `combined_prob` demands a `joint_prob_fn` for same-match legs, but
+run_round never supplies one — so every same-game combination is silently
+skipped and only cross-game multis are ever assembled.
+WHY: the entire point of the pace -> team total -> Dirichlet share structure is
+correct SGM joint prices. The per-iteration sample arrays are already in memory
+when legs are priced; throwing them away wastes the model's main edge over
+naive multiplication.
+HOW: when building a LegCandidate, also store its boolean per-iteration mask
+(e.g. samples >= line, or margin > 0). joint_prob_fn = prob_event(AND of
+masks). Memory cost at 50k sims is 50KB/leg — trivial. This also enables
+honest promo EV for SGM-containing multis (promo_multi_ev currently assumes
+independent legs).
+ALSO: player GOALS are scaled by team goals but not sum-constrained (unlike
+disposals via Dirichlet). For goal-stack SGMs, allocate forward goals from the
+iteration's team goal count (multinomial on goal shares) so two forwards from
+one team can't both rack up implausibly.
+
+--------------------------------------------------------------------------------
+P4 — WEATHER: MAKE THE MATCH SIM CONSISTENT, AND AUTOMATE THE FORECAST
+--------------------------------------------------------------------------------
+WHAT: --rain-mm adjusts player props and OOB, but simulate_match itself ignores
+rain — mu_total and shot accuracy are unchanged in the wet. And weather.py only
+covers the HISTORICAL archive; upcoming rounds need manual --rain-mm.
+WHY: wet games score less (lower totals AND lower conversion). Right now a wet
+round prices 5+ tackles up and disposals down while leaving the total-points
+and H2H/margin markets bone dry — internally inconsistent across markets that
+will sit in the same multi.
+HOW:
+  1. Apply a wet multiplier to mu_total (fit from history: wet vs dry total
+     ratio, expect ~0.92-0.96) and subtract ~2-3pts from conversion accuracy
+     inside the simulate_match call when is_wet. OOB/props/score then all move
+     together off the same flag.
+  2. Wire Open-Meteo's FORECAST endpoint (same free API, different route) for
+     the round's venues at bounce time, so is_wet is automatic; keep --rain-mm
+     as the manual override.
+  3. Use HOURLY (not daily) rain for both fit and live flag — this directly
+     removes the attenuation documented in the README's honest caveat, and
+     would let fit_rain_multipliers replace the published-research defaults
+     with fitted values.
+
+--------------------------------------------------------------------------------
+P5 — ERA BIAS IN opponent_matchup_multiplier (quiet, systematic)
+--------------------------------------------------------------------------------
+WHAT: the multiplier divides the opponent's RECENT EWMA conceded by the league
+average computed over the WHOLE 2012+ log.
+WHY: stat levels drift with rule changes (6-6-6, interchange, stand rule). If
+league disposals today are ~5% above the 2012+ mean, every opponent multiplier
+is inflated ~5%, biasing every team total and every volume prop up. Same trap
+applies to role priors pooled over 2012+.
+HOW: compare EWMA conceded to a season-matched (or EWMA) league baseline over
+the same window. Consider limiting prop fits to the last 3-4 seasons or adding
+recency weights; keep 2012+ only for dispersion/long-horizon priors where the
+sample is needed.
+
+--------------------------------------------------------------------------------
+P6 — USE THE REAL POSITION LABELS (they're already downloaded, then dropped)
+--------------------------------------------------------------------------------
+WHAT: Fryzigg raw has `player_position` and DFS has `startingPosition`; both
+loaders drop them, and roles are re-inferred from box-score thresholds.
+WHY: real labels beat threshold inference (e.g. a tagger looks "general", a
+high-half-forward looks like a mid). Better roles -> better shrinkage priors
+for debutants/role-changers, and they unlock ruck-vs-ruck matchups and
+tagger flags (still unimplemented from the original plan §3.2).
+HOW: carry both columns through to_player_log, map to one coarse scheme
+(ruck/KPF/gen-fwd/mid/wing/gen-def/KPD or at least the existing 4), keep the
+box-score classifier only as fallback for rows with no label.
+
+--------------------------------------------------------------------------------
+P7 — ELO: VENUE/TRAVEL HGA + ADOPT TUNED PARAMS VIA A `fit` COMMAND
+--------------------------------------------------------------------------------
+WHAT: flat ELO_HOME_ADVANTAGE=10 for every venue; Team.travel_penalty exists
+but the CLI always passes 0; tuned hyperparams beat defaults out-of-sample
+(log loss ~0.576 vs ~0.603) but defaults were (reasonably) kept.
+WHY: Geelong at GMHBA vs a Melbourne home game at the MCG are very different
+"home" effects; interstate travel is historically worth ~6-10 points. These are
+cheap, proven margin-model gains that flow straight into H2H and totals.
+HOW:
+  1. Per-team home-venue HGA (fit hierarchically — shrink each team's HGA
+     toward the league 10), plus an interstate-travel flag from the venues
+     table (city/state already there) and a days-rest differential from
+     unixtime. All fit via the existing walkforward.
+  2. Implement the `fit` CLI command (plan §5.2): re-tune Elo each preseason,
+     write a versioned params artifact + metrics report; stop hand-editing
+     config defaults. Re-run optuna with wider k bounds as seasons accumulate.
+  3. Add a margin-calibration check to the backtest (regress actual on
+     predicted margin; slope should be ~1.0) — points_per_400=92 is doing a
+     lot of silent work.
+
+--------------------------------------------------------------------------------
+P8 — CROSS-SOURCE IDENTITY + ROUND-ORDINAL MISMATCH (silent join risks)
+--------------------------------------------------------------------------------
+WHAT: (a) player keys are display names — Fryzigg builds "First Last", DFS
+ships its own string; no canonical player-ID map exists (plan A1.2 deferred).
+(b) Fryzigg rounds are converted to chronological ordinals STARTING AT 0
+(cumcount), while DFS/Squiggle use real round numbers starting at 1.
+WHY: (a) if any name renders differently across sources ("Bailey Smith" vs
+"B. Smith", hyphens, suffixes), that player's history silently splits in two —
+his EWMA loses its past and shrinkage drags him to the role prior. (b) round
+semantics differing by source makes any (year, round) join or as_of_round
+cutoff straddling 2025/2026 subtly wrong (unixtime sorting saves most paths
+today, but it's a landmine).
+HOW: build the canonical player/team ID table; validate on the first season
+present in both sources by asserting per-player-game disposals/goals/marks/
+tackles agree (the A1.2 overlap test — currently impossible because Fryzigg
+rows are filtered to year < current, so add the check when 2026 lands in
+Fryzigg, or spot-check 2025 DFS archives if snapshotted). Normalise Fryzigg
+rounds to real round numbers where they exist, keeping the ordinal as a
+separate sort column.
+
+--------------------------------------------------------------------------------
+P9 — ANCHOR MULTIS: SHOW THE EV, HAIRCUT THE LEGS
+--------------------------------------------------------------------------------
+WHAT: ANCHOR = p >= 0.85 with no price test, and build_anchor_multis ranks
+purely by combined probability; the "very highly likely" list is printed with
+no edge information at all.
+WHY: a 0.90 leg at 1.05 is -5.5% EV; stack three and the multi is reliably
+-EV. The promo path is EV-gated, the anchor-multi path is not — a user reading
+the output can't tell safety from value.
+HOW: print combined edge (model prob x book multi odds - 1) on every anchor
+multi and sort or filter by it; since per-leg overestimates compound
+multiplicatively in multis, use the calibrated/blended probability everywhere
+(P2 gives this for props), and consider shrinking each leg's prob toward the
+devigged market price before staking any multi.
+
+--------------------------------------------------------------------------------
+P10 — OPERATIONAL SAFETY & HYGIENE
+--------------------------------------------------------------------------------
+a) SYNTHETIC-DATA GUARD: if both real player sources fail, run_round silently
+   prices a SYNTHETIC log (stderr note only). Add --require-real-props
+   (default ON when --odds is supplied) that refuses to print prop prices from
+   synthetic data. Fiction with a $ stake attached is the worst failure mode.
+b) SNAPSHOT DISCIPLINE (A1.1): fetch_player_stats overwrites one parquet. The
+   DFS pull is the ONLY source of CBA/kick-in history — archive a per-round
+   dated copy permanently (dfs_2026_r14.parquet) so the repo accumulates what
+   can't be re-downloaded. This is a 5-line change and the single most
+   important operational habit.
+c) ODDS-FILE KEYS: leg names are matched by exact string. A typo means a leg
+   silently never prices. Print "odds keys not matched to any leg" warnings.
+d) MC ERROR REPORTING (old plan 4.5, still open): print the binomial SE per
+   priced market at the chosen n_sims; auto-bump n_sims when an anchor's SE
+   crosses 0.002. Reuse common random numbers across candidate legs in a match
+   (one shared match draw already helps; share player draws too when comparing
+   lines on the same player).
+e) DRAW RULE: H2H "to win" prob excludes the ~1% draw branch. If the book
+   refunds H2H on a draw, fair prob should be p_win/(1-p_draw); if a draw
+   loses, current handling is right. Make it a per-book config flag.
+f) VENUE TOTAL FACTOR: expected_total accepts venue_factor but the CLI always
+   passes 1.0. Fit per-venue scoring factors (Gabba/Marvel/SCG genuinely
+   differ); cheap accuracy for totals markets.
+g) BANKROLL SIM: bets are treated as independent, but the promo multi shares
+   legs with the singles being staked alongside it — correlated exposure is
+   understated. At minimum, label the report; better, simulate the round's
+   book jointly off the per-leg masks (same trick as P3).
+
+--------------------------------------------------------------------------------
+MINOR / WATCH LIST
+--------------------------------------------------------------------------------
+- simulate_player draws NB around a mean already scaled by the iteration's
+  team score, but per-player dispersion was fitted on raw data that already
+  contains team-score variance — variance is mildly double-counted. The CoV
+  calibration absorbs most of it; revisit when P2's backtest gives real
+  per-line calibration numbers.
+- OOB coupling: E[mu * ratio^0.5] biases the marginal mean slightly off the
+  prior (Jensen); harmless at current size, renormalise if the market ever
+  gets real data behind it (the stoppages plug-point is ready).
+- accuracy draws are independent across teams; weather/venue should correlate
+  them slightly. Covered if P4's accuracy adjustment is implemented.
+- Fryzigg is end-of-season updated: early-season player form runs on DFS-only
+  data with high shrinkage — correct behaviour (A1.4), just keep expecting
+  wider prop uncertainty in Mar-Apr.
+
+--------------------------------------------------------------------------------
+SUGGESTED ORDER OF WORK
+--------------------------------------------------------------------------------
+ 1. P1 lineups + active-player filter (and P10a synthetic guard) — same area
+ 2. P2 prop walk-forward backtest + per-market isotonic calibration
+ 3. P3 SGM joint pricing via stored leg masks (+ P10g joint bankroll sim)
+ 4. P4 weather into the match sim + hourly/forecast Open-Meteo
+ 5. P5 era-matched league baselines; P6 real position labels
+ 6. P7 Elo venue/travel HGA + `fit` command
+ 7. P8 canonical IDs + round normalisation (+ overlap assertion test)
+ 8. P9 anchor-multi EV display/haircut; P10 b/c/d/e/f hygiene
+
+Each step is independently testable through the existing walkforward harness;
+keep the rule from round 1 — no merge without a non-worse out-of-sample score.
+
+Reminder: these upgrades improve probability estimates; they do not remove
+gambling risk. Even a well-calibrated model loses regularly. Gambling Help
+Online: gamblinghelponline.org.au | 1800 858 858.
+================================================================================

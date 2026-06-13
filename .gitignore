@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+data_cache/
+.venv/
+*.egg-info/
+desktop.ini
+*~

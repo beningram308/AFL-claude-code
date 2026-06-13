@@ -1,0 +1,1396 @@
+match_id,market,subject,line,prob
+2025_r1_Richmond_v_Carlton,h2h,Richmond,,0.3175
+2025_r1_Richmond_v_Carlton,h2h,Carlton,,0.6724166666666667
+2025_r1_Richmond_v_Carlton,total_points,total,160.5,0.46825
+2025_r1_Richmond_v_Carlton,player_disposals,Tim Taranto,15,0.9222222222222223
+2025_r1_Richmond_v_Carlton,player_disposals,Tim Taranto,20,0.7396593673965937
+2025_r1_Richmond_v_Carlton,player_disposals,Tim Taranto,25,0.4363207547169811
+2025_r1_Richmond_v_Carlton,player_goals,Tim Taranto,1,0.25688073394495425
+2025_r1_Richmond_v_Carlton,player_marks,Tim Taranto,4,0.5357757560855667
+2025_r1_Richmond_v_Carlton,player_marks,Tim Taranto,6,0.1299821534800713
+2025_r1_Richmond_v_Carlton,player_tackles,Tim Taranto,5,0.519642857142857
+2025_r1_Richmond_v_Carlton,player_disposals,Jacob Hopper,15,0.9215938303341902
+2025_r1_Richmond_v_Carlton,player_disposals,Jacob Hopper,20,0.7209876543209874
+2025_r1_Richmond_v_Carlton,player_disposals,Jacob Hopper,25,0.4064070351758794
+2025_r1_Richmond_v_Carlton,player_goals,Jacob Hopper,1,0.23427529626253418
+2025_r1_Richmond_v_Carlton,player_marks,Jacob Hopper,4,0.560294117647059
+2025_r1_Richmond_v_Carlton,player_marks,Jacob Hopper,6,0.175
+2025_r1_Richmond_v_Carlton,player_tackles,Jacob Hopper,3,0.8797595190380761
+2025_r1_Richmond_v_Carlton,player_tackles,Jacob Hopper,5,0.26037817865681395
+2025_r1_Richmond_v_Carlton,player_disposals,Daniel Rioli,15,0.8986409966024915
+2025_r1_Richmond_v_Carlton,player_disposals,Daniel Rioli,20,0.6043587594300083
+2025_r1_Richmond_v_Carlton,player_disposals,Daniel Rioli,25,0.2836943441636582
+2025_r1_Richmond_v_Carlton,player_goals,Daniel Rioli,1,0.29415904292751566
+2025_r1_Richmond_v_Carlton,player_goals,Daniel Rioli,2,0.05064715813168259
+2025_r1_Richmond_v_Carlton,player_marks,Daniel Rioli,4,0.6670862177470107
+2025_r1_Richmond_v_Carlton,player_marks,Daniel Rioli,6,0.26406649616368283
+2025_r1_Richmond_v_Carlton,player_tackles,Daniel Rioli,3,0.5205327413984462
+2025_r1_Richmond_v_Carlton,player_tackles,Daniel Rioli,5,0.06263345195729537
+2025_r1_Richmond_v_Carlton,player_disposals,Dion Prestia,15,0.9215938303341902
+2025_r1_Richmond_v_Carlton,player_disposals,Dion Prestia,20,0.7396593673965937
+2025_r1_Richmond_v_Carlton,player_disposals,Dion Prestia,25,0.4363207547169811
+2025_r1_Richmond_v_Carlton,player_goals,Dion Prestia,1,0.24601524601524596
+2025_r1_Richmond_v_Carlton,player_marks,Dion Prestia,4,0.571764705882353
+2025_r1_Richmond_v_Carlton,player_marks,Dion Prestia,6,0.18161094224924013
+2025_r1_Richmond_v_Carlton,player_tackles,Dion Prestia,3,0.4791288566243194
+2025_r1_Richmond_v_Carlton,player_tackles,Dion Prestia,5,0.06263345195729537
+2025_r1_Richmond_v_Carlton,player_disposals,Jayden Short,15,0.8310626702997275
+2025_r1_Richmond_v_Carlton,player_disposals,Jayden Short,20,0.49955869373345113
+2025_r1_Richmond_v_Carlton,player_disposals,Jayden Short,25,0.21353509878100044
+2025_r1_Richmond_v_Carlton,player_goals,Jayden Short,1,0.08743169398907102
+2025_r1_Richmond_v_Carlton,player_marks,Jayden Short,4,0.7389975550122252
+2025_r1_Richmond_v_Carlton,player_marks,Jayden Short,6,0.3049114933931688
+2025_r1_Richmond_v_Carlton,player_tackles,Jayden Short,3,0.0641025641025641
+2025_r1_Richmond_v_Carlton,player_disposals,Nick Vlastuin,15,0.7396593673965937
+2025_r1_Richmond_v_Carlton,player_disposals,Nick Vlastuin,20,0.3836553945249599
+2025_r1_Richmond_v_Carlton,player_disposals,Nick Vlastuin,25,0.15025380710659902
+2025_r1_Richmond_v_Carlton,player_goals,Nick Vlastuin,1,0.07676348547717844
+2025_r1_Richmond_v_Carlton,player_marks,Nick Vlastuin,4,0.9012658227848102
+2025_r1_Richmond_v_Carlton,player_marks,Nick Vlastuin,6,0.560294117647059
+2025_r1_Richmond_v_Carlton,player_tackles,Nick Vlastuin,3,0.3282747603833866
+2025_r1_Richmond_v_Carlton,player_disposals,Liam Baker,15,0.6948798328108673
+2025_r1_Richmond_v_Carlton,player_disposals,Liam Baker,20,0.3187710033605377
+2025_r1_Richmond_v_Carlton,player_disposals,Liam Baker,25,0.10473556861389562
+2025_r1_Richmond_v_Carlton,player_goals,Liam Baker,1,0.40588235294117647
+2025_r1_Richmond_v_Carlton,player_goals,Liam Baker,2,0.10187667560321716
+2025_r1_Richmond_v_Carlton,player_marks,Liam Baker,4,0.3260680034873583
+2025_r1_Richmond_v_Carlton,player_marks,Liam Baker,6,0.07522123893805312
+2025_r1_Richmond_v_Carlton,player_tackles,Liam Baker,3,0.8041958041958043
+2025_r1_Richmond_v_Carlton,player_tackles,Liam Baker,5,0.19902912621359223
+2025_r1_Richmond_v_Carlton,player_disposals,Jack Ross,15,0.6495238095238095
+2025_r1_Richmond_v_Carlton,player_disposals,Jack Ross,20,0.2836943441636582
+2025_r1_Richmond_v_Carlton,player_disposals,Jack Ross,25,0.0960735171261487
+2025_r1_Richmond_v_Carlton,player_goals,Jack Ross,1,0.23328228688106176
+2025_r1_Richmond_v_Carlton,player_marks,Jack Ross,4,0.6372759856630822
+2025_r1_Richmond_v_Carlton,player_marks,Jack Ross,6,0.22852233676975944
+2025_r1_Richmond_v_Carlton,player_tackles,Jack Ross,3,0.20295378751786566
+2025_r1_Richmond_v_Carlton,player_disposals,Dustin Martin,15,0.7209876543209874
+2025_r1_Richmond_v_Carlton,player_disposals,Dustin Martin,20,0.3515358361774744
+2025_r1_Richmond_v_Carlton,player_disposals,Dustin Martin,25,0.14007954043305354
+2025_r1_Richmond_v_Carlton,player_goals,Dustin Martin,1,0.46707040121120363
+2025_r1_Richmond_v_Carlton,player_goals,Dustin Martin,2,0.15780730897009967
+2025_r1_Richmond_v_Carlton,player_marks,Dustin Martin,4,0.46674268339034586
+2025_r1_Richmond_v_Carlton,player_marks,Dustin Martin,6,0.12396694214876033
+2025_r1_Richmond_v_Carlton,player_tackles,Dustin Martin,3,0.11906816220880069
+2025_r1_Richmond_v_Carlton,player_disposals,Jack Graham,15,0.6296791443850265
+2025_r1_Richmond_v_Carlton,player_disposals,Jack Graham,20,0.2836943441636582
+2025_r1_Richmond_v_Carlton,player_disposals,Jack Graham,25,0.09279279279279279
+2025_r1_Richmond_v_Carlton,player_goals,Jack Graham,1,0.23608017817371937
+2025_r1_Richmond_v_Carlton,player_marks,Jack Graham,4,0.2763990267639905
+2025_r1_Richmond_v_Carlton,player_tackles,Jack Graham,3,0.7960526315789473
+2025_r1_Richmond_v_Carlton,player_tackles,Jack Graham,5,0.17370689655172414
+2025_r1_Richmond_v_Carlton,player_disposals,Patrick Cripps,20,0.9305555555555556
+2025_r1_Richmond_v_Carlton,player_disposals,Patrick Cripps,25,0.7969348659003831
+2025_r1_Richmond_v_Carlton,player_goals,Patrick Cripps,1,0.46707040121120363
+2025_r1_Richmond_v_Carlton,player_goals,Patrick Cripps,2,0.16613032984714396
+2025_r1_Richmond_v_Carlton,player_marks,Patrick Cripps,4,0.5357757560855667
+2025_r1_Richmond_v_Carlton,player_marks,Patrick Cripps,6,0.175
+2025_r1_Richmond_v_Carlton,player_tackles,Patrick Cripps,5,0.519642857142857
+2025_r1_Richmond_v_Carlton,player_disposals,Sam Walsh,20,0.9137466307277629
+2025_r1_Richmond_v_Carlton,player_disposals,Sam Walsh,25,0.7209876543209874
+2025_r1_Richmond_v_Carlton,player_goals,Sam Walsh,1,0.24601524601524596
+2025_r1_Richmond_v_Carlton,player_marks,Sam Walsh,4,0.6670862177470107
+2025_r1_Richmond_v_Carlton,player_marks,Sam Walsh,6,0.26406649616368283
+2025_r1_Richmond_v_Carlton,player_tackles,Sam Walsh,5,0.7261761158021713
+2025_r1_Richmond_v_Carlton,player_disposals,Nic Newman,15,0.9694132334581773
+2025_r1_Richmond_v_Carlton,player_disposals,Nic Newman,20,0.8986409966024915
+2025_r1_Richmond_v_Carlton,player_disposals,Nic Newman,25,0.6948798328108673
+2025_r1_Richmond_v_Carlton,player_goals,Nic Newman,1,0.16613032984714396
+2025_r1_Richmond_v_Carlton,player_marks,Nic Newman,6,0.9012658227848102
+2025_r1_Richmond_v_Carlton,player_tackles,Nic Newman,3,0.8797595190380761
+2025_r1_Richmond_v_Carlton,player_tackles,Nic Newman,5,0.29664045746962125
+2025_r1_Richmond_v_Carlton,player_disposals,George Hewett,15,0.9644970414201184
+2025_r1_Richmond_v_Carlton,player_disposals,George Hewett,20,0.8310626702997275
+2025_r1_Richmond_v_Carlton,player_disposals,George Hewett,25,0.5329512893982808
+2025_r1_Richmond_v_Carlton,player_goals,George Hewett,1,0.39874902267396406
+2025_r1_Richmond_v_Carlton,player_goals,George Hewett,2,0.09970674486803519
+2025_r1_Richmond_v_Carlton,player_marks,George Hewett,4,0.6670862177470107
+2025_r1_Richmond_v_Carlton,player_marks,George Hewett,6,0.2763990267639905
+2025_r1_Richmond_v_Carlton,player_tackles,George Hewett,3,0.8797595190380761
+2025_r1_Richmond_v_Carlton,player_tackles,George Hewett,5,0.29664045746962125
+2025_r1_Richmond_v_Carlton,player_disposals,Blake Acres,15,0.8654761904761905
+2025_r1_Richmond_v_Carlton,player_disposals,Blake Acres,20,0.5777414075286416
+2025_r1_Richmond_v_Carlton,player_disposals,Blake Acres,25,0.2836943441636582
+2025_r1_Richmond_v_Carlton,player_goals,Blake Acres,1,0.5856929955290611
+2025_r1_Richmond_v_Carlton,player_goals,Blake Acres,2,0.23427529626253418
+2025_r1_Richmond_v_Carlton,player_marks,Blake Acres,4,0.9012658227848102
+2025_r1_Richmond_v_Carlton,player_marks,Blake Acres,6,0.6266601082144612
+2025_r1_Richmond_v_Carlton,player_tackles,Blake Acres,3,0.26037817865681395
+2025_r1_Richmond_v_Carlton,player_disposals,Adam Cerra,15,0.7209876543209874
+2025_r1_Richmond_v_Carlton,player_disposals,Adam Cerra,20,0.3515358361774744
+2025_r1_Richmond_v_Carlton,player_disposals,Adam Cerra,25,0.14007954043305354
+2025_r1_Richmond_v_Carlton,player_goals,Adam Cerra,1,0.24601524601524596
+2025_r1_Richmond_v_Carlton,player_marks,Adam Cerra,4,0.38860598345003183
+2025_r1_Richmond_v_Carlton,player_marks,Adam Cerra,6,0.11950790861159927
+2025_r1_Richmond_v_Carlton,player_tackles,Adam Cerra,3,0.519642857142857
+2025_r1_Richmond_v_Carlton,player_tackles,Adam Cerra,5,0.07429871114480661
+2025_r1_Richmond_v_Carlton,player_disposals,Adam Saad,15,0.7209876543209874
+2025_r1_Richmond_v_Carlton,player_disposals,Adam Saad,20,0.3515358361774744
+2025_r1_Richmond_v_Carlton,player_disposals,Adam Saad,25,0.14007954043305354
+2025_r1_Richmond_v_Carlton,player_goals,Adam Saad,1,0.16613032984714396
+2025_r1_Richmond_v_Carlton,player_marks,Adam Saad,4,0.5357757560855667
+2025_r1_Richmond_v_Carlton,player_marks,Adam Saad,6,0.175
+2025_r1_Richmond_v_Carlton,player_tackles,Adam Saad,3,0.20733532934131738
+2025_r1_Richmond_v_Carlton,player_disposals,Elijah Hollands,15,0.7731854838709677
+2025_r1_Richmond_v_Carlton,player_disposals,Elijah Hollands,20,0.4525627044711014
+2025_r1_Richmond_v_Carlton,player_disposals,Elijah Hollands,25,0.20488721804511278
+2025_r1_Richmond_v_Carlton,player_goals,Elijah Hollands,1,0.5816513761467891
+2025_r1_Richmond_v_Carlton,player_goals,Elijah Hollands,2,0.23328228688106176
+2025_r1_Richmond_v_Carlton,player_marks,Elijah Hollands,4,0.8366013071895425
+2025_r1_Richmond_v_Carlton,player_marks,Elijah Hollands,6,0.4758620689655172
+2025_r1_Richmond_v_Carlton,player_tackles,Elijah Hollands,3,0.3592307692307693
+2025_r1_Richmond_v_Carlton,player_disposals,Matthew Kennedy,15,0.7396593673965937
+2025_r1_Richmond_v_Carlton,player_disposals,Matthew Kennedy,20,0.3836553945249599
+2025_r1_Richmond_v_Carlton,player_disposals,Matthew Kennedy,25,0.16821602478973005
+2025_r1_Richmond_v_Carlton,player_goals,Matthew Kennedy,1,0.46707040121120363
+2025_r1_Richmond_v_Carlton,player_goals,Matthew Kennedy,2,0.16613032984714396
+2025_r1_Richmond_v_Carlton,player_marks,Matthew Kennedy,4,0.8688524590163934
+2025_r1_Richmond_v_Carlton,player_marks,Matthew Kennedy,6,0.5149136577708004
+2025_r1_Richmond_v_Carlton,player_tackles,Matthew Kennedy,3,0.6020025031289111
+2025_r1_Richmond_v_Carlton,player_tackles,Matthew Kennedy,5,0.08848146671980871
+2025_r1_Richmond_v_Carlton,player_disposals,Cooper Lord,15,0.48404785643070786
+2025_r1_Richmond_v_Carlton,player_disposals,Cooper Lord,20,0.1788218793828892
+2025_r1_Richmond_v_Carlton,player_disposals,Cooper Lord,25,0.06224066390041486
+2025_r1_Richmond_v_Carlton,player_goals,Cooper Lord,1,0.29415904292751566
+2025_r1_Richmond_v_Carlton,player_goals,Cooper Lord,2,0.0663744520976832
+2025_r1_Richmond_v_Carlton,player_marks,Cooper Lord,4,0.6372759856630822
+2025_r1_Richmond_v_Carlton,player_marks,Cooper Lord,6,0.24900398406374488
+2025_r1_Richmond_v_Carlton,player_tackles,Cooper Lord,3,0.4124775583482944
+2025_r1_Hawthorn_v_Essendon,h2h,Hawthorn,,0.9040833333333333
+2025_r1_Hawthorn_v_Essendon,h2h,Essendon,,0.09166666666666666
+2025_r1_Hawthorn_v_Essendon,total_points,total,165.5,0.48233333333333334
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jai Newcombe,15,0.9694132334581773
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jai Newcombe,20,0.8986409966024915
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jai Newcombe,25,0.6948798328108673
+2025_r1_Hawthorn_v_Essendon,player_goals,Jai Newcombe,1,0.46444644464446444
+2025_r1_Hawthorn_v_Essendon,player_goals,Jai Newcombe,2,0.1288343558282208
+2025_r1_Hawthorn_v_Essendon,player_marks,Jai Newcombe,4,0.7829670329670331
+2025_r1_Hawthorn_v_Essendon,player_marks,Jai Newcombe,6,0.38860598345003183
+2025_r1_Hawthorn_v_Essendon,player_tackles,Jai Newcombe,3,0.7751798561151079
+2025_r1_Hawthorn_v_Essendon,player_tackles,Jai Newcombe,5,0.14583333333333334
+2025_r1_Hawthorn_v_Essendon,player_disposals,Karl Amon,15,0.8310626702997275
+2025_r1_Hawthorn_v_Essendon,player_disposals,Karl Amon,20,0.49955869373345113
+2025_r1_Hawthorn_v_Essendon,player_disposals,Karl Amon,25,0.21353509878100044
+2025_r1_Hawthorn_v_Essendon,player_goals,Karl Amon,1,0.19227230910763562
+2025_r1_Hawthorn_v_Essendon,player_marks,Karl Amon,4,0.7943067033976124
+2025_r1_Hawthorn_v_Essendon,player_marks,Karl Amon,6,0.38860598345003183
+2025_r1_Hawthorn_v_Essendon,player_tackles,Karl Amon,3,0.14583333333333334
+2025_r1_Hawthorn_v_Essendon,player_disposals,James Worpel,15,0.9215938303341902
+2025_r1_Hawthorn_v_Essendon,player_disposals,James Worpel,20,0.7209876543209874
+2025_r1_Hawthorn_v_Essendon,player_disposals,James Worpel,25,0.4371584699453552
+2025_r1_Hawthorn_v_Essendon,player_goals,James Worpel,1,0.3315240083507306
+2025_r1_Hawthorn_v_Essendon,player_goals,James Worpel,2,0.07676348547717844
+2025_r1_Hawthorn_v_Essendon,player_marks,James Worpel,4,0.3514412416851441
+2025_r1_Hawthorn_v_Essendon,player_marks,James Worpel,6,0.07707355242566509
+2025_r1_Hawthorn_v_Essendon,player_tackles,James Worpel,3,0.8041958041958043
+2025_r1_Hawthorn_v_Essendon,player_tackles,James Worpel,5,0.19902912621359223
+2025_r1_Hawthorn_v_Essendon,player_disposals,James Sicily,15,0.8013698630136986
+2025_r1_Hawthorn_v_Essendon,player_disposals,James Sicily,20,0.48404785643070786
+2025_r1_Hawthorn_v_Essendon,player_disposals,James Sicily,25,0.21353509878100044
+2025_r1_Hawthorn_v_Essendon,player_goals,James Sicily,1,0.4473567303420702
+2025_r1_Hawthorn_v_Essendon,player_goals,James Sicily,2,0.11807958477508645
+2025_r1_Hawthorn_v_Essendon,player_marks,James Sicily,4,0.9012658227848102
+2025_r1_Hawthorn_v_Essendon,player_marks,James Sicily,6,0.7389975550122252
+2025_r1_Hawthorn_v_Essendon,player_tackles,James Sicily,3,0.06263345195729537
+2025_r1_Hawthorn_v_Essendon,player_disposals,Massimo D'Ambrosio,15,0.8986409966024915
+2025_r1_Hawthorn_v_Essendon,player_disposals,Massimo D'Ambrosio,20,0.6495238095238095
+2025_r1_Hawthorn_v_Essendon,player_disposals,Massimo D'Ambrosio,25,0.33532423208191137
+2025_r1_Hawthorn_v_Essendon,player_goals,Massimo D'Ambrosio,1,0.40588235294117647
+2025_r1_Hawthorn_v_Essendon,player_goals,Massimo D'Ambrosio,2,0.10187667560321716
+2025_r1_Hawthorn_v_Essendon,player_marks,Massimo D'Ambrosio,4,0.8704663212435233
+2025_r1_Hawthorn_v_Essendon,player_marks,Massimo D'Ambrosio,6,0.5357757560855667
+2025_r1_Hawthorn_v_Essendon,player_tackles,Massimo D'Ambrosio,3,0.20295378751786566
+2025_r1_Hawthorn_v_Essendon,player_disposals,Dylan Moore,15,0.7209876543209874
+2025_r1_Hawthorn_v_Essendon,player_disposals,Dylan Moore,20,0.3836553945249599
+2025_r1_Hawthorn_v_Essendon,player_disposals,Dylan Moore,25,0.16821602478973005
+2025_r1_Hawthorn_v_Essendon,player_goals,Dylan Moore,1,0.7205882352941176
+2025_r1_Hawthorn_v_Essendon,player_goals,Dylan Moore,2,0.3315240083507306
+2025_r1_Hawthorn_v_Essendon,player_marks,Dylan Moore,4,0.8704663212435233
+2025_r1_Hawthorn_v_Essendon,player_marks,Dylan Moore,6,0.4758620689655172
+2025_r1_Hawthorn_v_Essendon,player_tackles,Dylan Moore,3,0.6247582205029011
+2025_r1_Hawthorn_v_Essendon,player_tackles,Dylan Moore,5,0.08848146671980871
+2025_r1_Hawthorn_v_Essendon,player_disposals,Will Day,15,0.4064070351758794
+2025_r1_Hawthorn_v_Essendon,player_disposals,Will Day,20,0.15025380710659902
+2025_r1_Hawthorn_v_Essendon,player_goals,Will Day,1,0.23328228688106176
+2025_r1_Hawthorn_v_Essendon,player_marks,Will Day,4,0.20383693045563545
+2025_r1_Hawthorn_v_Essendon,player_tackles,Will Day,3,0.3282747603833866
+2025_r1_Hawthorn_v_Essendon,player_disposals,Conor Nash,15,0.6495238095238095
+2025_r1_Hawthorn_v_Essendon,player_disposals,Conor Nash,20,0.2836943441636582
+2025_r1_Hawthorn_v_Essendon,player_disposals,Conor Nash,25,0.10473556861389562
+2025_r1_Hawthorn_v_Essendon,player_goals,Conor Nash,1,0.14995224450811845
+2025_r1_Hawthorn_v_Essendon,player_marks,Conor Nash,4,0.26406649616368283
+2025_r1_Hawthorn_v_Essendon,player_tackles,Conor Nash,3,0.7472527472527473
+2025_r1_Hawthorn_v_Essendon,player_tackles,Conor Nash,5,0.14583333333333334
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jarman Impey,15,0.7209876543209874
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jarman Impey,20,0.35189075630252103
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jarman Impey,25,0.14007954043305354
+2025_r1_Hawthorn_v_Essendon,player_goals,Jarman Impey,1,0.19227230910763562
+2025_r1_Hawthorn_v_Essendon,player_marks,Jarman Impey,4,0.7185430463576158
+2025_r1_Hawthorn_v_Essendon,player_marks,Jarman Impey,6,0.3049114933931688
+2025_r1_Hawthorn_v_Essendon,player_tackles,Jarman Impey,3,0.20295378751786566
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jack Scrimshaw,15,0.7209876543209874
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jack Scrimshaw,20,0.33532423208191137
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jack Scrimshaw,25,0.14007954043305354
+2025_r1_Hawthorn_v_Essendon,player_goals,Jack Scrimshaw,1,0.11807958477508645
+2025_r1_Hawthorn_v_Essendon,player_marks,Jack Scrimshaw,4,0.8704663212435233
+2025_r1_Hawthorn_v_Essendon,player_marks,Jack Scrimshaw,6,0.5149136577708004
+2025_r1_Hawthorn_v_Essendon,player_tackles,Jack Scrimshaw,3,0.06263345195729537
+2025_r1_Hawthorn_v_Essendon,player_disposals,Nic Martin,15,0.9694132334581773
+2025_r1_Hawthorn_v_Essendon,player_disposals,Nic Martin,20,0.8440748440748441
+2025_r1_Hawthorn_v_Essendon,player_disposals,Nic Martin,25,0.6043587594300083
+2025_r1_Hawthorn_v_Essendon,player_goals,Nic Martin,1,0.4473567303420702
+2025_r1_Hawthorn_v_Essendon,player_goals,Nic Martin,2,0.11774461028192376
+2025_r1_Hawthorn_v_Essendon,player_marks,Nic Martin,4,0.9012658227848102
+2025_r1_Hawthorn_v_Essendon,player_marks,Nic Martin,6,0.6372759856630822
+2025_r1_Hawthorn_v_Essendon,player_tackles,Nic Martin,3,0.7202380952380952
+2025_r1_Hawthorn_v_Essendon,player_tackles,Nic Martin,5,0.12972972972973001
+2025_r1_Hawthorn_v_Essendon,player_disposals,Zach Merrett,15,0.9555125725338491
+2025_r1_Hawthorn_v_Essendon,player_disposals,Zach Merrett,20,0.7915218902015289
+2025_r1_Hawthorn_v_Essendon,player_disposals,Zach Merrett,25,0.49955869373345113
+2025_r1_Hawthorn_v_Essendon,player_goals,Zach Merrett,1,0.24601524601524596
+2025_r1_Hawthorn_v_Essendon,player_marks,Zach Merrett,4,0.7165775401069518
+2025_r1_Hawthorn_v_Essendon,player_marks,Zach Merrett,6,0.3049114933931688
+2025_r1_Hawthorn_v_Essendon,player_tackles,Zach Merrett,3,0.9481865284974094
+2025_r1_Hawthorn_v_Essendon,player_tackles,Zach Merrett,5,0.3959798994974875
+2025_r1_Hawthorn_v_Essendon,player_disposals,Darcy Parish,15,0.9222222222222223
+2025_r1_Hawthorn_v_Essendon,player_disposals,Darcy Parish,20,0.7440068493150686
+2025_r1_Hawthorn_v_Essendon,player_disposals,Darcy Parish,25,0.4371584699453552
+2025_r1_Hawthorn_v_Essendon,player_goals,Darcy Parish,1,0.11807958477508645
+2025_r1_Hawthorn_v_Essendon,player_marks,Darcy Parish,4,0.7185430463576158
+2025_r1_Hawthorn_v_Essendon,player_marks,Darcy Parish,6,0.3049114933931688
+2025_r1_Hawthorn_v_Essendon,player_tackles,Darcy Parish,3,0.9481865284974094
+2025_r1_Hawthorn_v_Essendon,player_tackles,Darcy Parish,5,0.3959798994974875
+2025_r1_Hawthorn_v_Essendon,player_disposals,Andrew McGrath,15,0.9093959731543624
+2025_r1_Hawthorn_v_Essendon,player_disposals,Andrew McGrath,20,0.6948798328108673
+2025_r1_Hawthorn_v_Essendon,player_disposals,Andrew McGrath,25,0.3515358361774744
+2025_r1_Hawthorn_v_Essendon,player_goals,Andrew McGrath,1,0.07676348547717844
+2025_r1_Hawthorn_v_Essendon,player_marks,Andrew McGrath,4,0.7389975550122252
+2025_r1_Hawthorn_v_Essendon,player_marks,Andrew McGrath,6,0.3260680034873583
+2025_r1_Hawthorn_v_Essendon,player_tackles,Andrew McGrath,3,0.4613997113997114
+2025_r1_Hawthorn_v_Essendon,player_tackles,Andrew McGrath,5,0.06263345195729537
+2025_r1_Hawthorn_v_Essendon,player_disposals,Will Setterfield,15,0.7731854838709677
+2025_r1_Hawthorn_v_Essendon,player_disposals,Will Setterfield,20,0.4363207547169811
+2025_r1_Hawthorn_v_Essendon,player_disposals,Will Setterfield,25,0.16902404526166911
+2025_r1_Hawthorn_v_Essendon,player_goals,Will Setterfield,1,0.08743169398907102
+2025_r1_Hawthorn_v_Essendon,player_marks,Will Setterfield,4,0.7185430463576158
+2025_r1_Hawthorn_v_Essendon,player_marks,Will Setterfield,6,0.3049114933931688
+2025_r1_Hawthorn_v_Essendon,player_tackles,Will Setterfield,5,0.5674676524953789
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jye Caldwell,15,0.8620689655172413
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jye Caldwell,20,0.5329512893982808
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jye Caldwell,25,0.26224328593996843
+2025_r1_Hawthorn_v_Essendon,player_goals,Jye Caldwell,1,0.19227230910763562
+2025_r1_Hawthorn_v_Essendon,player_marks,Jye Caldwell,4,0.6372759856630822
+2025_r1_Hawthorn_v_Essendon,player_marks,Jye Caldwell,6,0.22852233676975944
+2025_r1_Hawthorn_v_Essendon,player_tackles,Jye Caldwell,5,0.6020025031289111
+2025_r1_Hawthorn_v_Essendon,player_disposals,Archie Roberts,15,0.9093959731543624
+2025_r1_Hawthorn_v_Essendon,player_disposals,Archie Roberts,20,0.6948798328108673
+2025_r1_Hawthorn_v_Essendon,player_disposals,Archie Roberts,25,0.3515358361774744
+2025_r1_Hawthorn_v_Essendon,player_goals,Archie Roberts,1,0.16613032984714396
+2025_r1_Hawthorn_v_Essendon,player_marks,Archie Roberts,4,0.7389975550122252
+2025_r1_Hawthorn_v_Essendon,player_marks,Archie Roberts,6,0.3260680034873583
+2025_r1_Hawthorn_v_Essendon,player_tackles,Archie Roberts,3,0.8041958041958043
+2025_r1_Hawthorn_v_Essendon,player_tackles,Archie Roberts,5,0.20295378751786566
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jordan Ridley,15,0.7209876543209874
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jordan Ridley,20,0.33532423208191137
+2025_r1_Hawthorn_v_Essendon,player_disposals,Jordan Ridley,25,0.14007954043305354
+2025_r1_Hawthorn_v_Essendon,player_goals,Jordan Ridley,1,0.07676348547717844
+2025_r1_Hawthorn_v_Essendon,player_marks,Jordan Ridley,4,0.9012658227848102
+2025_r1_Hawthorn_v_Essendon,player_marks,Jordan Ridley,6,0.6266601082144612
+2025_r1_Hawthorn_v_Essendon,player_tackles,Jordan Ridley,3,0.103448275862069
+2025_r1_Hawthorn_v_Essendon,player_disposals,Sam Durham,15,0.7731854838709677
+2025_r1_Hawthorn_v_Essendon,player_disposals,Sam Durham,20,0.4363207547169811
+2025_r1_Hawthorn_v_Essendon,player_disposals,Sam Durham,25,0.16902404526166911
+2025_r1_Hawthorn_v_Essendon,player_goals,Sam Durham,1,0.23328228688106176
+2025_r1_Hawthorn_v_Essendon,player_marks,Sam Durham,4,0.6372759856630822
+2025_r1_Hawthorn_v_Essendon,player_marks,Sam Durham,6,0.230712711241734
+2025_r1_Hawthorn_v_Essendon,player_tackles,Sam Durham,3,0.8135593220338984
+2025_r1_Hawthorn_v_Essendon,player_tackles,Sam Durham,5,0.22702702702702704
+2025_r1_Hawthorn_v_Essendon,player_disposals,Dyson Heppell,15,0.8986409966024915
+2025_r1_Hawthorn_v_Essendon,player_disposals,Dyson Heppell,20,0.6296791443850265
+2025_r1_Hawthorn_v_Essendon,player_disposals,Dyson Heppell,25,0.3187710033605377
+2025_r1_Hawthorn_v_Essendon,player_goals,Dyson Heppell,1,0.09376126938333937
+2025_r1_Hawthorn_v_Essendon,player_marks,Dyson Heppell,4,0.7943067033976124
+2025_r1_Hawthorn_v_Essendon,player_marks,Dyson Heppell,6,0.38860598345003183
+2025_r1_Hawthorn_v_Essendon,player_tackles,Dyson Heppell,3,0.33619702176403216
+2025_r1_Geelong_v_Fremantle,h2h,Geelong,,0.7129166666666666
+2025_r1_Geelong_v_Fremantle,h2h,Fremantle,,0.279
+2025_r1_Geelong_v_Fremantle,total_points,total,175.5,0.48783333333333334
+2025_r1_Geelong_v_Fremantle,player_disposals,Max Holmes,15,0.7731854838709677
+2025_r1_Geelong_v_Fremantle,player_disposals,Max Holmes,20,0.4363207547169811
+2025_r1_Geelong_v_Fremantle,player_disposals,Max Holmes,25,0.16821602478973005
+2025_r1_Geelong_v_Fremantle,player_goals,Max Holmes,1,0.25547445255474455
+2025_r1_Geelong_v_Fremantle,player_marks,Max Holmes,4,0.7389975550122252
+2025_r1_Geelong_v_Fremantle,player_marks,Max Holmes,6,0.32507739938080493
+2025_r1_Geelong_v_Fremantle,player_tackles,Max Holmes,3,0.3627741553052756
+2025_r1_Geelong_v_Fremantle,player_disposals,Tom Stewart,15,0.8310626702997275
+2025_r1_Geelong_v_Fremantle,player_disposals,Tom Stewart,20,0.48404785643070786
+2025_r1_Geelong_v_Fremantle,player_disposals,Tom Stewart,25,0.1987704918032787
+2025_r1_Geelong_v_Fremantle,player_goals,Tom Stewart,1,0.18884758364312262
+2025_r1_Geelong_v_Fremantle,player_marks,Tom Stewart,4,0.7943067033976124
+2025_r1_Geelong_v_Fremantle,player_marks,Tom Stewart,6,0.38860598345003183
+2025_r1_Geelong_v_Fremantle,player_tackles,Tom Stewart,3,0.5205327413984462
+2025_r1_Geelong_v_Fremantle,player_tackles,Tom Stewart,5,0.07869481765834928
+2025_r1_Geelong_v_Fremantle,player_disposals,Gryan Miers,15,0.6043587594300083
+2025_r1_Geelong_v_Fremantle,player_disposals,Gryan Miers,20,0.23139158576051785
+2025_r1_Geelong_v_Fremantle,player_disposals,Gryan Miers,25,0.07985028072364315
+2025_r1_Geelong_v_Fremantle,player_goals,Gryan Miers,1,0.46707040121120363
+2025_r1_Geelong_v_Fremantle,player_goals,Gryan Miers,2,0.16613032984714396
+2025_r1_Geelong_v_Fremantle,player_marks,Gryan Miers,4,0.560294117647059
+2025_r1_Geelong_v_Fremantle,player_marks,Gryan Miers,6,0.175
+2025_r1_Geelong_v_Fremantle,player_tackles,Gryan Miers,3,0.8797595190380761
+2025_r1_Geelong_v_Fremantle,player_tackles,Gryan Miers,5,0.27930763178599544
+2025_r1_Geelong_v_Fremantle,player_disposals,Patrick Dangerfield,15,0.8654761904761905
+2025_r1_Geelong_v_Fremantle,player_disposals,Patrick Dangerfield,20,0.5397489539748956
+2025_r1_Geelong_v_Fremantle,player_disposals,Patrick Dangerfield,25,0.26224328593996843
+2025_r1_Geelong_v_Fremantle,player_goals,Patrick Dangerfield,1,0.4473567303420702
+2025_r1_Geelong_v_Fremantle,player_goals,Patrick Dangerfield,2,0.11807958477508645
+2025_r1_Geelong_v_Fremantle,player_marks,Patrick Dangerfield,4,0.5357757560855667
+2025_r1_Geelong_v_Fremantle,player_marks,Patrick Dangerfield,6,0.1637426900584795
+2025_r1_Geelong_v_Fremantle,player_tackles,Patrick Dangerfield,3,0.7751798561151079
+2025_r1_Geelong_v_Fremantle,player_tackles,Patrick Dangerfield,5,0.17370689655172414
+2025_r1_Geelong_v_Fremantle,player_disposals,Mitch Duncan,15,0.3187710033605377
+2025_r1_Geelong_v_Fremantle,player_disposals,Mitch Duncan,20,0.09279279279279279
+2025_r1_Geelong_v_Fremantle,player_goals,Mitch Duncan,1,0.11807958477508645
+2025_r1_Geelong_v_Fremantle,player_marks,Mitch Duncan,4,0.41033672670321064
+2025_r1_Geelong_v_Fremantle,player_marks,Mitch Duncan,6,0.11950790861159927
+2025_r1_Geelong_v_Fremantle,player_tackles,Mitch Duncan,3,0.20295378751786566
+2025_r1_Geelong_v_Fremantle,player_disposals,Jack Bowes,15,0.7440068493150686
+2025_r1_Geelong_v_Fremantle,player_disposals,Jack Bowes,20,0.3836553945249599
+2025_r1_Geelong_v_Fremantle,player_disposals,Jack Bowes,25,0.15025380710659902
+2025_r1_Geelong_v_Fremantle,player_goals,Jack Bowes,1,0.35275754422476585
+2025_r1_Geelong_v_Fremantle,player_goals,Jack Bowes,2,0.09172259507829977
+2025_r1_Geelong_v_Fremantle,player_marks,Jack Bowes,4,0.5357757560855667
+2025_r1_Geelong_v_Fremantle,player_marks,Jack Bowes,6,0.15810276679841898
+2025_r1_Geelong_v_Fremantle,player_tackles,Jack Bowes,3,0.8823529411764706
+2025_r1_Geelong_v_Fremantle,player_tackles,Jack Bowes,5,0.3627741553052756
+2025_r1_Geelong_v_Fremantle,player_disposals,Zach Guthrie,15,0.6948798328108673
+2025_r1_Geelong_v_Fremantle,player_disposals,Zach Guthrie,20,0.3187710033605377
+2025_r1_Geelong_v_Fremantle,player_disposals,Zach Guthrie,25,0.10473556861389562
+2025_r1_Geelong_v_Fremantle,player_goals,Zach Guthrie,1,0.14995224450811845
+2025_r1_Geelong_v_Fremantle,player_marks,Zach Guthrie,4,0.9012658227848102
+2025_r1_Geelong_v_Fremantle,player_marks,Zach Guthrie,6,0.5861204013377925
+2025_r1_Geelong_v_Fremantle,player_tackles,Zach Guthrie,3,0.3627906976744186
+2025_r1_Geelong_v_Fremantle,player_disposals,Tanner Bruhn,15,0.4363207547169811
+2025_r1_Geelong_v_Fremantle,player_disposals,Tanner Bruhn,20,0.15025380710659902
+2025_r1_Geelong_v_Fremantle,player_goals,Tanner Bruhn,1,0.25688073394495425
+2025_r1_Geelong_v_Fremantle,player_marks,Tanner Bruhn,4,0.3049114933931688
+2025_r1_Geelong_v_Fremantle,player_marks,Tanner Bruhn,6,0.07354555433589456
+2025_r1_Geelong_v_Fremantle,player_tackles,Tanner Bruhn,3,0.7261761158021713
+2025_r1_Geelong_v_Fremantle,player_tackles,Tanner Bruhn,5,0.12972972972973001
+2025_r1_Geelong_v_Fremantle,player_disposals,Oliver Dempsey,15,0.6296791443850265
+2025_r1_Geelong_v_Fremantle,player_disposals,Oliver Dempsey,20,0.2836943441636582
+2025_r1_Geelong_v_Fremantle,player_disposals,Oliver Dempsey,25,0.0960735171261487
+2025_r1_Geelong_v_Fremantle,player_goals,Oliver Dempsey,1,0.5570400822199383
+2025_r1_Geelong_v_Fremantle,player_goals,Oliver Dempsey,2,0.19227230910763562
+2025_r1_Geelong_v_Fremantle,player_marks,Oliver Dempsey,4,0.6888888888888889
+2025_r1_Geelong_v_Fremantle,player_marks,Oliver Dempsey,6,0.26406649616368283
+2025_r1_Geelong_v_Fremantle,player_tackles,Oliver Dempsey,3,0.3282747603833866
+2025_r1_Geelong_v_Fremantle,player_disposals,Tom Atkins,15,0.6043587594300083
+2025_r1_Geelong_v_Fremantle,player_disposals,Tom Atkins,20,0.23913043478260876
+2025_r1_Geelong_v_Fremantle,player_disposals,Tom Atkins,25,0.07985028072364315
+2025_r1_Geelong_v_Fremantle,player_goals,Tom Atkins,1,0.11774461028192376
+2025_r1_Geelong_v_Fremantle,player_marks,Tom Atkins,4,0.20383693045563545
+2025_r1_Geelong_v_Fremantle,player_tackles,Tom Atkins,5,0.6247582205029011
+2025_r1_Geelong_v_Fremantle,player_disposals,Caleb Serong,15,0.9694132334581773
+2025_r1_Geelong_v_Fremantle,player_disposals,Caleb Serong,20,0.8620689655172413
+2025_r1_Geelong_v_Fremantle,player_disposals,Caleb Serong,25,0.6139534883720931
+2025_r1_Geelong_v_Fremantle,player_goals,Caleb Serong,1,0.46707040121120363
+2025_r1_Geelong_v_Fremantle,player_goals,Caleb Serong,2,0.14995224450811845
+2025_r1_Geelong_v_Fremantle,player_marks,Caleb Serong,4,0.2763990267639905
+2025_r1_Geelong_v_Fremantle,player_tackles,Caleb Serong,5,0.519642857142857
+2025_r1_Geelong_v_Fremantle,player_disposals,Andrew Brayshaw,20,0.9215938303341902
+2025_r1_Geelong_v_Fremantle,player_disposals,Andrew Brayshaw,25,0.7440068493150686
+2025_r1_Geelong_v_Fremantle,player_goals,Andrew Brayshaw,1,0.23608017817371937
+2025_r1_Geelong_v_Fremantle,player_marks,Andrew Brayshaw,4,0.7389975550122252
+2025_r1_Geelong_v_Fremantle,player_marks,Andrew Brayshaw,6,0.32507739938080493
+2025_r1_Geelong_v_Fremantle,player_tackles,Andrew Brayshaw,5,0.519642857142857
+2025_r1_Geelong_v_Fremantle,player_disposals,Jordan Clark,15,0.8654761904761905
+2025_r1_Geelong_v_Fremantle,player_disposals,Jordan Clark,20,0.6043587594300083
+2025_r1_Geelong_v_Fremantle,player_disposals,Jordan Clark,25,0.2836943441636582
+2025_r1_Geelong_v_Fremantle,player_goals,Jordan Clark,1,0.19227230910763562
+2025_r1_Geelong_v_Fremantle,player_marks,Jordan Clark,4,0.8704663212435233
+2025_r1_Geelong_v_Fremantle,player_marks,Jordan Clark,6,0.4758620689655172
+2025_r1_Geelong_v_Fremantle,player_tackles,Jordan Clark,3,0.6719524281466799
+2025_r1_Geelong_v_Fremantle,player_tackles,Jordan Clark,5,0.12384105960264893
+2025_r1_Geelong_v_Fremantle,player_disposals,Luke Ryan,15,0.9305555555555556
+2025_r1_Geelong_v_Fremantle,player_disposals,Luke Ryan,20,0.7440068493150686
+2025_r1_Geelong_v_Fremantle,player_disposals,Luke Ryan,25,0.4525627044711014
+2025_r1_Geelong_v_Fremantle,player_goals,Luke Ryan,1,0.10187667560321716
+2025_r1_Geelong_v_Fremantle,player_marks,Luke Ryan,6,0.7829670329670331
+2025_r1_Geelong_v_Fremantle,player_tackles,Luke Ryan,3,0.4124775583482944
+2025_r1_Geelong_v_Fremantle,player_tackles,Luke Ryan,5,0.056436271401395045
+2025_r1_Geelong_v_Fremantle,player_disposals,Hayden Young,15,0.9137466307277629
+2025_r1_Geelong_v_Fremantle,player_disposals,Hayden Young,20,0.7209876543209874
+2025_r1_Geelong_v_Fremantle,player_disposals,Hayden Young,25,0.3836553945249599
+2025_r1_Geelong_v_Fremantle,player_goals,Hayden Young,1,0.3690337601862631
+2025_r1_Geelong_v_Fremantle,player_goals,Hayden Young,2,0.09376126938333937
+2025_r1_Geelong_v_Fremantle,player_marks,Hayden Young,4,0.3260680034873583
+2025_r1_Geelong_v_Fremantle,player_marks,Hayden Young,6,0.07707355242566509
+2025_r1_Geelong_v_Fremantle,player_tackles,Hayden Young,3,0.9481865284974094
+2025_r1_Geelong_v_Fremantle,player_tackles,Hayden Young,5,0.3627906976744186
+2025_r1_Geelong_v_Fremantle,player_disposals,Nat Fyfe,15,0.7731854838709677
+2025_r1_Geelong_v_Fremantle,player_disposals,Nat Fyfe,20,0.4064070351758794
+2025_r1_Geelong_v_Fremantle,player_disposals,Nat Fyfe,25,0.16902404526166911
+2025_r1_Geelong_v_Fremantle,player_goals,Nat Fyfe,1,0.23608017817371937
+2025_r1_Geelong_v_Fremantle,player_marks,Nat Fyfe,4,0.230712711241734
+2025_r1_Geelong_v_Fremantle,player_tackles,Nat Fyfe,3,0.29664045746962125
+2025_r1_Geelong_v_Fremantle,player_disposals,Jeremy Sharp,15,0.7209876543209874
+2025_r1_Geelong_v_Fremantle,player_disposals,Jeremy Sharp,20,0.3836553945249599
+2025_r1_Geelong_v_Fremantle,player_disposals,Jeremy Sharp,25,0.15025380710659902
+2025_r1_Geelong_v_Fremantle,player_goals,Jeremy Sharp,1,0.3315240083507306
+2025_r1_Geelong_v_Fremantle,player_goals,Jeremy Sharp,2,0.0663744520976832
+2025_r1_Geelong_v_Fremantle,player_marks,Jeremy Sharp,4,0.8704663212435233
+2025_r1_Geelong_v_Fremantle,player_marks,Jeremy Sharp,6,0.4758620689655172
+2025_r1_Geelong_v_Fremantle,player_tackles,Jeremy Sharp,3,0.08848146671980871
+2025_r1_Geelong_v_Fremantle,player_disposals,James Aish,15,0.14007954043305354
+2025_r1_Geelong_v_Fremantle,player_goals,James Aish,1,0.0663744520976832
+2025_r1_Geelong_v_Fremantle,player_marks,James Aish,4,0.2763990267639905
+2025_r1_Geelong_v_Fremantle,player_disposals,Luke Jackson,15,0.4064070351758794
+2025_r1_Geelong_v_Fremantle,player_disposals,Luke Jackson,20,0.14007954043305354
+2025_r1_Geelong_v_Fremantle,player_goals,Luke Jackson,1,0.46444644464446444
+2025_r1_Geelong_v_Fremantle,player_goals,Luke Jackson,2,0.14995224450811845
+2025_r1_Geelong_v_Fremantle,player_marks,Luke Jackson,4,0.26406649616368283
+2025_r1_Geelong_v_Fremantle,player_tackles,Luke Jackson,3,0.6020025031289111
+2025_r1_Geelong_v_Fremantle,player_tackles,Luke Jackson,5,0.08848146671980871
+2025_r1_Geelong_v_Fremantle,player_disposals,Heath Chapman,15,0.5329512893982808
+2025_r1_Geelong_v_Fremantle,player_disposals,Heath Chapman,20,0.21353509878100044
+2025_r1_Geelong_v_Fremantle,player_disposals,Heath Chapman,25,0.07985028072364315
+2025_r1_Geelong_v_Fremantle,player_goals,Heath Chapman,1,0.11774461028192376
+2025_r1_Geelong_v_Fremantle,player_marks,Heath Chapman,4,0.8206896551724137
+2025_r1_Geelong_v_Fremantle,player_marks,Heath Chapman,6,0.44145454545454543
+2025_r1_Geelong_v_Fremantle,player_tackles,Heath Chapman,3,0.20579128713220418
+2025_r1_Sydney_v_Brisbane Lions,h2h,Sydney,,0.3943333333333333
+2025_r1_Sydney_v_Brisbane Lions,h2h,Brisbane Lions,,0.5945
+2025_r1_Sydney_v_Brisbane Lions,total_points,total,170.5,0.4405833333333333
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Errol Gulden,15,0.9305555555555556
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Errol Gulden,20,0.7396593673965937
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Errol Gulden,25,0.4363207547169811
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Errol Gulden,1,0.28061224489795933
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Errol Gulden,2,0.05064715813168259
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Errol Gulden,4,0.7185430463576158
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Errol Gulden,6,0.3049114933931688
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Errol Gulden,3,0.7751798561151079
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Errol Gulden,5,0.17370689655172414
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Isaac Heeney,15,0.7915218902015289
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Isaac Heeney,20,0.4363207547169811
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Isaac Heeney,25,0.16902404526166911
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Isaac Heeney,1,0.6682832201745876
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Isaac Heeney,2,0.3315240083507306
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Isaac Heeney,4,0.6628621597892889
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Isaac Heeney,6,0.230712711241734
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Isaac Heeney,3,0.7171052631578948
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Isaac Heeney,5,0.12384105960264893
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Chad Warner,15,0.8986409966024915
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Chad Warner,20,0.6043587594300083
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Chad Warner,25,0.2836943441636582
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Chad Warner,1,0.46707040121120363
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Chad Warner,2,0.16613032984714396
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Chad Warner,4,0.5357757560855667
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Chad Warner,6,0.1637426900584795
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Chad Warner,3,0.4124775583482944
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Nick Blakey,15,0.7396593673965937
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Nick Blakey,20,0.3836553945249599
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Nick Blakey,25,0.14007954043305354
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Nick Blakey,1,0.16613032984714396
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Nick Blakey,4,0.7943067033976124
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Nick Blakey,6,0.4060822898032201
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Nick Blakey,3,0.07127429805615551
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Oliver Florent,15,0.7209876543209874
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Oliver Florent,20,0.32581967213114754
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Oliver Florent,25,0.1304926764314247
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Oliver Florent,1,0.19856459330143542
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Oliver Florent,4,0.6857142857142857
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Oliver Florent,6,0.26406649616368283
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Oliver Florent,3,0.11906816220880069
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jake Lloyd,15,0.8654761904761905
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jake Lloyd,20,0.5777414075286416
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jake Lloyd,25,0.2836943441636582
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Jake Lloyd,1,0.23608017817371937
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Jake Lloyd,4,0.9012658227848102
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Jake Lloyd,6,0.6266601082144612
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Jake Lloyd,3,0.3627906976744186
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,James Rowbottom,15,0.6948798328108673
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,James Rowbottom,20,0.2836943441636582
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,James Rowbottom,25,0.0960735171261487
+2025_r1_Sydney_v_Brisbane Lions,player_goals,James Rowbottom,1,0.24601524601524596
+2025_r1_Sydney_v_Brisbane Lions,player_marks,James Rowbottom,4,0.16856780735107732
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,James Rowbottom,5,0.6719524281466799
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Justin McInerney,15,0.2836943441636582
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Justin McInerney,20,0.07231920199501245
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Justin McInerney,1,0.16613032984714396
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Justin McInerney,4,0.46674268339034586
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Justin McInerney,6,0.1299821534800713
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Justin McInerney,3,0.08848146671980871
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Matt Roberts,15,0.7396593673965937
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Matt Roberts,20,0.3836553945249599
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Matt Roberts,25,0.14007954043305354
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Matt Roberts,1,0.14995224450811845
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Matt Roberts,4,0.7722586691658857
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Matt Roberts,6,0.3514412416851441
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Matt Roberts,3,0.3627906976744186
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Brodie Grundy,15,0.49955869373345113
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Brodie Grundy,20,0.1788218793828892
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Brodie Grundy,25,0.06224066390041486
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Brodie Grundy,1,0.11774461028192376
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Brodie Grundy,4,0.175
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Brodie Grundy,3,0.7202380952380952
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Brodie Grundy,5,0.12384105960264893
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Lachie Neale,20,0.9093959731543624
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Lachie Neale,25,0.7209876543209874
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Lachie Neale,1,0.44
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Lachie Neale,2,0.11774461028192376
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Lachie Neale,4,0.7943067033976124
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Lachie Neale,6,0.44145454545454543
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Lachie Neale,3,0.6341463414634146
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Lachie Neale,5,0.08848146671980871
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Dayne Zorko,15,0.9694132334581773
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Dayne Zorko,20,0.8620689655172413
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Dayne Zorko,25,0.6296791443850265
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Dayne Zorko,1,0.23427529626253418
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Dayne Zorko,4,0.9012658227848102
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Dayne Zorko,6,0.7500000000000001
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Dayne Zorko,3,0.5674676524953789
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Dayne Zorko,5,0.07429871114480661
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Josh Dunkley,15,0.9555125725338491
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Josh Dunkley,20,0.7731854838709677
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Josh Dunkley,25,0.48404785643070786
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Josh Dunkley,1,0.23328228688106176
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Josh Dunkley,4,0.8704663212435233
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Josh Dunkley,6,0.5357757560855667
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Josh Dunkley,5,0.5674676524953789
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Hugh McCluggage,15,0.9555125725338491
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Hugh McCluggage,20,0.7915218902015289
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Hugh McCluggage,25,0.49955869373345113
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Hugh McCluggage,1,0.40588235294117647
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Hugh McCluggage,2,0.11774461028192376
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Hugh McCluggage,4,0.8366013071895425
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Hugh McCluggage,6,0.5149136577708004
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Hugh McCluggage,3,0.8819188191881919
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Hugh McCluggage,5,0.3282747603833866
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Will Ashcroft,15,0.940677966101695
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Will Ashcroft,20,0.7731854838709677
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Will Ashcroft,25,0.48404785643070786
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Will Ashcroft,1,0.23427529626253418
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Will Ashcroft,4,0.8704663212435233
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Will Ashcroft,6,0.560294117647059
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Will Ashcroft,3,0.519642857142857
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Will Ashcroft,5,0.06263345195729537
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jarrod Berry,15,0.76
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jarrod Berry,20,0.4064070351758794
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jarrod Berry,25,0.16902404526166911
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Jarrod Berry,1,0.23328228688106176
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Jarrod Berry,4,0.9012658227848102
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Jarrod Berry,6,0.6628621597892889
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Jarrod Berry,3,0.519642857142857
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Jarrod Berry,5,0.06263345195729537
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Darcy Wilmot,15,0.6948798328108673
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Darcy Wilmot,20,0.3187710033605377
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Darcy Wilmot,25,0.1304926764314247
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Darcy Wilmot,1,0.09549071618037135
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Darcy Wilmot,4,0.7722586691658857
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Darcy Wilmot,6,0.39414414414414417
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Darcy Wilmot,3,0.07429871114480661
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jarryd Lyons,15,0.6495238095238095
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jarryd Lyons,20,0.2836943441636582
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Jarryd Lyons,25,0.10473556861389562
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Jarryd Lyons,1,0.16613032984714396
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Jarryd Lyons,4,0.5357757560855667
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Jarryd Lyons,6,0.175
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Jarryd Lyons,3,0.6020025031289111
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Jarryd Lyons,5,0.08848146671980871
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Zac Bailey,15,0.49955869373345113
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Zac Bailey,20,0.1987704918032787
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Zac Bailey,25,0.07231920199501245
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Zac Bailey,1,0.46707040121120363
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Zac Bailey,2,0.16613032984714396
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Zac Bailey,4,0.7185430463576158
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Zac Bailey,6,0.3260680034873583
+2025_r1_Sydney_v_Brisbane Lions,player_tackles,Zac Bailey,3,0.17870722433460076
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Joe Daniher,15,0.4363207547169811
+2025_r1_Sydney_v_Brisbane Lions,player_disposals,Joe Daniher,20,0.16821602478973005
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Joe Daniher,1,0.8208955223880597
+2025_r1_Sydney_v_Brisbane Lions,player_goals,Joe Daniher,2,0.5816513761467891
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Joe Daniher,4,0.9012658227848102
+2025_r1_Sydney_v_Brisbane Lions,player_marks,Joe Daniher,6,0.5861204013377925
+2025_r1_Collingwood_v_Port Adelaide,h2h,Collingwood,,0.7634166666666666
+2025_r1_Collingwood_v_Port Adelaide,h2h,Port Adelaide,,0.22808333333333333
+2025_r1_Collingwood_v_Port Adelaide,total_points,total,160.5,0.46958333333333335
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Nick Daicos,20,0.9093959731543624
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Nick Daicos,25,0.7209876543209874
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Nick Daicos,1,0.5813953488372093
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Nick Daicos,2,0.23328228688106176
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Nick Daicos,4,0.39414414414414417
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Nick Daicos,6,0.07707355242566509
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Nick Daicos,3,0.8484419263456091
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Nick Daicos,5,0.26037817865681395
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Josh Daicos,15,0.9555125725338491
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Josh Daicos,20,0.7731854838709677
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Josh Daicos,25,0.48404785643070786
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Josh Daicos,1,0.23427529626253418
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Josh Daicos,4,0.7943067033976124
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Josh Daicos,6,0.3514412416851441
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Josh Daicos,3,0.5674676524953789
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Josh Daicos,5,0.08848146671980871
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jordan De Goey,15,0.6495238095238095
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jordan De Goey,20,0.2836943441636582
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jordan De Goey,25,0.0960735171261487
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jordan De Goey,1,0.5570400822199383
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jordan De Goey,2,0.19227230910763562
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jordan De Goey,4,0.38860598345003183
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jordan De Goey,6,0.07707355242566509
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jordan De Goey,3,0.5674676524953789
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jordan De Goey,5,0.08848146671980871
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Scott Pendlebury,15,0.8986409966024915
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Scott Pendlebury,20,0.6296791443850265
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Scott Pendlebury,25,0.28695652173913044
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Scott Pendlebury,1,0.29415904292751566
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Scott Pendlebury,2,0.0663744520976832
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Scott Pendlebury,4,0.38860598345003183
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Scott Pendlebury,6,0.07707355242566509
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Scott Pendlebury,3,0.9272727272727272
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Scott Pendlebury,5,0.3627741553052756
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jack Crisp,15,0.8440748440748441
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jack Crisp,20,0.49955869373345113
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jack Crisp,25,0.21353509878100044
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jack Crisp,1,0.4473567303420702
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jack Crisp,2,0.11807958477508645
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jack Crisp,4,0.2763990267639905
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jack Crisp,3,0.8797595190380761
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jack Crisp,5,0.3066169617893756
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Tom Mitchell,15,0.8986409966024915
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Tom Mitchell,20,0.6043587594300083
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Tom Mitchell,25,0.2836943441636582
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Tom Mitchell,1,0.19227230910763562
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Tom Mitchell,4,0.230712711241734
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Tom Mitchell,5,0.7261761158021713
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,John Noble,15,0.5397489539748956
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,John Noble,20,0.21353509878100044
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,John Noble,25,0.07231920199501245
+2025_r1_Collingwood_v_Port Adelaide,player_goals,John Noble,1,0.11774461028192376
+2025_r1_Collingwood_v_Port Adelaide,player_marks,John Noble,4,0.5357757560855667
+2025_r1_Collingwood_v_Port Adelaide,player_marks,John Noble,6,0.1299821534800713
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,John Noble,3,0.4613997113997114
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,John Noble,5,0.056436271401395045
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Steele Sidebottom,15,0.8620689655172413
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Steele Sidebottom,20,0.5258620689655172
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Steele Sidebottom,25,0.26224328593996843
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Steele Sidebottom,1,0.3315240083507306
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Steele Sidebottom,2,0.07676348547717844
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Steele Sidebottom,4,0.6266601082144612
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Steele Sidebottom,6,0.18161094224924013
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Steele Sidebottom,3,0.8797595190380761
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Steele Sidebottom,5,0.3066169617893756
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Patrick Lipinski,15,0.4363207547169811
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Patrick Lipinski,20,0.14007954043305354
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Patrick Lipinski,1,0.4473567303420702
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Patrick Lipinski,2,0.11807958477508645
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Patrick Lipinski,4,0.3049114933931688
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Patrick Lipinski,6,0.06181818181818187
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Patrick Lipinski,3,0.4613997113997114
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Patrick Lipinski,5,0.06263345195729537
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Brayden Maynard,15,0.4363207547169811
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Brayden Maynard,20,0.15025380710659902
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Brayden Maynard,1,0.11807958477508645
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Brayden Maynard,4,0.6266601082144612
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Brayden Maynard,6,0.18161094224924013
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Brayden Maynard,3,0.20295378751786566
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Zak Butters,15,0.8986409966024915
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Zak Butters,20,0.6043587594300083
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Zak Butters,25,0.2836943441636582
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Zak Butters,1,0.23427529626253418
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Zak Butters,4,0.5357757560855667
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Zak Butters,6,0.1299821534800713
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Zak Butters,3,0.5205327413984462
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Zak Butters,5,0.07869481765834928
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Connor Rozee,15,0.8620689655172413
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Connor Rozee,20,0.5258620689655172
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Connor Rozee,25,0.22874149659863946
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Connor Rozee,1,0.39874902267396406
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Connor Rozee,2,0.09549071618037135
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Connor Rozee,4,0.5861204013377925
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Connor Rozee,6,0.20383693045563545
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Connor Rozee,3,0.8797595190380761
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Connor Rozee,5,0.26037817865681395
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Ollie Wines,15,0.9555125725338491
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Ollie Wines,20,0.7731854838709677
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Ollie Wines,25,0.48404785643070786
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Ollie Wines,1,0.16613032984714396
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Ollie Wines,4,0.7389975550122252
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Ollie Wines,6,0.32507739938080493
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Ollie Wines,3,0.8797595190380761
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Ollie Wines,5,0.28761061946902655
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Dan Houston,15,0.8013698630136986
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Dan Houston,20,0.48404785643070786
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Dan Houston,25,0.21353509878100044
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Dan Houston,1,0.16613032984714396
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Dan Houston,4,0.7500000000000001
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Dan Houston,6,0.34360788276907533
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Dan Houston,3,0.4613997113997114
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Dan Houston,5,0.06263345195729537
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jason Horne-Francis,15,0.8310626702997275
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jason Horne-Francis,20,0.49955869373345113
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jason Horne-Francis,25,0.21353509878100044
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jason Horne-Francis,1,0.5570400822199383
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jason Horne-Francis,2,0.19227230910763562
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jason Horne-Francis,4,0.7500000000000001
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jason Horne-Francis,6,0.34360788276907533
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jason Horne-Francis,3,0.3282747603833866
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Willem Drew,15,0.7209876543209874
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Willem Drew,20,0.35189075630252103
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Willem Drew,25,0.14007954043305354
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Willem Drew,1,0.11774461028192376
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Willem Drew,4,0.4758620689655172
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Willem Drew,6,0.1299821534800713
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Willem Drew,3,0.9272727272727272
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Willem Drew,5,0.33619702176403216
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Kane Farrell,15,0.5178571428571429
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Kane Farrell,20,0.20488721804511278
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Kane Farrell,25,0.07231920199501245
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Kane Farrell,1,0.11807958477508645
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Kane Farrell,4,0.5861204013377925
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Kane Farrell,6,0.20383693045563545
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Kane Farrell,3,0.26037817865681395
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Travis Boak,15,0.8620689655172413
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Travis Boak,20,0.5329512893982808
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Travis Boak,25,0.26224328593996843
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Travis Boak,1,0.24601524601524596
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Travis Boak,4,0.7722586691658857
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Travis Boak,6,0.3653250773993808
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Travis Boak,3,0.4124775583482944
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Travis Boak,5,0.056436271401395045
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jase Burgoyne,15,0.7969348659003831
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jase Burgoyne,20,0.48404785643070786
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Jase Burgoyne,25,0.1788218793828892
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jase Burgoyne,1,0.3315240083507306
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Jase Burgoyne,2,0.07676348547717844
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jase Burgoyne,4,0.8704663212435233
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Jase Burgoyne,6,0.5357757560855667
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jase Burgoyne,3,0.6247582205029011
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Jase Burgoyne,5,0.08848146671980871
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Ryan Burton,15,0.7209876543209874
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Ryan Burton,20,0.33532423208191137
+2025_r1_Collingwood_v_Port Adelaide,player_disposals,Ryan Burton,25,0.1304926764314247
+2025_r1_Collingwood_v_Port Adelaide,player_goals,Ryan Burton,1,0.25547445255474455
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Ryan Burton,4,0.7722586691658857
+2025_r1_Collingwood_v_Port Adelaide,player_marks,Ryan Burton,6,0.34360788276907533
+2025_r1_Collingwood_v_Port Adelaide,player_tackles,Ryan Burton,3,0.12384105960264893
+2025_r1_Western Bulldogs_v_North Melbourne,h2h,Western Bulldogs,,0.9035833333333333
+2025_r1_Western Bulldogs_v_North Melbourne,h2h,North Melbourne,,0.0925
+2025_r1_Western Bulldogs_v_North Melbourne,total_points,total,185.5,0.49491666666666667
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Adam Treloar,20,0.9093959731543624
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Adam Treloar,25,0.7209876543209874
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Adam Treloar,1,0.7586206896551724
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Adam Treloar,2,0.39874902267396406
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Adam Treloar,4,0.5357757560855667
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Adam Treloar,6,0.16856780735107732
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Adam Treloar,3,0.9272727272727272
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Adam Treloar,5,0.3627741553052756
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Marcus Bontempelli,15,0.9555125725338491
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Marcus Bontempelli,20,0.7731854838709677
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Marcus Bontempelli,25,0.48404785643070786
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Marcus Bontempelli,1,0.8208955223880597
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Marcus Bontempelli,2,0.5570400822199383
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Marcus Bontempelli,4,0.6266601082144612
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Marcus Bontempelli,6,0.22852233676975944
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Marcus Bontempelli,5,0.4613997113997114
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Dale,15,0.8986409966024915
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Dale,20,0.6296791443850265
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Dale,25,0.3187710033605377
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Bailey Dale,1,0.3690337601862631
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Bailey Dale,2,0.09376126938333937
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Bailey Dale,4,0.7389975550122252
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Bailey Dale,6,0.3049114933931688
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Bailey Dale,3,0.12972972972973001
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tom Liberatore,15,0.9555125725338491
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tom Liberatore,20,0.7915218902015289
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tom Liberatore,25,0.49955869373345113
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Tom Liberatore,1,0.40404040404040403
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Tom Liberatore,2,0.09970674486803519
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Tom Liberatore,4,0.34360788276907533
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Tom Liberatore,6,0.07692307692307693
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Tom Liberatore,5,0.6020025031289111
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jason Johannisen,15,0.7209876543209874
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jason Johannisen,20,0.3836553945249599
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jason Johannisen,25,0.15025380710659902
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Jason Johannisen,1,0.3315240083507306
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Jason Johannisen,2,0.07676348547717844
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Jason Johannisen,4,0.7722586691658857
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Jason Johannisen,6,0.34360788276907533
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Jason Johannisen,3,0.12972972972973001
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Ed Richards,15,0.8013698630136986
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Ed Richards,20,0.48404785643070786
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Ed Richards,25,0.21353509878100044
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Ed Richards,1,0.7205882352941176
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Ed Richards,2,0.3315240083507306
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Ed Richards,4,0.5973534971644613
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Ed Richards,6,0.20383693045563545
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Ed Richards,3,0.7202380952380952
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Ed Richards,5,0.12972972972973001
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Williams,15,0.6948798328108673
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Williams,20,0.3187710033605377
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Williams,25,0.1304926764314247
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Bailey Williams,1,0.6534954407294831
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Bailey Williams,2,0.2702702702702701
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Bailey Williams,4,0.7943067033976124
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Bailey Williams,6,0.38860598345003183
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Bailey Williams,3,0.27930763178599544
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Lachlan Bramble,15,0.7044534412955465
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Lachlan Bramble,20,0.32581967213114754
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Lachlan Bramble,25,0.13321492007104802
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Lachlan Bramble,1,0.19227230910763562
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Lachlan Bramble,4,0.5357757560855667
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Lachlan Bramble,6,0.175
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Lachlan Bramble,3,0.12384105960264893
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jack Macrae,15,0.3836553945249599
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jack Macrae,20,0.1304926764314247
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Jack Macrae,1,0.29415904292751566
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Jack Macrae,2,0.05064715813168259
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Jack Macrae,4,0.175
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Jack Macrae,3,0.3627741553052756
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Ryley Sanders,15,0.6296791443850265
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Ryley Sanders,20,0.2836943441636582
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Ryley Sanders,25,0.0960735171261487
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Ryley Sanders,1,0.23427529626253418
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Ryley Sanders,4,0.2763990267639905
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Ryley Sanders,3,0.8797595190380761
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Ryley Sanders,5,0.27930763178599544
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Harry Sheezel,15,0.9694132334581773
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Harry Sheezel,20,0.8654761904761905
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Harry Sheezel,25,0.6495238095238095
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Harry Sheezel,1,0.4473567303420702
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Harry Sheezel,2,0.11774461028192376
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Harry Sheezel,4,0.7389975550122252
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Harry Sheezel,6,0.3049114933931688
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Harry Sheezel,3,0.8484419263456091
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Harry Sheezel,5,0.26037817865681395
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Luke Davies-Uniacke,15,0.9694132334581773
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Luke Davies-Uniacke,20,0.8654761904761905
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Luke Davies-Uniacke,25,0.6296791443850265
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Luke Davies-Uniacke,1,0.29415904292751566
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Luke Davies-Uniacke,2,0.05064715813168259
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Luke Davies-Uniacke,4,0.6372759856630822
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Luke Davies-Uniacke,6,0.22852233676975944
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Luke Davies-Uniacke,3,0.8797595190380761
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Luke Davies-Uniacke,5,0.3066169617893756
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Zac Fisher,15,0.7915218902015289
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Zac Fisher,20,0.4414976599063963
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Zac Fisher,25,0.1788218793828892
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Zac Fisher,1,0.07676348547717844
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Zac Fisher,4,0.571764705882353
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Zac Fisher,6,0.18161094224924013
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Colby McKercher,15,0.9644970414201184
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Colby McKercher,20,0.8310626702997275
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Colby McKercher,25,0.5329512893982808
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Colby McKercher,1,0.09549071618037135
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Colby McKercher,4,0.7389975550122252
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Colby McKercher,6,0.3049114933931688
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Colby McKercher,3,0.4613997113997114
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Colby McKercher,5,0.056436271401395045
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jy Simpkin,15,0.8620689655172413
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jy Simpkin,20,0.5258620689655172
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Jy Simpkin,25,0.23139158576051785
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Jy Simpkin,1,0.4473567303420702
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Jy Simpkin,2,0.11807958477508645
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Jy Simpkin,4,0.41887905604719766
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Jy Simpkin,6,0.11950790861159927
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Jy Simpkin,3,0.6719524281466799
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Jy Simpkin,5,0.12384105960264893
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Scott,15,0.7731854838709677
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Scott,20,0.4064070351758794
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Bailey Scott,25,0.16821602478973005
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Bailey Scott,1,0.23427529626253418
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Bailey Scott,4,0.6628621597892889
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Bailey Scott,6,0.230712711241734
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Bailey Scott,3,0.4124775583482944
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Bailey Scott,5,0.056436271401395045
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tom Powell,15,0.7209876543209874
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tom Powell,20,0.33532423208191137
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tom Powell,25,0.14007954043305354
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Tom Powell,1,0.23328228688106176
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Tom Powell,4,0.5357757560855667
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Tom Powell,6,0.16856780735107732
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Tom Powell,3,0.8484419263456091
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Tom Powell,5,0.26037817865681395
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,George Wardlaw,15,0.7209876543209874
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,George Wardlaw,20,0.3836553945249599
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,George Wardlaw,25,0.15025380710659902
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,George Wardlaw,1,0.29415904292751566
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,George Wardlaw,2,0.06369426751592357
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,George Wardlaw,4,0.32507739938080493
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,George Wardlaw,6,0.07354555433589456
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,George Wardlaw,3,0.8484419263456091
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,George Wardlaw,5,0.26037817865681395
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tristan Xerri,15,0.7209876543209874
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tristan Xerri,20,0.35189075630252103
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Tristan Xerri,25,0.14007954043305354
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Tristan Xerri,1,0.24601524601524596
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Tristan Xerri,4,0.42461964038727523
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Tristan Xerri,6,0.11950790861159927
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Tristan Xerri,5,0.8041958041958043
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Darcy Tucker,15,0.6296791443850265
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Darcy Tucker,20,0.26224328593996843
+2025_r1_Western Bulldogs_v_North Melbourne,player_disposals,Darcy Tucker,25,0.0960735171261487
+2025_r1_Western Bulldogs_v_North Melbourne,player_goals,Darcy Tucker,1,0.11774461028192376
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Darcy Tucker,4,0.560294117647059
+2025_r1_Western Bulldogs_v_North Melbourne,player_marks,Darcy Tucker,6,0.175
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Darcy Tucker,3,0.519642857142857
+2025_r1_Western Bulldogs_v_North Melbourne,player_tackles,Darcy Tucker,5,0.07429871114480661
+2025_r1_Adelaide_v_St Kilda,h2h,Adelaide,,0.76925
+2025_r1_Adelaide_v_St Kilda,h2h,St Kilda,,0.22375
+2025_r1_Adelaide_v_St Kilda,total_points,total,165.5,0.46891666666666665
+2025_r1_Adelaide_v_St Kilda,player_disposals,Matt Crouch,20,0.9065420560747663
+2025_r1_Adelaide_v_St Kilda,player_disposals,Matt Crouch,25,0.7209876543209874
+2025_r1_Adelaide_v_St Kilda,player_goals,Matt Crouch,1,0.15780730897009967
+2025_r1_Adelaide_v_St Kilda,player_marks,Matt Crouch,4,0.6266601082144612
+2025_r1_Adelaide_v_St Kilda,player_marks,Matt Crouch,6,0.22852233676975944
+2025_r1_Adelaide_v_St Kilda,player_tackles,Matt Crouch,3,0.9481865284974094
+2025_r1_Adelaide_v_St Kilda,player_tackles,Matt Crouch,5,0.4124775583482944
+2025_r1_Adelaide_v_St Kilda,player_disposals,Rory Laird,20,0.9137466307277629
+2025_r1_Adelaide_v_St Kilda,player_disposals,Rory Laird,25,0.7440068493150686
+2025_r1_Adelaide_v_St Kilda,player_goals,Rory Laird,1,0.15780730897009967
+2025_r1_Adelaide_v_St Kilda,player_marks,Rory Laird,4,0.7500000000000001
+2025_r1_Adelaide_v_St Kilda,player_marks,Rory Laird,6,0.3260680034873583
+2025_r1_Adelaide_v_St Kilda,player_tackles,Rory Laird,5,0.4791288566243194
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jordan Dawson,15,0.9555125725338491
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jordan Dawson,20,0.7731854838709677
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jordan Dawson,25,0.48404785643070786
+2025_r1_Adelaide_v_St Kilda,player_goals,Jordan Dawson,1,0.3315240083507306
+2025_r1_Adelaide_v_St Kilda,player_goals,Jordan Dawson,2,0.07676348547717844
+2025_r1_Adelaide_v_St Kilda,player_marks,Jordan Dawson,4,0.7943067033976124
+2025_r1_Adelaide_v_St Kilda,player_marks,Jordan Dawson,6,0.39414414414414417
+2025_r1_Adelaide_v_St Kilda,player_tackles,Jordan Dawson,5,0.6247582205029011
+2025_r1_Adelaide_v_St Kilda,player_disposals,Mitchell Hinge,15,0.7915218902015289
+2025_r1_Adelaide_v_St Kilda,player_disposals,Mitchell Hinge,20,0.4525627044711014
+2025_r1_Adelaide_v_St Kilda,player_disposals,Mitchell Hinge,25,0.1987704918032787
+2025_r1_Adelaide_v_St Kilda,player_goals,Mitchell Hinge,1,0.23328228688106176
+2025_r1_Adelaide_v_St Kilda,player_marks,Mitchell Hinge,4,0.7389975550122252
+2025_r1_Adelaide_v_St Kilda,player_marks,Mitchell Hinge,6,0.3049114933931688
+2025_r1_Adelaide_v_St Kilda,player_tackles,Mitchell Hinge,3,0.3066169617893756
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jake Soligo,15,0.8654761904761905
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jake Soligo,20,0.5777414075286416
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jake Soligo,25,0.2836943441636582
+2025_r1_Adelaide_v_St Kilda,player_goals,Jake Soligo,1,0.23608017817371937
+2025_r1_Adelaide_v_St Kilda,player_marks,Jake Soligo,4,0.5357757560855667
+2025_r1_Adelaide_v_St Kilda,player_marks,Jake Soligo,6,0.1299821534800713
+2025_r1_Adelaide_v_St Kilda,player_tackles,Jake Soligo,3,0.6719524281466799
+2025_r1_Adelaide_v_St Kilda,player_tackles,Jake Soligo,5,0.12384105960264893
+2025_r1_Adelaide_v_St Kilda,player_disposals,Lachlan Sholl,15,0.8310626702997275
+2025_r1_Adelaide_v_St Kilda,player_disposals,Lachlan Sholl,20,0.49955869373345113
+2025_r1_Adelaide_v_St Kilda,player_disposals,Lachlan Sholl,25,0.21353509878100044
+2025_r1_Adelaide_v_St Kilda,player_goals,Lachlan Sholl,1,0.38149350649350655
+2025_r1_Adelaide_v_St Kilda,player_goals,Lachlan Sholl,2,0.09376126938333937
+2025_r1_Adelaide_v_St Kilda,player_marks,Lachlan Sholl,4,0.7943067033976124
+2025_r1_Adelaide_v_St Kilda,player_marks,Lachlan Sholl,6,0.38860598345003183
+2025_r1_Adelaide_v_St Kilda,player_tackles,Lachlan Sholl,3,0.26037817865681395
+2025_r1_Adelaide_v_St Kilda,player_disposals,Izak Rankine,15,0.4414976599063963
+2025_r1_Adelaide_v_St Kilda,player_disposals,Izak Rankine,20,0.16821602478973005
+2025_r1_Adelaide_v_St Kilda,player_goals,Izak Rankine,1,0.8056013179571664
+2025_r1_Adelaide_v_St Kilda,player_goals,Izak Rankine,2,0.46707040121120363
+2025_r1_Adelaide_v_St Kilda,player_marks,Izak Rankine,4,0.38860598345003183
+2025_r1_Adelaide_v_St Kilda,player_marks,Izak Rankine,6,0.07707355242566509
+2025_r1_Adelaide_v_St Kilda,player_tackles,Izak Rankine,3,0.3627906976744186
+2025_r1_Adelaide_v_St Kilda,player_disposals,Josh Worrell,15,0.5258620689655172
+2025_r1_Adelaide_v_St Kilda,player_disposals,Josh Worrell,20,0.21353509878100044
+2025_r1_Adelaide_v_St Kilda,player_disposals,Josh Worrell,25,0.07231920199501245
+2025_r1_Adelaide_v_St Kilda,player_goals,Josh Worrell,1,0.09376126938333937
+2025_r1_Adelaide_v_St Kilda,player_marks,Josh Worrell,4,0.6670862177470107
+2025_r1_Adelaide_v_St Kilda,player_marks,Josh Worrell,6,0.26406649616368283
+2025_r1_Adelaide_v_St Kilda,player_tackles,Josh Worrell,3,0.08848146671980871
+2025_r1_Adelaide_v_St Kilda,player_disposals,Brodie Smith,15,0.6296791443850265
+2025_r1_Adelaide_v_St Kilda,player_disposals,Brodie Smith,20,0.2836943441636582
+2025_r1_Adelaide_v_St Kilda,player_disposals,Brodie Smith,25,0.0960735171261487
+2025_r1_Adelaide_v_St Kilda,player_goals,Brodie Smith,1,0.09549071618037135
+2025_r1_Adelaide_v_St Kilda,player_marks,Brodie Smith,4,0.571764705882353
+2025_r1_Adelaide_v_St Kilda,player_marks,Brodie Smith,6,0.18161094224924013
+2025_r1_Adelaide_v_St Kilda,player_tackles,Brodie Smith,3,0.21052631578947367
+2025_r1_Adelaide_v_St Kilda,player_disposals,Luke Nankervis,15,0.6296791443850265
+2025_r1_Adelaide_v_St Kilda,player_disposals,Luke Nankervis,20,0.2836943441636582
+2025_r1_Adelaide_v_St Kilda,player_disposals,Luke Nankervis,25,0.0960735171261487
+2025_r1_Adelaide_v_St Kilda,player_goals,Luke Nankervis,1,0.16613032984714396
+2025_r1_Adelaide_v_St Kilda,player_marks,Luke Nankervis,4,0.6628621597892889
+2025_r1_Adelaide_v_St Kilda,player_marks,Luke Nankervis,6,0.230712711241734
+2025_r1_Adelaide_v_St Kilda,player_tackles,Luke Nankervis,3,0.20733532934131738
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jack Sinclair,15,0.9694132334581773
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jack Sinclair,20,0.8986409966024915
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jack Sinclair,25,0.6495238095238095
+2025_r1_Adelaide_v_St Kilda,player_goals,Jack Sinclair,1,0.16613032984714396
+2025_r1_Adelaide_v_St Kilda,player_marks,Jack Sinclair,4,0.8366013071895425
+2025_r1_Adelaide_v_St Kilda,player_marks,Jack Sinclair,6,0.47126436781609193
+2025_r1_Adelaide_v_St Kilda,player_tackles,Jack Sinclair,3,0.8041958041958043
+2025_r1_Adelaide_v_St Kilda,player_tackles,Jack Sinclair,5,0.20295378751786566
+2025_r1_Adelaide_v_St Kilda,player_disposals,Nasiah Wanganeen-Milera,15,0.9555125725338491
+2025_r1_Adelaide_v_St Kilda,player_disposals,Nasiah Wanganeen-Milera,20,0.7915218902015289
+2025_r1_Adelaide_v_St Kilda,player_disposals,Nasiah Wanganeen-Milera,25,0.49955869373345113
+2025_r1_Adelaide_v_St Kilda,player_goals,Nasiah Wanganeen-Milera,1,0.11807958477508645
+2025_r1_Adelaide_v_St Kilda,player_marks,Nasiah Wanganeen-Milera,4,0.9012658227848102
+2025_r1_Adelaide_v_St Kilda,player_marks,Nasiah Wanganeen-Milera,6,0.5861204013377925
+2025_r1_Adelaide_v_St Kilda,player_tackles,Nasiah Wanganeen-Milera,3,0.3627741553052756
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jack Steele,15,0.9305555555555556
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jack Steele,20,0.7440068493150686
+2025_r1_Adelaide_v_St Kilda,player_disposals,Jack Steele,25,0.4525627044711014
+2025_r1_Adelaide_v_St Kilda,player_goals,Jack Steele,1,0.3315240083507306
+2025_r1_Adelaide_v_St Kilda,player_goals,Jack Steele,2,0.0663744520976832
+2025_r1_Adelaide_v_St Kilda,player_marks,Jack Steele,4,0.88
+2025_r1_Adelaide_v_St Kilda,player_marks,Jack Steele,6,0.5357757560855667
+2025_r1_Adelaide_v_St Kilda,player_tackles,Jack Steele,5,0.8484419263456091
+2025_r1_Adelaide_v_St Kilda,player_disposals,Riley Bonner,15,0.5329512893982808
+2025_r1_Adelaide_v_St Kilda,player_disposals,Riley Bonner,20,0.21353509878100044
+2025_r1_Adelaide_v_St Kilda,player_disposals,Riley Bonner,25,0.07231920199501245
+2025_r1_Adelaide_v_St Kilda,player_goals,Riley Bonner,1,0.09376126938333937
+2025_r1_Adelaide_v_St Kilda,player_marks,Riley Bonner,4,0.6372759856630822
+2025_r1_Adelaide_v_St Kilda,player_marks,Riley Bonner,6,0.230712711241734
+2025_r1_Adelaide_v_St Kilda,player_tackles,Riley Bonner,3,0.07429871114480661
+2025_r1_Adelaide_v_St Kilda,player_disposals,Rowan Marshall,15,0.7731854838709677
+2025_r1_Adelaide_v_St Kilda,player_disposals,Rowan Marshall,20,0.4064070351758794
+2025_r1_Adelaide_v_St Kilda,player_disposals,Rowan Marshall,25,0.16902404526166911
+2025_r1_Adelaide_v_St Kilda,player_goals,Rowan Marshall,1,0.5816513761467891
+2025_r1_Adelaide_v_St Kilda,player_goals,Rowan Marshall,2,0.23328228688106176
+2025_r1_Adelaide_v_St Kilda,player_marks,Rowan Marshall,4,0.7722586691658857
+2025_r1_Adelaide_v_St Kilda,player_marks,Rowan Marshall,6,0.38860598345003183
+2025_r1_Adelaide_v_St Kilda,player_tackles,Rowan Marshall,3,0.8041958041958043
+2025_r1_Adelaide_v_St Kilda,player_tackles,Rowan Marshall,5,0.20295378751786566
+2025_r1_Adelaide_v_St Kilda,player_disposals,Bradley Hill,15,0.5471698113207548
+2025_r1_Adelaide_v_St Kilda,player_disposals,Bradley Hill,20,0.22874149659863946
+2025_r1_Adelaide_v_St Kilda,player_disposals,Bradley Hill,25,0.07985028072364315
+2025_r1_Adelaide_v_St Kilda,player_goals,Bradley Hill,1,0.19856459330143542
+2025_r1_Adelaide_v_St Kilda,player_marks,Bradley Hill,4,0.7185430463576158
+2025_r1_Adelaide_v_St Kilda,player_marks,Bradley Hill,6,0.3049114933931688
+2025_r1_Adelaide_v_St Kilda,player_tackles,Bradley Hill,3,0.14583333333333334
+2025_r1_Adelaide_v_St Kilda,player_disposals,Hunter Clark,15,0.6948798328108673
+2025_r1_Adelaide_v_St Kilda,player_disposals,Hunter Clark,20,0.3187710033605377
+2025_r1_Adelaide_v_St Kilda,player_disposals,Hunter Clark,25,0.10473556861389562
+2025_r1_Adelaide_v_St Kilda,player_goals,Hunter Clark,1,0.11807958477508645
+2025_r1_Adelaide_v_St Kilda,player_marks,Hunter Clark,4,0.38860598345003183
+2025_r1_Adelaide_v_St Kilda,player_marks,Hunter Clark,6,0.10087719298245613
+2025_r1_Adelaide_v_St Kilda,player_tackles,Hunter Clark,3,0.7261761158021713
+2025_r1_Adelaide_v_St Kilda,player_tackles,Hunter Clark,5,0.14583333333333334
+2025_r1_Adelaide_v_St Kilda,player_disposals,Mason Wood,15,0.6948798328108673
+2025_r1_Adelaide_v_St Kilda,player_disposals,Mason Wood,20,0.3187710033605377
+2025_r1_Adelaide_v_St Kilda,player_disposals,Mason Wood,25,0.1304926764314247
+2025_r1_Adelaide_v_St Kilda,player_goals,Mason Wood,1,0.5213414634146343
+2025_r1_Adelaide_v_St Kilda,player_goals,Mason Wood,2,0.18884758364312262
+2025_r1_Adelaide_v_St Kilda,player_marks,Mason Wood,4,0.9012658227848102
+2025_r1_Adelaide_v_St Kilda,player_marks,Mason Wood,6,0.6266601082144612
+2025_r1_Adelaide_v_St Kilda,player_tackles,Mason Wood,3,0.20733532934131738
+2025_r1_Adelaide_v_St Kilda,player_disposals,Marcus Windhager,15,0.5329512893982808
+2025_r1_Adelaide_v_St Kilda,player_disposals,Marcus Windhager,20,0.21353509878100044
+2025_r1_Adelaide_v_St Kilda,player_disposals,Marcus Windhager,25,0.07231920199501245
+2025_r1_Adelaide_v_St Kilda,player_goals,Marcus Windhager,1,0.09172259507829977
+2025_r1_Adelaide_v_St Kilda,player_marks,Marcus Windhager,4,0.3514412416851441
+2025_r1_Adelaide_v_St Kilda,player_marks,Marcus Windhager,6,0.07707355242566509
+2025_r1_Adelaide_v_St Kilda,player_tackles,Marcus Windhager,3,0.8823529411764706
+2025_r1_Adelaide_v_St Kilda,player_tackles,Marcus Windhager,5,0.33619702176403216
+2025_r1_Adelaide_v_St Kilda,player_disposals,Josh Battle,15,0.6495238095238095
+2025_r1_Adelaide_v_St Kilda,player_disposals,Josh Battle,20,0.2836943441636582
+2025_r1_Adelaide_v_St Kilda,player_disposals,Josh Battle,25,0.10473556861389562
+2025_r1_Adelaide_v_St Kilda,player_goals,Josh Battle,1,0.14995224450811845
+2025_r1_Adelaide_v_St Kilda,player_marks,Josh Battle,4,0.9012658227848102
+2025_r1_Adelaide_v_St Kilda,player_marks,Josh Battle,6,0.6266601082144612
+2025_r1_Adelaide_v_St Kilda,player_tackles,Josh Battle,3,0.17370689655172414
+2025_r1_Melbourne_v_Greater Western Sydney,h2h,Melbourne,,0.4791666666666667
+2025_r1_Melbourne_v_Greater Western Sydney,h2h,Greater Western Sydney,,0.51175
+2025_r1_Melbourne_v_Greater Western Sydney,total_points,total,175.5,0.4915
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Christian Petracca,15,0.8440748440748441
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Christian Petracca,20,0.49955869373345113
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Christian Petracca,25,0.21353509878100044
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Christian Petracca,1,0.5856929955290611
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Christian Petracca,2,0.24601524601524596
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Christian Petracca,4,0.46674268339034586
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Christian Petracca,6,0.11950790861159927
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Christian Petracca,3,0.4124775583482944
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Clayton Oliver,15,0.9065420560747663
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Clayton Oliver,20,0.6296791443850265
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Clayton Oliver,25,0.28695652173913044
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Clayton Oliver,1,0.23328228688106176
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Clayton Oliver,4,0.2763990267639905
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Clayton Oliver,3,0.8041958041958043
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Clayton Oliver,5,0.19902912621359223
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Trent Rivers,15,0.7915218902015289
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Trent Rivers,20,0.4525627044711014
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Trent Rivers,25,0.1788218793828892
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Trent Rivers,1,0.19227230910763562
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Trent Rivers,4,0.560294117647059
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Trent Rivers,6,0.16856780735107732
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Trent Rivers,3,0.4124775583482944
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Trent Rivers,5,0.056436271401395045
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Jack Viney,15,0.8986409966024915
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Jack Viney,20,0.6043587594300083
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Jack Viney,25,0.2836943441636582
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Jack Viney,1,0.3315240083507306
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Jack Viney,2,0.0663744520976832
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Jack Viney,4,0.22852233676975944
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Jack Viney,5,0.6719524281466799
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Ed Langdon,15,0.7915218902015289
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Ed Langdon,20,0.4363207547169811
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Ed Langdon,25,0.16902404526166911
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Ed Langdon,1,0.39874902267396406
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Ed Langdon,2,0.09376126938333937
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Ed Langdon,4,0.6670862177470107
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Ed Langdon,6,0.22852233676975944
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Ed Langdon,3,0.3066169617893756
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Christian Salem,15,0.6296791443850265
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Christian Salem,20,0.2836943441636582
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Christian Salem,25,0.0960735171261487
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Christian Salem,1,0.09376126938333937
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Christian Salem,4,0.5861204013377925
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Christian Salem,6,0.175
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Christian Salem,3,0.3592307692307693
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Max Gawn,15,0.6948798328108673
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Max Gawn,20,0.2836943441636582
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Max Gawn,25,0.0960735171261487
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Max Gawn,1,0.39874902267396406
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Max Gawn,2,0.09970674486803519
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Max Gawn,4,0.5861204013377925
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Max Gawn,6,0.175
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Max Gawn,3,0.3282747603833866
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Alex Neal-Bullen,15,0.6495238095238095
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Alex Neal-Bullen,20,0.2836943441636582
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Alex Neal-Bullen,25,0.0960735171261487
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Alex Neal-Bullen,1,0.3315240083507306
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Alex Neal-Bullen,2,0.0663744520976832
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Alex Neal-Bullen,4,0.38860598345003183
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Alex Neal-Bullen,6,0.07707355242566509
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Alex Neal-Bullen,3,0.8823529411764706
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Alex Neal-Bullen,5,0.33619702176403216
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Steven May,15,0.48404785643070786
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Steven May,20,0.16902404526166911
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Steven May,1,0.11774461028192376
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Steven May,4,0.6670862177470107
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Steven May,6,0.22852233676975944
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Judd McVee,15,0.4525627044711014
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Judd McVee,20,0.16821602478973005
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Judd McVee,1,0.11807958477508645
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Judd McVee,4,0.26406649616368283
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Judd McVee,3,0.08848146671980871
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Tom Green,20,0.9555125725338491
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Tom Green,25,0.8310626702997275
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Tom Green,1,0.3488372093023256
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Tom Green,2,0.07676348547717844
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Tom Green,4,0.44145454545454543
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Tom Green,6,0.11950790861159927
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Tom Green,3,0.6719524281466799
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Tom Green,5,0.12384105960264893
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Lachie Whitfield,20,0.9215938303341902
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Lachie Whitfield,25,0.76
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Lachie Whitfield,1,0.11807958477508645
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Lachie Whitfield,4,0.9012658227848102
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Lachie Whitfield,6,0.7185430463576158
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Lachie Whitfield,3,0.7472527472527473
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Lachie Whitfield,5,0.17370689655172414
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Josh Kelly,15,0.9555125725338491
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Josh Kelly,20,0.7969348659003831
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Josh Kelly,25,0.5329512893982808
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Josh Kelly,1,0.46707040121120363
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Josh Kelly,2,0.15780730897009967
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Josh Kelly,4,0.6670862177470107
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Josh Kelly,6,0.26406649616368283
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Josh Kelly,3,0.8
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Josh Kelly,5,0.20295378751786566
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Finn Callaghan,15,0.9305555555555556
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Finn Callaghan,20,0.768
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Finn Callaghan,25,0.48404785643070786
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Finn Callaghan,1,0.16613032984714396
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Finn Callaghan,4,0.5357757560855667
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Finn Callaghan,6,0.1299821534800713
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Finn Callaghan,3,0.5674676524953789
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Finn Callaghan,5,0.08848146671980871
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Stephen Coniglio,15,0.7731854838709677
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Stephen Coniglio,20,0.4414976599063963
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Stephen Coniglio,25,0.1788218793828892
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Stephen Coniglio,1,0.23427529626253418
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Stephen Coniglio,4,0.16856780735107732
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Stephen Coniglio,3,0.5674676524953789
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Stephen Coniglio,5,0.08848146671980871
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Harry Himmelberg,15,0.7731854838709677
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Harry Himmelberg,20,0.4363207547169811
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Harry Himmelberg,25,0.1788218793828892
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Harry Himmelberg,1,0.09376126938333937
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Harry Himmelberg,4,0.8704663212435233
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Harry Himmelberg,6,0.5357757560855667
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Harry Himmelberg,3,0.33619702176403216
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Lachie Ash,15,0.7731854838709677
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Lachie Ash,20,0.4414976599063963
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Lachie Ash,25,0.1788218793828892
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Lachie Ash,1,0.16613032984714396
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Lachie Ash,4,0.7500000000000001
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Lachie Ash,6,0.3260680034873583
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Lachie Ash,3,0.26037817865681395
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Connor Idun,15,0.7209876543209874
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Connor Idun,20,0.35189075630252103
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Connor Idun,25,0.14007954043305354
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Connor Idun,1,0.09376126938333937
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Connor Idun,4,0.9012658227848102
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Connor Idun,6,0.5861204013377925
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Connor Idun,3,0.14583333333333334
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Callan Ward,15,0.9093959731543624
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Callan Ward,20,0.6948798328108673
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Callan Ward,25,0.35189075630252103
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Callan Ward,1,0.46707040121120363
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Callan Ward,2,0.16613032984714396
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Callan Ward,4,0.8366013071895425
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Callan Ward,6,0.46674268339034586
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Callan Ward,3,0.48881036513545345
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Callan Ward,5,0.07869481765834928
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Harry Perryman,15,0.6948798328108673
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Harry Perryman,20,0.3187710033605377
+2025_r1_Melbourne_v_Greater Western Sydney,player_disposals,Harry Perryman,25,0.1304926764314247
+2025_r1_Melbourne_v_Greater Western Sydney,player_goals,Harry Perryman,1,0.14995224450811845
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Harry Perryman,4,0.7943067033976124
+2025_r1_Melbourne_v_Greater Western Sydney,player_marks,Harry Perryman,6,0.38860598345003183
+2025_r1_Melbourne_v_Greater Western Sydney,player_tackles,Harry Perryman,3,0.3538812785388128
+2025_r1_West Coast_v_Gold Coast,h2h,West Coast,,0.20308333333333334
+2025_r1_West Coast_v_Gold Coast,h2h,Gold Coast,,0.7899166666666667
+2025_r1_West Coast_v_Gold Coast,total_points,total,165.5,0.5024166666666666
+2025_r1_West Coast_v_Gold Coast,player_disposals,Tim Kelly,15,0.9555125725338491
+2025_r1_West Coast_v_Gold Coast,player_disposals,Tim Kelly,20,0.7915218902015289
+2025_r1_West Coast_v_Gold Coast,player_disposals,Tim Kelly,25,0.48404785643070786
+2025_r1_West Coast_v_Gold Coast,player_goals,Tim Kelly,1,0.18884758364312262
+2025_r1_West Coast_v_Gold Coast,player_marks,Tim Kelly,4,0.41033672670321064
+2025_r1_West Coast_v_Gold Coast,player_marks,Tim Kelly,6,0.10087719298245613
+2025_r1_West Coast_v_Gold Coast,player_tackles,Tim Kelly,3,0.9481865284974094
+2025_r1_West Coast_v_Gold Coast,player_tackles,Tim Kelly,5,0.3627906976744186
+2025_r1_West Coast_v_Gold Coast,player_disposals,Elliot Yeo,15,0.8986409966024915
+2025_r1_West Coast_v_Gold Coast,player_disposals,Elliot Yeo,20,0.6043587594300083
+2025_r1_West Coast_v_Gold Coast,player_disposals,Elliot Yeo,25,0.2836943441636582
+2025_r1_West Coast_v_Gold Coast,player_goals,Elliot Yeo,1,0.29415904292751566
+2025_r1_West Coast_v_Gold Coast,player_goals,Elliot Yeo,2,0.0663744520976832
+2025_r1_West Coast_v_Gold Coast,player_marks,Elliot Yeo,4,0.3049114933931688
+2025_r1_West Coast_v_Gold Coast,player_marks,Elliot Yeo,6,0.06181818181818187
+2025_r1_West Coast_v_Gold Coast,player_tackles,Elliot Yeo,5,0.5674676524953789
+2025_r1_West Coast_v_Gold Coast,player_disposals,Liam Duggan,15,0.76
+2025_r1_West Coast_v_Gold Coast,player_disposals,Liam Duggan,20,0.3836553945249599
+2025_r1_West Coast_v_Gold Coast,player_disposals,Liam Duggan,25,0.15025380710659902
+2025_r1_West Coast_v_Gold Coast,player_goals,Liam Duggan,1,0.11807958477508645
+2025_r1_West Coast_v_Gold Coast,player_marks,Liam Duggan,4,0.8366013071895425
+2025_r1_West Coast_v_Gold Coast,player_marks,Liam Duggan,6,0.46674268339034586
+2025_r1_West Coast_v_Gold Coast,player_tackles,Liam Duggan,3,0.4613997113997114
+2025_r1_West Coast_v_Gold Coast,player_tackles,Liam Duggan,5,0.06263345195729537
+2025_r1_West Coast_v_Gold Coast,player_disposals,Jeremy McGovern,15,0.8620689655172413
+2025_r1_West Coast_v_Gold Coast,player_disposals,Jeremy McGovern,20,0.5258620689655172
+2025_r1_West Coast_v_Gold Coast,player_disposals,Jeremy McGovern,25,0.22874149659863946
+2025_r1_West Coast_v_Gold Coast,player_goals,Jeremy McGovern,1,0.19227230910763562
+2025_r1_West Coast_v_Gold Coast,player_marks,Jeremy McGovern,4,0.8704663212435233
+2025_r1_West Coast_v_Gold Coast,player_marks,Jeremy McGovern,6,0.5357757560855667
+2025_r1_West Coast_v_Gold Coast,player_tackles,Jeremy McGovern,3,0.14583333333333334
+2025_r1_West Coast_v_Gold Coast,player_disposals,Harley Reid,15,0.7209876543209874
+2025_r1_West Coast_v_Gold Coast,player_disposals,Harley Reid,20,0.3515358361774744
+2025_r1_West Coast_v_Gold Coast,player_disposals,Harley Reid,25,0.14007954043305354
+2025_r1_West Coast_v_Gold Coast,player_goals,Harley Reid,1,0.3315240083507306
+2025_r1_West Coast_v_Gold Coast,player_goals,Harley Reid,2,0.0663744520976832
+2025_r1_West Coast_v_Gold Coast,player_marks,Harley Reid,4,0.3049114933931688
+2025_r1_West Coast_v_Gold Coast,player_marks,Harley Reid,6,0.07354555433589456
+2025_r1_West Coast_v_Gold Coast,player_tackles,Harley Reid,3,0.8484419263456091
+2025_r1_West Coast_v_Gold Coast,player_tackles,Harley Reid,5,0.26037817865681395
+2025_r1_West Coast_v_Gold Coast,player_disposals,Alex Witherden,15,0.6043587594300083
+2025_r1_West Coast_v_Gold Coast,player_disposals,Alex Witherden,20,0.22874149659863946
+2025_r1_West Coast_v_Gold Coast,player_disposals,Alex Witherden,25,0.07231920199501245
+2025_r1_West Coast_v_Gold Coast,player_goals,Alex Witherden,1,0.11807958477508645
+2025_r1_West Coast_v_Gold Coast,player_marks,Alex Witherden,4,0.5973534971644613
+2025_r1_West Coast_v_Gold Coast,player_marks,Alex Witherden,6,0.20383693045563545
+2025_r1_West Coast_v_Gold Coast,player_tackles,Alex Witherden,3,0.22702702702702704
+2025_r1_West Coast_v_Gold Coast,player_disposals,Jayden Hunt,15,0.6495238095238095
+2025_r1_West Coast_v_Gold Coast,player_disposals,Jayden Hunt,20,0.2836943441636582
+2025_r1_West Coast_v_Gold Coast,player_disposals,Jayden Hunt,25,0.0960735171261487
+2025_r1_West Coast_v_Gold Coast,player_goals,Jayden Hunt,1,0.11807958477508645
+2025_r1_West Coast_v_Gold Coast,player_marks,Jayden Hunt,4,0.6266601082144612
+2025_r1_West Coast_v_Gold Coast,player_marks,Jayden Hunt,6,0.22852233676975944
+2025_r1_West Coast_v_Gold Coast,player_tackles,Jayden Hunt,3,0.26037817865681395
+2025_r1_West Coast_v_Gold Coast,player_disposals,Reuben Ginbey,15,0.6296791443850265
+2025_r1_West Coast_v_Gold Coast,player_disposals,Reuben Ginbey,20,0.2836943441636582
+2025_r1_West Coast_v_Gold Coast,player_disposals,Reuben Ginbey,25,0.09279279279279279
+2025_r1_West Coast_v_Gold Coast,player_goals,Reuben Ginbey,1,0.11774461028192376
+2025_r1_West Coast_v_Gold Coast,player_marks,Reuben Ginbey,4,0.38860598345003183
+2025_r1_West Coast_v_Gold Coast,player_marks,Reuben Ginbey,6,0.07707355242566509
+2025_r1_West Coast_v_Gold Coast,player_tackles,Reuben Ginbey,3,0.5674676524953789
+2025_r1_West Coast_v_Gold Coast,player_tackles,Reuben Ginbey,5,0.08848146671980871
+2025_r1_West Coast_v_Gold Coast,player_disposals,Tom Cole,15,0.5258620689655172
+2025_r1_West Coast_v_Gold Coast,player_disposals,Tom Cole,20,0.20488721804511278
+2025_r1_West Coast_v_Gold Coast,player_disposals,Tom Cole,25,0.07231920199501245
+2025_r1_West Coast_v_Gold Coast,player_goals,Tom Cole,1,0.09376126938333937
+2025_r1_West Coast_v_Gold Coast,player_marks,Tom Cole,4,0.7165775401069518
+2025_r1_West Coast_v_Gold Coast,player_marks,Tom Cole,6,0.2763990267639905
+2025_r1_West Coast_v_Gold Coast,player_tackles,Tom Cole,3,0.6020025031289111
+2025_r1_West Coast_v_Gold Coast,player_tackles,Tom Cole,5,0.08848146671980871
+2025_r1_West Coast_v_Gold Coast,player_disposals,Andrew Gaff,15,0.7209876543209874
+2025_r1_West Coast_v_Gold Coast,player_disposals,Andrew Gaff,20,0.3515358361774744
+2025_r1_West Coast_v_Gold Coast,player_disposals,Andrew Gaff,25,0.13321492007104802
+2025_r1_West Coast_v_Gold Coast,player_goals,Andrew Gaff,1,0.23608017817371937
+2025_r1_West Coast_v_Gold Coast,player_marks,Andrew Gaff,4,0.560294117647059
+2025_r1_West Coast_v_Gold Coast,player_marks,Andrew Gaff,6,0.175
+2025_r1_West Coast_v_Gold Coast,player_tackles,Andrew Gaff,3,0.26037817865681395
+2025_r1_West Coast_v_Gold Coast,player_disposals,Sam Flanders,15,0.9694132334581773
+2025_r1_West Coast_v_Gold Coast,player_disposals,Sam Flanders,20,0.8654761904761905
+2025_r1_West Coast_v_Gold Coast,player_disposals,Sam Flanders,25,0.6296791443850265
+2025_r1_West Coast_v_Gold Coast,player_goals,Sam Flanders,1,0.7205882352941176
+2025_r1_West Coast_v_Gold Coast,player_goals,Sam Flanders,2,0.3488372093023256
+2025_r1_West Coast_v_Gold Coast,player_marks,Sam Flanders,4,0.7389975550122252
+2025_r1_West Coast_v_Gold Coast,player_marks,Sam Flanders,6,0.32507739938080493
+2025_r1_West Coast_v_Gold Coast,player_tackles,Sam Flanders,3,0.3282747603833866
+2025_r1_West Coast_v_Gold Coast,player_disposals,Noah Anderson,20,0.9137466307277629
+2025_r1_West Coast_v_Gold Coast,player_disposals,Noah Anderson,25,0.7209876543209874
+2025_r1_West Coast_v_Gold Coast,player_goals,Noah Anderson,1,0.46444644464446444
+2025_r1_West Coast_v_Gold Coast,player_goals,Noah Anderson,2,0.14995224450811845
+2025_r1_West Coast_v_Gold Coast,player_marks,Noah Anderson,4,0.8366013071895425
+2025_r1_West Coast_v_Gold Coast,player_marks,Noah Anderson,6,0.4460431654676259
+2025_r1_West Coast_v_Gold Coast,player_tackles,Noah Anderson,3,0.5797101449275363
+2025_r1_West Coast_v_Gold Coast,player_tackles,Noah Anderson,5,0.08848146671980871
+2025_r1_West Coast_v_Gold Coast,player_disposals,Touk Miller,15,0.9305555555555556
+2025_r1_West Coast_v_Gold Coast,player_disposals,Touk Miller,20,0.7440068493150686
+2025_r1_West Coast_v_Gold Coast,player_disposals,Touk Miller,25,0.4659090909090909
+2025_r1_West Coast_v_Gold Coast,player_goals,Touk Miller,1,0.35275754422476585
+2025_r1_West Coast_v_Gold Coast,player_goals,Touk Miller,2,0.09376126938333937
+2025_r1_West Coast_v_Gold Coast,player_marks,Touk Miller,4,0.44145454545454543
+2025_r1_West Coast_v_Gold Coast,player_marks,Touk Miller,6,0.11950790861159927
+2025_r1_West Coast_v_Gold Coast,player_tackles,Touk Miller,3,0.8041958041958043
+2025_r1_West Coast_v_Gold Coast,player_tackles,Touk Miller,5,0.20295378751786566
+2025_r1_West Coast_v_Gold Coast,player_disposals,Matt Rowell,15,0.9032258064516129
+2025_r1_West Coast_v_Gold Coast,player_disposals,Matt Rowell,20,0.6495238095238095
+2025_r1_West Coast_v_Gold Coast,player_disposals,Matt Rowell,25,0.32581967213114754
+2025_r1_West Coast_v_Gold Coast,player_goals,Matt Rowell,1,0.3315240083507306
+2025_r1_West Coast_v_Gold Coast,player_goals,Matt Rowell,2,0.07676348547717844
+2025_r1_West Coast_v_Gold Coast,player_marks,Matt Rowell,4,0.20383693045563545
+2025_r1_West Coast_v_Gold Coast,player_tackles,Matt Rowell,5,0.8041958041958043
+2025_r1_West Coast_v_Gold Coast,player_disposals,Alex Sexton,15,0.7044534412955465
+2025_r1_West Coast_v_Gold Coast,player_disposals,Alex Sexton,20,0.33532423208191137
+2025_r1_West Coast_v_Gold Coast,player_disposals,Alex Sexton,25,0.14007954043305354
+2025_r1_West Coast_v_Gold Coast,player_goals,Alex Sexton,1,0.35275754422476585
+2025_r1_West Coast_v_Gold Coast,player_goals,Alex Sexton,2,0.09376126938333937
+2025_r1_West Coast_v_Gold Coast,player_marks,Alex Sexton,4,0.7722586691658857
+2025_r1_West Coast_v_Gold Coast,player_marks,Alex Sexton,6,0.3653250773993808
+2025_r1_West Coast_v_Gold Coast,player_tackles,Alex Sexton,3,0.3066169617893756
+2025_r1_West Coast_v_Gold Coast,player_disposals,Brayden Fiorini,15,0.6495238095238095
+2025_r1_West Coast_v_Gold Coast,player_disposals,Brayden Fiorini,20,0.28695652173913044
+2025_r1_West Coast_v_Gold Coast,player_disposals,Brayden Fiorini,25,0.10473556861389562
+2025_r1_West Coast_v_Gold Coast,player_goals,Brayden Fiorini,1,0.4473567303420702
+2025_r1_West Coast_v_Gold Coast,player_goals,Brayden Fiorini,2,0.10187667560321716
+2025_r1_West Coast_v_Gold Coast,player_marks,Brayden Fiorini,4,0.6372759856630822
+2025_r1_West Coast_v_Gold Coast,player_marks,Brayden Fiorini,6,0.22852233676975944
+2025_r1_West Coast_v_Gold Coast,player_tackles,Brayden Fiorini,3,0.22702702702702704
+2025_r1_West Coast_v_Gold Coast,player_disposals,Wil Powell,15,0.7209876543209874
+2025_r1_West Coast_v_Gold Coast,player_disposals,Wil Powell,20,0.3836553945249599
+2025_r1_West Coast_v_Gold Coast,player_disposals,Wil Powell,25,0.15025380710659902
+2025_r1_West Coast_v_Gold Coast,player_goals,Wil Powell,1,0.23608017817371937
+2025_r1_West Coast_v_Gold Coast,player_marks,Wil Powell,4,0.8366013071895425
+2025_r1_West Coast_v_Gold Coast,player_marks,Wil Powell,6,0.4460431654676259
+2025_r1_West Coast_v_Gold Coast,player_tackles,Wil Powell,3,0.3282747603833866
+2025_r1_West Coast_v_Gold Coast,player_disposals,Lachie Weller,15,0.7209876543209874
+2025_r1_West Coast_v_Gold Coast,player_disposals,Lachie Weller,20,0.33532423208191137
+2025_r1_West Coast_v_Gold Coast,player_disposals,Lachie Weller,25,0.14007954043305354
+2025_r1_West Coast_v_Gold Coast,player_goals,Lachie Weller,1,0.38149350649350655
+2025_r1_West Coast_v_Gold Coast,player_goals,Lachie Weller,2,0.09376126938333937
+2025_r1_West Coast_v_Gold Coast,player_marks,Lachie Weller,4,0.5973534971644613
+2025_r1_West Coast_v_Gold Coast,player_marks,Lachie Weller,6,0.18161094224924013
+2025_r1_West Coast_v_Gold Coast,player_tackles,Lachie Weller,3,0.3627906976744186
+2025_r1_West Coast_v_Gold Coast,player_disposals,Joel Jeffrey,15,0.4064070351758794
+2025_r1_West Coast_v_Gold Coast,player_disposals,Joel Jeffrey,20,0.15025380710659902
+2025_r1_West Coast_v_Gold Coast,player_goals,Joel Jeffrey,1,0.24601524601524596
+2025_r1_West Coast_v_Gold Coast,player_marks,Joel Jeffrey,4,0.38860598345003183
+2025_r1_West Coast_v_Gold Coast,player_marks,Joel Jeffrey,6,0.07707355242566509
+2025_r1_West Coast_v_Gold Coast,player_tackles,Joel Jeffrey,3,0.08848146671980871
+2025_r1_West Coast_v_Gold Coast,player_disposals,Sam Clohesy,15,0.6043587594300083
+2025_r1_West Coast_v_Gold Coast,player_disposals,Sam Clohesy,20,0.22874149659863946
+2025_r1_West Coast_v_Gold Coast,player_disposals,Sam Clohesy,25,0.07985028072364315
+2025_r1_West Coast_v_Gold Coast,player_goals,Sam Clohesy,1,0.23328228688106176
+2025_r1_West Coast_v_Gold Coast,player_marks,Sam Clohesy,4,0.5861204013377925
+2025_r1_West Coast_v_Gold Coast,player_marks,Sam Clohesy,6,0.18161094224924013
+2025_r1_West Coast_v_Gold Coast,player_tackles,Sam Clohesy,3,0.3282747603833866

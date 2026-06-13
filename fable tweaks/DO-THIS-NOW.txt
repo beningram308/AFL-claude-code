@@ -1,0 +1,55 @@
+================================================================================
+DO THIS NOW — DIRECT INSTRUCTIONS FROM BEN (read first, then execute)
+================================================================================
+Date: 2026-06-12
+This is the answer to your question "Want me to resume the Section 1 wiring?"
+— YES. Proceed without asking further permission. Work autonomously through
+the order below; only stop if genuinely blocked. Checklist details live in
+IMPROVEMENTS-TODO.txt, reasoning in FABLE-REVIEW-ROUND-2.txt (same folder).
+
+THE GOAL (what I actually want each week):
+Real players and stats, week by week, for each match — and SGM multis.
+That is Section 10 of IMPROVEMENTS-TODO.txt. Everything else is in service
+of it.
+
+EXECUTION ORDER — do not pause between steps:
+
+STEP 1 — Finish Section 1 (player pool + lineup gating)
+  - Current-season player filter, lineup JSON plug-point gating
+    (confirmed=False excluded), PLAYERS_PER_TEAM_SAMPLE raised,
+    --require-real-props guard. Test the gating with your own small
+    lineup JSON as you planned.
+
+STEP 2 — Section 3 (SGM joint pricing)
+  - Per-leg boolean masks, joint_prob_fn wired into the multi builders,
+    goals sum-constrained via multinomial, joint bankroll sim.
+
+STEP 3 — Section 10 (the weekly deliverable) — BUILD THIS NEXT, before
+  sections 2/4/5/6/7/8:
+  - `round-report --year 2026 --round N [--odds odds.json]`:
+    * per match: teams/venue/wet flag, P(home)/P(away), margin + total,
+      total-line prob
+    * per team: REAL named players with projected means + P(15/20/25
+      disposals), P(1/2 goals), P(4/6 marks), P(3/5 tackles)
+    * TOP 3-5 SGM multis per match (2-3 legs) ranked by JOINT sim prob,
+      showing fair odds + the naive product next to it; with --odds, edge
+      on the joint prob
+    * cross-game promo/anchor multis + stakes (already working)
+    * save to reports/<year>_r<N>_report.md
+  - HARD RULE: if the player log is synthetic, refuse to print the report.
+    Real names only, always.
+
+STEP 4 — Run it for real and show me:
+  - Generate the report for the current 2026 round with real cached data.
+  - Then add the grade-round step (10.5) so each completed round is scored.
+
+AFTER THAT — return to the remaining TODO sections in order
+(2 prop calibration, 4 weather, 5 biases, 6 Elo, 7 integrity, 8 honesty).
+Keep the rule: walkforward score must not get worse, tests must pass, tick
+the [ ] boxes in IMPROVEMENTS-TODO.txt as you go so progress is visible.
+
+ACCEPTANCE CHECK for Step 3 (how I'll judge it):
+  - I run one command and get, for every match this round: real player
+    prob tables + ranked SGM multis with joint probabilities, saved to a
+    file. No synthetic names anywhere. That's the product.
+================================================================================

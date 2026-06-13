@@ -1,0 +1,319 @@
+================================================================================
+FABLE TWEAKS — AFL MONTE CARLO SIM: UPGRADE PLAN FOR CLAUDE CODE
+================================================================================
+Reviewed: afl_bot package (sim/engine.py, models/scoring.py, models/props.py,
+ratings/elo.py, data/squiggle.py, data/player_stats.py, pricing/edge.py,
+build/multi.py, backtest/walkforward.py, cli.py, config.py)
+Date: 2026-06-11
+Goal: industrial-grade match simulation with accurate probabilities for
+match outcomes, player props, and game-environment markets (e.g. out of
+bounds / boundary throw-in counts).
+
+NO CHANGES HAVE BEEN MADE TO THE CODEBASE. Everything below is a recommendation.
+Items are ordered by impact. Each section says WHAT, WHY, and HOW.
+
+--------------------------------------------------------------------------------
+SECTION 1 — DATA: REPLACE THE SYNTHETIC PLAYER LOG (HIGHEST PRIORITY)
+--------------------------------------------------------------------------------
+The single biggest accuracy blocker is data/player_stats.py: player box scores
+are SYNTHETIC. Every prop probability the sim prints is fiction until this is
+fixed. The schema-as-contract design is good — only the loader needs swapping.
+
+Recommended sources (free tier first):
+
+1.1 Fryzigg API via fitzRoy (BEST free player data)
+    - The fitzRoy R package's fetch_fryzigg_stats() returns ~81 columns per
+      player per game back to 1897, including advanced Champion Data-style
+      stats: effective disposals, disposal efficiency, contested possessions,
+      clearances, inside 50s, rebound 50s, metres gained, score involvements,
+      tackles inside 50, ruck contests, time on ground %, etc.
+    - Docs: https://jimmyday12.github.io/fitzRoy/articles/using-fryzigg-stats.html
+    - Integration options for this Python repo:
+      a) Call R via rpy2 once per week and dump to parquet in data_cache/.
+      b) Simpler: a small scheduled R script (Rscript) that writes parquet;
+         Python only ever reads the parquet. No rpy2 dependency in the app.
+      c) Hit the underlying Fryzigg REST endpoint directly from Python
+         (inspect fitzRoy source for the URL) — cache aggressively, identify
+         with a User-Agent, same etiquette as the Squiggle client.
+
+1.2 DFS Australia CSV downloads (pure Python, zero R)
+    - https://dfsaustralia.com/afl-stats-download/ — per-player per-game CSVs
+      updated after every round: disposals, marks, tackles, goals, KICK-INS,
+      TIME ON GROUND, and CENTRE BOUNCE ATTENDANCE (CBA). CBA% and TOG are
+      exactly the role signals the props model needs (see 3.2).
+    - Also https://dfsaustralia.com/downloads/ for season game logs incl.
+      state leagues (useful for projecting debutants/recalled players).
+
+1.3 AFL Tables (afltables.com) — deep history
+    - Full match + player stats back decades; the standard free archive.
+      Scrape politely and cache to parquet, or use fitzRoy fetch_player_stats
+      with source="afltables". Use for long-horizon fits (dispersion priors,
+      venue effects, sigma estimation by era).
+
+1.4 Footywire (via fitzRoy source="footywire")
+    - Adds SuperCoach/AFL Fantasy points and some advanced stats; good
+      cross-check against Fryzigg.
+
+1.5 Wheelo Ratings (https://www.wheeloratings.com)
+    - Team and player stats back to 2012, match stats pages, Elo ratings.
+      Good as a validation/benchmark source for our own Elo and team rates,
+      and has expected-score style metrics.
+
+1.6 Out of bounds / stoppages / event-level variance
+    - "Out of bounds" counts are NOT on AFL Tables or Squiggle. Options:
+      a) AFL.com.au match centre team stats (Champion Data-fed) include
+         stoppage breakdowns (boundary throw-ins = the out-of-bounds events
+         that matter for markets). fitzRoy's source="AFL" hits the official
+         afl.com.au API — port that fetch to Python and store team-level
+         stoppage counts per game.
+      b) Industrial option: Champion Data official AFL Data Platform
+         (https://docs.api.afl.championdata.com/) — commercial licence,
+         full event/chain data (every stoppage, boundary throw-in, chain
+         start/end, pressure acts). This is what bookmakers price from.
+         If "industrial level" is the real target, budget for this; nothing
+         free matches its granularity.
+      c) Once team-level boundary throw-in counts per game are stored,
+         model them as NB (they are overdispersed and pace-correlated) and
+         couple them to the sim's total-points draw (wet weather and
+         congestion raise OOB and lower totals — negative correlation).
+
+1.7 Historical + live odds (needed for backtesting edge and CLV)
+    - Historical closing odds: aussportsbetting.com publishes a free AFL
+      historical odds spreadsheet (H2H, line, totals, opening + closing).
+      Wire it into backtest/ to measure edge vs closing line, not just
+      log loss.
+    - Squiggle also exposes bookmaker-aggregated tips/probabilities — keep
+      using as an ensemble input (see 3.5).
+
+1.8 Weather + venue metadata
+    - Rain is the #1 driver of low totals, low disposals-efficiency and high
+      OOB counts. Pull BOM (bom.gov.au) observations/forecasts for the venue
+      at bounce time, store rain mm + wind. Add a static venue table: ground
+      dimensions, roof (Marvel), interstate flags, timezone.
+
+--------------------------------------------------------------------------------
+SECTION 2 — MATCH MODEL UPGRADES
+--------------------------------------------------------------------------------
+2.1 Replace Normal(total/margin) with a scoring-shots model
+    Current: margin ~ N(mu, 37), total ~ N(mu, 25), then split_score() back
+    out goals/behinds with a noisy points-per-goal hack. Issues: margins/totals
+    are continuous (no 1-point granularity for exact-margin markets), the
+    goal/behind split is cosmetic, and draws get prob ~0.
+    Recommended: simulate SCORING SHOTS per team ~ NB(mu_shots, r), then
+    goals ~ Binomial(shots, p_accuracy) where p_accuracy has a team skill
+    component + venue/weather component. Points = 6*goals + behinds.
+    Benefits: integer scores, real draw probabilities, correct margin tails,
+    natural support for goal-based markets, and accuracy variance is modelled
+    rather than bolted on. Calibrate so that implied margin sigma still hits
+    ~37 and total sigma ~25 on backtest.
+
+2.2 Heteroscedastic sigma
+    MARGIN_SIGMA fixed at 37 is a league-era average. Fit sigma as a function
+    of expected total (wet/low-scoring games have tighter margins), era/season,
+    and finals vs home-and-away. Even a simple per-season refit moves log loss.
+
+2.3 Elo refinements (ratings/elo.py)
+    - Venue-specific and team-specific home advantage instead of flat
+      ELO_HOME_ADVANTAGE=10 (Geelong at GMHBA != Melbourne at MCG). Include
+      travel: interstate flag + days rest differential.
+    - The margin->result clipped-linear squash works but discards info at the
+      cap; consider the standard MOV multiplier approach (FiveThirtyEight
+      style: ln(|margin|+1) * autocorrelation correction) and tune k via the
+      existing walkforward (grid or Optuna over k, carryover, HGA, cap,
+      points-per-400 minimising out-of-sample log loss + margin MAE jointly).
+    - Vectorise EloRatings.fit (iterrows is slow once tuning loops run
+      thousands of fits).
+
+2.4 Feature model alongside Elo
+    Add a gradient-boosted model (LightGBM) on pre-match features: Elo gap,
+    off/def EWMA rates, days rest, travel km, weather forecast, ins/outs
+    quality (sum of lost player ratings — needs Section 1 data), ladder
+    incentive. Blend with Elo + market (see 3.5). Keep walk-forward CV only —
+    the existing anti-leakage discipline is the repo's best asset; preserve it.
+
+2.5 Team ratings beyond points: pace and style
+    Fit per-team EWMA rates for disposals, inside 50s, marks, tackles, and
+    boundary throw-ins conceded/generated (from Section 1 data). The sim
+    should draw a per-iteration GAME ENVIRONMENT (pace/possession count)
+    first, then condition both teams' stat totals and player props on it.
+    This is the key structural change for "genuine variance" markets like
+    out of bounds: env -> team totals -> player shares, all correlated.
+
+--------------------------------------------------------------------------------
+SECTION 3 — PLAYER PROPS MODEL UPGRADES
+--------------------------------------------------------------------------------
+3.1 Hierarchical shrinkage instead of raw EWMA
+    player_rate_profile's EWMA over last 20 games is noisy for short histories.
+    Shrink player means toward position-role priors (empirical Bayes): a
+    2-game debutant should sit near the prior, a 100-game mid near his own
+    mean. Same for estimate_dispersion — partial pooling of r by stat and
+    position rather than one league fallback.
+
+3.2 Role and minutes adjustments
+    Multiply expected rates by (projected TOG / historical TOG) and use CBA%
+    (centre bounce attendance, in the DFS Australia data) to detect role
+    changes — a wing moved into the centre square gains ~3-5 disposals. Add
+    ruck-vs-ruck matchup for hitouts, and tagger flags (opponent has a run-
+    with player -> cut star mid's mean 15-20%).
+
+3.3 Better correlation structure
+    Current: props scale linearly with own team's iteration score. Add:
+    - A shared latent "pace" factor per iteration driving BOTH teams' disposal
+      totals (disposals are pace-correlated across teams, not just within).
+    - Within-team share constraint: a team's player disposal draws should be
+      consistent with the team total for that iteration (draw team total,
+      then allocate via Dirichlet-ish shares) — otherwise SGM joint prices
+      are wrong in exactly the way books exploit.
+    - Negative correlation between opposing key forwards' goals (one team
+      dominating reduces the other's inside 50s).
+    Consider a Gaussian copula over (margin, total, team stat totals) fit
+    from historical game-level data; keep NB marginals.
+
+3.4 Weather/venue multipliers on props
+    Rain: disposals down (especially uncontested), marks down hard, tackles
+    up, goals down, OOB up. Fit these multipliers once from history (games
+    with BOM rain > X mm) and apply via the existing context_mult hook in
+    expected_stat_mean — the plumbing already exists.
+
+3.5 Ensemble + market anchoring
+    The market is the best single predictor. Final probability should be
+    blend(model_prob, devig market prob, squiggle consensus) with weights fit
+    on backtest log loss. Edge then = model component disagreeing with market
+    AFTER the blend — this kills most false edges. Also apply isotonic or
+    Platt calibration to model outputs per market type (h2h, line, props)
+    using walkforward predictions.
+
+--------------------------------------------------------------------------------
+SECTION 4 — BACKTESTING & VALIDATION (make accuracy claims provable)
+--------------------------------------------------------------------------------
+4.1 Extend walkforward.py beyond Elo: backtest the FULL pipeline (sim ->
+    prices) per season, reporting log loss, Brier, CRPS for margin/total
+    distributions (not just MAE — CRPS scores the whole distribution the
+    Monte Carlo produces), and calibration curves per market type.
+4.2 Closing-line value (CLV): with aussportsbetting historical odds, measure
+    whether flagged VALUE legs beat the closing price. CLV is the fastest
+    honest signal of real edge; P&L alone is too noisy.
+4.3 Prop backtests once real player data lands: for every (player, stat, line)
+    that traded historically, check hit rate of model probabilities by bucket.
+4.4 Staking: add fractional Kelly (0.25x) sizing to build/multi.py outputs,
+    capped per leg/round; report bankroll simulations (drawdown distributions)
+    via the same Monte Carlo machinery.
+4.5 Monte Carlo error control: report sim standard error per priced market;
+    auto-scale SIM_ITERATIONS so SE(prob) < 0.002 for anchors. Use common
+    random numbers across candidate legs in a match so leg comparisons aren't
+    polluted by sim noise.
+
+--------------------------------------------------------------------------------
+SECTION 5 — ENGINEERING / INDUSTRIAL HARDENING
+--------------------------------------------------------------------------------
+5.1 Data layer: one ingestion module per source (squiggle.py pattern is good),
+    all writing parquet with a schema version; add DuckDB views over the cache
+    for ad-hoc queries. Nightly refresh job + data-quality checks (row counts,
+    null scans, team-name normalisation across sources — AFL Tables, Fryzigg
+    and Squiggle all spell teams differently; build a canonical team/player ID
+    mapping table FIRST, it prevents weeks of silent join bugs).
+5.2 Config -> fitted params: most constants in config.py (MARGIN_SIGMA,
+    ELO_K, POINTS_PER_GOAL, halflifes) should become fitted, versioned
+    artifacts produced by a `fit` CLI command with a stored metrics report,
+    not hand-set numbers. Add `python -m afl_bot.cli fit --through 2025`.
+5.3 Tests: current tests cover pricing/multi only. Add: distribution sanity
+    tests for the sim (mean/var of margins within tolerance), golden-file
+    backtest metrics so model changes show their accuracy delta in CI, and
+    schema tests on every loader.
+5.4 Reproducibility: log (git sha, params version, data snapshot date, seed)
+    with every round's outputs so any priced leg can be reproduced exactly.
+5.5 Performance: the sim core is already vectorised — keep n=100k+ cheap by
+    batching all players per match into one NB draw (matrix of means) instead
+    of per-player calls.
+
+--------------------------------------------------------------------------------
+SECTION 6 — SUGGESTED BUILD ORDER FOR CLAUDE CODE
+--------------------------------------------------------------------------------
+ 1. Canonical team/player ID mapping + parquet data layer (5.1)
+ 2. Real player log loader: DFS Australia CSVs + Fryzigg (1.1/1.2), drop
+    synthetic generator behind a flag
+ 3. Historical odds loader (1.7) + CLV backtest (4.2)
+ 4. Scoring-shots match model (2.1) + heteroscedastic sigma (2.2)
+ 5. Elo tuning via Optuna on walkforward (2.3) + vectorised fit
+ 6. Pace/environment latent factor + within-team share allocation (2.5, 3.3)
+ 7. Hierarchical player priors + TOG/CBA role adjustments (3.1, 3.2)
+ 8. Weather ingestion + multipliers (1.8, 3.4)
+ 9. Market-blend ensemble + isotonic calibration (3.5)
+10. Boundary throw-in / OOB market model (1.6c) once team stoppage data flows
+11. Kelly staking + bankroll sims (4.4); full-pipeline CI backtest (5.3)
+
+Each step is independently testable through the existing walkforward harness;
+require a non-worse out-of-sample log loss / CRPS before merging any step.
+
+--------------------------------------------------------------------------------
+KEY LINKS
+--------------------------------------------------------------------------------
+fitzRoy:            https://jimmyday12.github.io/fitzRoy/
+Fryzigg via fitzRoy: https://jimmyday12.github.io/fitzRoy/articles/using-fryzigg-stats.html
+DFS Australia:      https://dfsaustralia.com/afl-stats-download/
+AFL Tables:         https://afltables.com
+Wheelo Ratings:     https://www.wheeloratings.com
+Champion Data API:  https://docs.api.afl.championdata.com/
+Historical odds:    https://www.aussportsbetting.com (AFL results & odds file)
+Squiggle API:       https://api.squiggle.com.au (already integrated)
+BOM weather:        http://www.bom.gov.au
+
+Reminder embedded in the repo README applies here too: even a well-calibrated
+model loses regularly — these upgrades improve probability estimates, they do
+not remove gambling risk.
+
+================================================================================
+ADDENDUM 1 (2026-06-11) — HISTORICAL BACKFILL + WIRING THE SPARE DFS FIELDS
+================================================================================
+Context: dfs_australia.py loader is live but the free endpoint only serves the
+CURRENT season. That is by design, not a bug — do not fight it. Strategy:
+
+A1.1 Split the player log into two sources by era
+    - HISTORY (2012-2025): backfill from the Fryzigg API. fitzRoy documents
+      the endpoint as fryziggafl.net/api/ (get_fryzigg_stats "Return match
+      stats from fryziggafl.net/api/"). It takes a season parameter and
+      returns ~81 columns per player-game including TOG%, hitouts, ruck
+      contests, frees for/against, behinds, kicks/handballs separately —
+      i.e. almost every field the DFS loader has EXCEPT centre bounce
+      attendances. Pure Python GET, cache one parquet per season, same
+      etiquette as squiggle.py (User-Agent, throttle, cache forever for
+      completed seasons). Fallback for anything Fryzigg lacks: AFL Tables.
+    - CURRENT (2026+): keep the DFS loader (it has CBA, which history lacks).
+    - SNAPSHOT DISCIPLINE: archive the DFS pull to parquet after every round,
+      permanently. From today the repo accumulates its own CBA/TOG/kickIns
+      history that cannot be re-downloaded later. This is the single most
+      important operational habit — data you don't snapshot now is gone.
+
+A1.2 Merging the two eras
+    - Build the canonical player_id/team_id mapping FIRST (per §5.1) — DFS,
+      Fryzigg and Squiggle spell names differently.
+    - Validate on the overlap: 2026 rounds exist in both sources. Assert
+      disposals/goals/marks/tackles agree per player-game; investigate any
+      mismatch before trusting either.
+    - CBA before 2026 (or wherever DFS history starts): impute role from
+      startingPosition + TOG via a simple classifier fit on the overlap
+      period, and widen shrinkage priors (§3.1) accordingly. Don't backtest
+      CBA-dependent features on imputed eras — flag them.
+
+A1.3 Priority order for wiring the currently-unused DFS/Fryzigg fields
+    1. behinds — unlocks the scoring-shots model (§2.1): player scoring
+       shots = goals + behinds ~ NB; conversion ~ Binomial. Highest value;
+       fixes both player goal props and team accuracy modelling.
+    2. kicks / handballs separately — books price kicks-only and marks+kicks
+       markets; keep raw, derive disposals. Trivial change, new markets.
+    3. startingPosition + CBA + TOG% — role-change detector (§3.2): CBA%
+       jump => disposal mean bump; named tagger/run-with => opponent star
+       mid penalty. Use projected TOG to scale all count props.
+    4. ruckContests + hitouts — hitout SHARE (hitouts/ruckContests) vs
+       opposing ruck quality is the right matchup feature, not raw hitouts.
+    5. dreamTeamPoints / SC — fantasy-points props markets, plus a good
+       single composite "form" signal for ins/outs quality (§2.4).
+    6. freesFor/freesAgainst — minor; discipline/niche markets only.
+
+A1.4 Until backfill completes
+    EWMA, dispersion and matchup multipliers need 2+ seasons to be stable.
+    With current-season-only data: raise shrinkage toward position priors,
+    floor dispersion harder (PROP_MIN_DISPERSION), and do NOT trust prop
+    backtests run on one partial season — match-level work (§2) is unblocked
+    regardless because Squiggle history already covers it.
+================================================================================

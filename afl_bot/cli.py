@@ -1,0 +1,1019 @@
+"""
+``run-round`` CLI (plan §7, stage 10).
+
+Pulls the next round's fixtures, builds Elo + scoring profiles from history,
+runs the Monte Carlo sim for each match and a sample of player props, prices
+everything, and prints the candidate ANCHOR/VALUE legs plus (if a market-odds
+file is supplied) the assembled multis.
+
+Usage:
+    python -m afl_bot.cli run-round --year 2026
+    python -m afl_bot.cli run-round --year 2026 --round 14 --odds odds.json
+
+The ``--odds`` JSON maps leg names (as printed in the "no odds" run) to market
+decimal odds, e.g.:
+    {"Brisbane Lions to win": 1.45, "Hawthorn Player 3 15+ disposals": 1.30}
+
+Player props use real per-player box scores from DFS Australia
+(afl_bot.data.dfs_australia), falling back to a synthetic player log
+(afl_bot.data.player_stats) if that source is unavailable or
+--synthetic-props is passed.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from afl_bot.backtest.ensemble import assemble_signals, fit_market_blend, squiggle_consensus
+from afl_bot.backtest.props import load_or_fit_prop_calibrators
+from afl_bot.backtest.tuning import fit_elo_params, load_fitted_elo_params
+from afl_bot.build.multi import (
+    LegCandidate,
+    build_anchor_multis,
+    build_promo_multi,
+    joint_prob_from_masks,
+)
+from afl_bot.build.report import projection_rows, render_markdown, search_match_sgms
+from afl_bot.build.staking import (
+    bankroll_report,
+    simulate_bankroll,
+    simulate_bankroll_joint,
+    stake_bets,
+)
+from afl_bot.config import (
+    ANCHOR_MIN_PROB,
+    DEFAULT_BANKROLL,
+    MC_SE_TARGET,
+    MULTI_MARKET_SHRINK,
+    PROP_CALIBRATION_LOOKBACK,
+    PROP_KELLY_MULTIPLIER,
+    PROP_RECENT_SEASONS,
+    ROOT_DIR,
+    SIM_ITERATIONS,
+    WET_THRESHOLD_MM,
+)
+from afl_bot.data.odds import fetch_historical_odds
+from afl_bot.data.lineups import load_lineup
+from afl_bot.data.live_odds import fetch_live_odds
+from afl_bot.data.player_stats import load_player_log
+from afl_bot.data.squiggle import SquiggleClient
+from afl_bot.data.stoppages import load_boundary_throwins
+from afl_bot.data.venues import is_roofed, venue_info
+from afl_bot.data.weather import forecast_game_rain
+from afl_bot.models.pace import PACE_STATS, league_stat_totals, team_stat_total_profiles
+from afl_bot.models.priors import (
+    cba_role_multiplier,
+    classify_roles,
+    estimate_dispersion_hierarchical,
+    player_cba,
+    player_tog,
+    role_rate_priors,
+    shrink,
+    tog_multiplier,
+)
+from afl_bot.models.props import (
+    expected_stat_mean,
+    opponent_matchup_multiplier,
+    player_rate_profile,
+)
+from afl_bot.models.stoppages import expected_oob, simulate_boundary_throwins
+from afl_bot.models.weather_effects import rain_multiplier
+from afl_bot.models.scoring import (
+    expected_total,
+    team_scoring_profiles,
+    team_shot_accuracy_profiles,
+    venue_scoring_factors,
+)
+from afl_bot.pricing.edge import (
+    devig_proportional,
+    fair_odds,
+    market_anchored_prob,
+    mc_standard_error,
+    prob_event,
+    prob_over,
+)
+from afl_bot.ratings.elo import build_ratings_from_history
+from afl_bot.ratings.hga import INTERSTATE_PENALTY, TEAM_STATE, attach_hga, fit_team_hga, venue_state
+from afl_bot.sim.engine import (
+    Player,
+    Team,
+    allocate_player_goals,
+    allocate_player_stats,
+    draw_pace,
+    make_rng,
+    simulate_match,
+    simulate_player,
+    simulate_team_stat_total,
+)
+
+PROP_LINES = {
+    "disposals": [15, 20, 25],
+    "goals": [1, 2],
+    "marks": [4, 6],
+    "tackles": [3, 5],
+}
+# Top-usage players per team to price when there's no confirmed lineup. Raised
+# from 4 once the pool is gated to current-season/confirmed players so the VALUE
+# search has real breadth (Fable round-2 §1.3); a supplied lineup prices all 22.
+PLAYERS_PER_TEAM_SAMPLE = 10
+
+
+def _history_years(target_year: int, lookback: int = 6) -> list[int]:
+    return list(range(target_year - lookback, target_year + 1))
+
+
+def _min_sims_for_anchor_se(target_se: float = MC_SE_TARGET) -> int:
+    """Iterations so the tightest anchor (p = ANCHOR_MIN_PROB, where the binomial
+    SE is largest among anchors) clears ``target_se`` (round-2 §8.3)."""
+    p = ANCHOR_MIN_PROB
+    return int(np.ceil(p * (1.0 - p) / target_se ** 2))
+
+
+def _multi_anchored_prob(multi) -> float:
+    """A multi's combined probability with each leg pulled toward its market
+    price (round-2 §8.2) — the joint sim prob scaled by each leg's market-anchor
+    ratio, so per-leg overestimates don't compound across the multi."""
+    ratio = 1.0
+    for leg in multi.legs:
+        if leg.fair_prob > 0:
+            ratio *= market_anchored_prob(leg.fair_prob, leg.market_odds, MULTI_MARKET_SHRINK) / leg.fair_prob
+    return float(multi.combined_fair_prob * ratio)
+
+
+def _fixture_hga(home: str, away: str, venue: str, team_hga: dict[str, float]) -> float:
+    """Venue + interstate home advantage (points) for an upcoming fixture (§6.1).
+    Per-team venue HGA, plus the interstate penalty when the away side travels to
+    a different state (rest is used in the ratings fit, not this single margin)."""
+    from afl_bot.config import ELO_HOME_ADVANTAGE
+    hga = team_hga.get(home, ELO_HOME_ADVANTAGE)
+    vs, aws = venue_state(venue), TEAM_STATE.get(away)
+    if vs and aws and vs != aws:
+        hga += INTERSTATE_PENALTY
+    return hga
+
+
+def _fixture_is_wet(fx, rain_mm: float | None, roofed: bool) -> bool:
+    """Wet flag for a fixture (round-2 §4.2): roofed -> always dry; an explicit
+    --rain-mm overrides; otherwise auto-fetch the Open-Meteo forecast at bounce
+    time (best-effort, dry on any failure / outside the forecast horizon)."""
+    if roofed:
+        return False
+    if rain_mm is not None:
+        return rain_mm >= WET_THRESHOLD_MM
+    info = venue_info(fx["venue"])
+    if info is None:
+        return False
+    when = fx["localtime"] if ("localtime" in fx and pd.notna(fx.get("localtime"))) else fx.get("date")
+    mm = forecast_game_rain(info["lat"], info["lon"], when)
+    return bool(np.isfinite(mm) and mm >= WET_THRESHOLD_MM)
+
+
+def _select_players(player_log: pd.DataFrame, team: str, current_year: int, n: int,
+                    confirmed: set[str] | None = None) -> list[str]:
+    """Players to price for ``team``, ranked by disposals (Fable round-2 §1.1).
+
+    Pools to the current season when the team has fielded a near-full list there
+    (so a retired/delisted player on a big career average can't be priced),
+    falling back to last season early in the year, then to all history. If a
+    confirmed lineup is supplied, restrict to those players and price all of
+    them; otherwise take the top ``n``.
+    """
+    team_rows = player_log[player_log["team"] == team]
+    if team_rows.empty:
+        return []
+
+    current = team_rows[team_rows["year"] == current_year]
+    if current["player"].nunique() >= 18:           # team has played a full-ish season
+        pool = current
+    else:
+        recent = team_rows[team_rows["year"] >= current_year - 1]
+        pool = recent if not recent.empty else team_rows
+
+    ranked = pool.groupby("player")["disposals"].mean().sort_values(ascending=False)
+    if confirmed:
+        ranked = ranked[ranked.index.isin(confirmed)]
+        return ranked.index.tolist()
+    return ranked.head(n).index.tolist()
+
+
+def _team_player_samples(usage_players, team, opponent, is_home_team, match, pace,
+                         player_log, roles, rate_priors, team_stat_profiles, league_totals,
+                         volume_stats, is_wet, roofed, n_sims, rng):
+    """Per-iteration stat samples for each priced player on one team: volume
+    stats via pace -> opponent/wet-adjusted team total -> role-shrunk Dirichlet
+    shares (§2.5/§3.1-3.3), goals via Multinomial on goal shares (§3.3).
+    Returns ``{player: {stat: samples}}``. Shared by run-round and round-report
+    so the two can't drift."""
+    player_samples: dict[str, dict[str, np.ndarray]] = {p: {} for p in usage_players}
+
+    # Role/minutes multipliers (plan §3.2).
+    tog_mult = {p: tog_multiplier(*player_tog(player_log, p)) for p in usage_players}
+    cba_mult = {p: cba_role_multiplier(*player_cba(player_log, p)) for p in usage_players}
+
+    for stat in volume_stats:
+        mu_team = team_stat_profiles.get(team, {}).get(stat)
+        if mu_team is None or not np.isfinite(mu_team):
+            mu_team = league_totals.get(stat, float("nan"))
+        if not np.isfinite(mu_team):
+            continue
+        mu_team *= opponent_matchup_multiplier(player_log, stat, opponent)
+        mu_team *= rain_multiplier(stat, is_wet, roofed)
+        team_total = simulate_team_stat_total(mu_team, pace, rng)
+
+        priced, shares = [], []
+        for player_name in usage_players:
+            profile = player_rate_profile(player_log, player_name, stat)
+            role = roles.get(player_name, "general")
+            prior = rate_priors[stat].get(role, rate_priors[stat]["_global"])["share_prior"]
+            share = shrink(profile["share"], profile["n_games"], prior)
+            if not np.isfinite(share):
+                continue
+            share *= tog_mult[player_name]
+            if stat == "disposals":
+                share *= cba_mult[player_name]
+            priced.append(player_name)
+            shares.append(share)
+        if not priced:
+            continue
+        shares = np.asarray(shares, dtype=float)
+        if shares.sum() > 0.95:
+            shares = shares * (0.95 / shares.sum())
+        alloc = allocate_player_stats(team_total, shares, rng)
+        for player_name, row in zip(priced, alloc):
+            player_samples[player_name][stat] = row
+
+    # Goals: Multinomial on (shrunk, minutes/matchup-adjusted) goal shares.
+    # No wet multiplier here — team_goals already comes from the wet-adjusted
+    # match sim (lower accuracy), so re-applying it would double-count (§4.1).
+    team_goals = match["home_goals"] if is_home_team else match["away_goals"]
+    goal_matchup = opponent_matchup_multiplier(player_log, "goals", opponent)
+    g_priced, g_shares = [], []
+    for player_name in usage_players:
+        profile = player_rate_profile(player_log, player_name, "goals")
+        role = roles.get(player_name, "general")
+        prior = rate_priors["goals"].get(role, rate_priors["goals"]["_global"])["share_prior"]
+        share = shrink(profile["share"], profile["n_games"], prior)
+        if not np.isfinite(share):
+            continue
+        share *= tog_mult[player_name] * goal_matchup
+        g_priced.append(player_name)
+        g_shares.append(share)
+    if g_priced:
+        g_shares = np.asarray(g_shares, dtype=float)
+        if g_shares.sum() > 0.95:
+            g_shares = g_shares * (0.95 / g_shares.sum())
+        g_alloc = allocate_player_goals(team_goals, g_shares, rng)
+        for player_name, row in zip(g_priced, g_alloc):
+            player_samples[player_name]["goals"] = row
+
+    return player_samples
+
+
+def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
+              synthetic_props: bool = False, rain_mm: float | None = None,
+              bankroll: float = DEFAULT_BANKROLL, lineup_path: str | None = None,
+              allow_synthetic_props: bool = False) -> None:
+    client = SquiggleClient()
+
+    history = pd.concat(
+        [client.get_completed_games(y) for y in _history_years(year)],
+        ignore_index=True,
+    )
+    if history.empty:
+        print("No historical data available; cannot build ratings.", file=sys.stderr)
+        return
+
+    upcoming = client.get_upcoming_games(year)
+    if upcoming.empty:
+        print(f"No upcoming games found for {year}.", file=sys.stderr)
+        return
+
+    if round_no is None:
+        round_no = int(upcoming["round"].iloc[0])
+    fixtures = upcoming[upcoming["round"] == round_no]
+    if fixtures.empty:
+        print(f"No upcoming games found for {year} round {round_no}.", file=sys.stderr)
+        return
+
+    # Auto-bump n_sims so an anchor's Monte-Carlo SE clears the target (§8.3).
+    min_sims = _min_sims_for_anchor_se()
+    if n_sims < min_sims:
+        print(f"note: bumping n_sims {n_sims} -> {min_sims} for anchor SE < {MC_SE_TARGET} "
+              f"(plan §8.3).", file=sys.stderr)
+        n_sims = min_sims
+
+    team_hga = fit_team_hga(history)   # per-team venue HGA (§6.1)
+    elo, _ = build_ratings_from_history(attach_hga(history, team_hga), **load_fitted_elo_params())
+    scoring_profiles = team_scoring_profiles(history)
+    accuracy_profiles = team_shot_accuracy_profiles(history)
+    venue_factors = venue_scoring_factors(history)   # per-venue scoring (§6.4)
+
+    # Player props: real DFS Australia box scores for the current season,
+    # falling back to a synthetic log if unavailable (or --synthetic-props).
+    player_log, log_source = load_player_log(
+        history, prefer_real=not synthetic_props, return_source=True)
+    current_season = int(player_log["year"].max())
+
+    # Synthetic-data guard (round-2 §1.4 / §P10a): with --odds we refuse to
+    # price props off a silent synthetic fallback unless explicitly allowed.
+    props_synthetic = log_source == "synthetic"
+    skip_props = bool(odds_path) and not synthetic_props and not allow_synthetic_props and props_synthetic
+    if skip_props:
+        print("WARNING: player log fell back to SYNTHETIC data; refusing to price "
+              "player props (pass --allow-synthetic-props to override). "
+              "H2H/total/OOB markets below are unaffected.", file=sys.stderr)
+
+    # Confirmed lineups (round-2 §1.2): players not named are excluded from
+    # multis. No file -> every player stays confirmed (unchanged behaviour).
+    lineup = load_lineup(lineup_path)
+
+    # Hierarchical priors (plan §3.1): infer coarse roles, then pool dispersion
+    # and shrink player rates toward role priors.
+    roles = classify_roles(player_log)
+    # Dispersion pools the full 2012+ history (needs the sample); the role mean/
+    # share priors use only recent seasons to avoid era bias (round-2 §5.2).
+    recent_log = player_log[player_log["year"] > current_season - PROP_RECENT_SEASONS]
+    if recent_log.empty:
+        recent_log = player_log
+    dispersion = {
+        stat: estimate_dispersion_hierarchical(player_log, stat, roles) for stat in PROP_LINES
+    }
+    rate_priors = {stat: role_rate_priors(recent_log, stat, roles) for stat in PROP_LINES}
+    # Per-market prop calibrators from the walk-forward backtest (round-2 §2.3):
+    # corrects systematic over/under-prediction before legs are classified/staked.
+    prop_calibrators = {} if (synthetic_props or skip_props) else load_or_fit_prop_calibrators(
+        player_log, eval_start_year=current_season - PROP_CALIBRATION_LOOKBACK)
+    # Per-team expected volume-stat totals (disposals/marks/tackles) for the
+    # pace -> team total -> player share allocation (plan §2.5, §3.3).
+    team_stat_profiles = team_stat_total_profiles(player_log)
+    league_totals = league_stat_totals(player_log)
+    volume_stats = [s for s in PROP_LINES if s in PACE_STATS]
+    # Expected boundary throw-ins per game for the OOB market (plan §1.6c) — a
+    # real per-game count feed isn't free, so this is the league prior until
+    # afl_bot.data.stoppages is fed.
+    mu_oob = expected_oob(load_boundary_throwins())
+
+    # H2H market-blend ensemble (plan §3.5): fit a calibrator + convex blend of
+    # model / closing-market / Squiggle-consensus win probs on history, then
+    # take the edge on the market-anchored blend (kills false edges). Best
+    # effort — degrades to the raw model if odds/tips are unavailable.
+    blend = None
+    squiggle_lookup: dict[tuple[str, str], float] = {}
+    try:
+        hist_tips = pd.concat([client.get_tips(y) for y in _history_years(year)], ignore_index=True)
+        blend = fit_market_blend(assemble_signals(history, fetch_historical_odds(), hist_tips))
+        consensus = squiggle_consensus(client.get_tips(year, round_no))
+        squiggle_lookup = {(r.hteam, r.ateam): r.squiggle_home_prob for r in consensus.itertuples()}
+    except Exception as exc:  # noqa: BLE001 - anchoring is optional, must not break pricing
+        print(f"Market-blend anchoring unavailable ({exc}); using raw model probs.", file=sys.stderr)
+
+    odds_book: dict[str, float] = {}
+    if odds_path:
+        odds_book = json.loads(Path(odds_path).read_text())
+    # Per-book house rules (round-2 §8.4), e.g. {"_rules": {"h2h_draw": "refund"}}.
+    draw_refund = odds_book.get("_rules", {}).get("h2h_draw") == "refund"
+
+    rng = make_rng()
+    candidates: list[LegCandidate] = []
+
+    print(f"=== {year} Round {round_no} ===\n")
+
+    for _, fx in fixtures.iterrows():
+        home_name, away_name = fx["hteam"], fx["ateam"]
+        match_id = f"{year}_r{round_no}_{home_name}_v_{away_name}"
+        venue = fx["venue"]
+        roofed = is_roofed(venue)
+        is_wet = _fixture_is_wet(fx, rain_mm, roofed)
+        wx = " [WET]" if is_wet else (" [roof]" if roofed else "")
+        print(f"--- {home_name} vs {away_name} ({venue}){wx} ---")
+
+        home = Team(home_name, is_home=True)
+        away = Team(away_name, is_home=False)
+
+        mu_margin = elo.expected_margin(home_name, away_name,
+                                        hga=_fixture_hga(home_name, away_name, venue, team_hga))
+        hp = scoring_profiles.get(home_name, {"off_rate": 90.0, "def_rate": 90.0})
+        ap = scoring_profiles.get(away_name, {"off_rate": 90.0, "def_rate": 90.0})
+        mu_total = expected_total(hp["off_rate"], hp["def_rate"], ap["off_rate"], ap["def_rate"],
+                                  venue_factor=venue_factors.get(venue, 1.0))
+
+        print(f"  Predicted margin (home): {mu_margin:+.1f} pts | total: {mu_total:.0f} pts")
+
+        home_accuracy = accuracy_profiles.get(home_name, float("nan"))
+        away_accuracy = accuracy_profiles.get(away_name, float("nan"))
+        match = simulate_match(home, away, mu_margin, mu_total, home_accuracy, away_accuracy,
+                               n_sims, rng, is_wet=is_wet)
+        p_home_win = prob_event(match["home_win"] > 0)
+        p_away_win = prob_event(match["away_win"] > 0)
+        p_draw = prob_event(match["draw"] > 0)
+        if p_draw > 0:
+            print(f"  P(draw) = {p_draw:.3f}")
+        # Draw refunds the stake -> condition the win prob on a non-draw (§8.4).
+        if draw_refund and p_draw > 0:
+            p_home_win = p_home_win / (1.0 - p_draw)
+            p_away_win = p_away_win / (1.0 - p_draw)
+
+        # Market-anchored H2H prob (plan §3.5): blend the model with the devig
+        # market + Squiggle consensus when both book prices are available.
+        home_odds = odds_book.get(f"{home_name} to win")
+        away_odds = odds_book.get(f"{away_name} to win")
+        blended_home = None
+        if blend is not None and home_odds and away_odds:
+            market_home = devig_proportional([home_odds, away_odds])[0]
+            squiggle_home = squiggle_lookup.get((home_name, away_name))
+            blended_home = float(blend.predict_home_prob(
+                p_home_win, market_p=market_home, squiggle_p=squiggle_home)[0])
+
+        total_pts = match["home_pts"] + match["away_pts"]
+        for team_name, model_prob, is_home_side in (
+            (home_name, p_home_win, True), (away_name, p_away_win, False),
+        ):
+            leg_name = f"{team_name} to win"
+            odds = odds_book.get(leg_name)
+            if blended_home is not None:
+                fair_prob = blended_home if is_home_side else 1.0 - blended_home
+            else:
+                fair_prob = model_prob
+            win_mask = (match["home_win"] > 0) if is_home_side else (match["away_win"] > 0)
+            blend_note = f" -> blend {fair_prob:.3f}" if blended_home is not None else ""
+            print(f"  P({leg_name}) = {model_prob:.3f}{blend_note} -> fair {fair_odds(fair_prob):.2f}"
+                  + (f" | book {odds}" if odds else ""))
+            if odds:
+                candidates.append(LegCandidate(
+                    name=leg_name, match_id=match_id, market="h2h",
+                    subject=team_name, fair_prob=fair_prob, market_odds=odds, mask=win_mask,
+                ))
+
+        # Total points line, e.g. 160.5
+        total_line = round(mu_total / 5) * 5 + 0.5
+        total_mask = total_pts >= total_line
+        p_total_over = prob_event(total_mask)
+        leg_name = f"Total points {total_line}+"
+        odds = odds_book.get(leg_name)
+        print(f"  P({leg_name}) = {p_total_over:.3f} -> fair {fair_odds(p_total_over):.2f}"
+              + (f" | book {odds}" if odds else ""))
+        if odds:
+            candidates.append(LegCandidate(
+                name=leg_name, match_id=match_id, market="total_points",
+                subject="total", fair_prob=p_total_over, market_odds=odds, mask=total_mask,
+            ))
+
+        # Boundary throw-ins (OOB) total market (plan §1.6c): coupled negatively
+        # to this match's total draw, lifted in the wet. Prior-based until a real
+        # boundary-throw-in feed is wired (afl_bot.data.stoppages).
+        oob_samples = simulate_boundary_throwins(mu_oob, total_pts, rng, is_wet=is_wet)
+        oob_line = round(mu_oob) + 0.5
+        oob_mask = oob_samples >= oob_line
+        p_oob_over = prob_event(oob_mask)
+        leg_name = f"Total boundary throw-ins {oob_line}+"
+        odds = odds_book.get(leg_name)
+        print(f"  P({leg_name}) = {p_oob_over:.3f} (prior) -> fair {fair_odds(p_oob_over):.2f}"
+              + (f" | book {odds}" if odds else ""))
+        if odds:
+            candidates.append(LegCandidate(
+                name=leg_name, match_id=match_id, market="boundary_throwins",
+                subject="oob", fair_prob=p_oob_over, market_odds=odds, mask=oob_mask,
+            ))
+
+        # Player props: draw the shared game environment (pace) once, then for
+        # each team draw pace-scaled volume-stat totals and allocate them among
+        # players via a Dirichlet share (plan §2.5, §3.3). Goals keep the
+        # scoreline-correlated NB path.
+        if skip_props:
+            print()
+            continue
+        pace = draw_pace(n_sims, rng)
+
+        for team, is_home_team in ((home_name, True), (away_name, False)):
+            opponent = away_name if is_home_team else home_name
+            # Current-season (or last-season) active pool, gated to the confirmed
+            # lineup when one is supplied (round-2 §1.1/§1.2/§1.3).
+            confirmed = lineup.get(team)
+            usage_players = _select_players(
+                player_log, team, current_season, PLAYERS_PER_TEAM_SAMPLE, confirmed=confirmed)
+            player_samples = _team_player_samples(
+                usage_players, team, opponent, is_home_team, match, pace,
+                player_log, roles, rate_priors, team_stat_profiles, league_totals,
+                volume_stats, is_wet, roofed, n_sims, rng)
+
+            # Price every line from the per-player sample arrays.
+            for player_name in usage_players:
+                # confirmed unless a lineup is supplied and this player isn't named
+                confirmed = (team not in lineup) or (player_name in lineup[team])
+                for stat, lines in PROP_LINES.items():
+                    samples = player_samples[player_name].get(stat)
+                    if samples is None:
+                        continue
+                    cal = prop_calibrators.get(stat)
+                    for line in lines:
+                        leg_mask = samples >= line
+                        prob = prob_event(leg_mask)
+                        if cal is not None:
+                            prob = float(cal.predict([prob])[0])   # per-market calibration (§2.3)
+                        if not (0.05 < prob < 0.97):
+                            continue
+                        leg_name = f"{player_name} {line}+ {stat}"
+                        odds = odds_book.get(leg_name)
+                        if odds:
+                            candidates.append(LegCandidate(
+                                name=leg_name, match_id=match_id, market=f"player_{stat}",
+                                subject=player_name, fair_prob=prob, market_odds=odds,
+                                confirmed=confirmed, mask=leg_mask,
+                            ))
+        print()
+
+    if not odds_book:
+        print("No --odds file supplied: showing fair probabilities/odds only.")
+        print("Pass a JSON file mapping leg names -> market odds to build multis.")
+        return
+
+    # Warn on odds-file keys that never matched a priced leg (a typo = a leg
+    # silently dropped, round-2 §7.4).
+    priced_names = {c.name for c in candidates}
+    unmatched = [k for k in odds_book if not k.startswith("_") and k not in priced_names]
+    if unmatched:
+        print(f"\nWARNING: {len(unmatched)} odds key(s) matched no priced leg "
+              f"(typo? player not in pool/lineup?): {', '.join(unmatched)}", file=sys.stderr)
+
+    print("\n=== Candidate legs (with market odds) ===")
+    for c in sorted(candidates, key=lambda c: c.edge_pct, reverse=True):
+        se = mc_standard_error(c.fair_prob, n_sims)            # MC precision (§8.3)
+        se_flag = " !SE" if c.classification == "ANCHOR" and se > MC_SE_TARGET else ""
+        print(f"  [{c.classification:6s}] {c.name:35s} model {c.fair_prob:.3f} "
+              f"| book {c.market_odds:.2f} | edge {c.edge_pct*100:+.1f}% | SE {se:.4f}{se_flag}")
+
+    promo = build_promo_multi(candidates, joint_prob_fn=joint_prob_from_masks)
+    print("\n=== 3-leg promo multi (2 anchors + 1 value) ===")
+    if promo is None:
+        print("  No qualifying combination found (no positive promo EV).")
+    else:
+        for leg in promo.legs:
+            print(f"  [{leg.classification:6s}] {leg.name}  model {leg.fair_prob:.3f} "
+                  f"| book {leg.market_odds:.2f}")
+        print(f"  combined fair prob {promo.combined_fair_prob:.3f} "
+              f"-> fair odds {promo.combined_fair_odds:.2f}")
+        print(f"  book multi odds    {promo.combined_market_odds:.2f}")
+        print(f"  P(all win)         {promo.promo['p_all_win']:.3f}")
+        print(f"  P(exactly 1 loss)  {promo.promo['p_exactly_one_loss']:.3f}  (refund branch)")
+        print(f"  Promo EV           ${promo.promo['ev_dollars']:+.2f} "
+              f"({promo.promo['ev_pct']*100:+.1f}%)")
+
+    print("\n=== 'Very highly likely' anchor multis (ranked by edge) ===")
+    anchor_multis = build_anchor_multis(candidates, joint_prob_fn=joint_prob_from_masks)
+    if not anchor_multis:
+        print("  No qualifying all-ANCHOR combinations found.")
+    # High combined probability is not value: rank/flag by the market-anchored
+    # combined edge, not by probability (round-2 §8.1/§8.2).
+    ranked_anchor = sorted(
+        anchor_multis,
+        key=lambda m: _multi_anchored_prob(m) * m.combined_market_odds - 1.0, reverse=True,
+    )
+    for i, multi in enumerate(ranked_anchor, 1):
+        anchored = _multi_anchored_prob(multi)
+        edge = anchored * multi.combined_market_odds - 1.0
+        tag = "VALUE" if edge > 0 else "-EV  "
+        names = " + ".join(leg.name for leg in multi.legs)
+        print(f"  {i}. [{tag}] {names}")
+        print(f"       prob {multi.combined_fair_prob:.3f} (mkt-anchored {anchored:.3f}) "
+              f"| book {multi.combined_market_odds:.2f} | edge {edge*100:+.1f}%")
+
+    # --- Staking (plan §4.4): capped fractional Kelly + bankroll Monte Carlo ---
+    bet_specs = [(c.name, c.fair_prob, c.market_odds, c.mask)
+                 for c in candidates if c.edge_pct > 0]
+    if promo is not None:
+        promo_masks = [leg.mask for leg in promo.legs]
+        promo_mask = (np.logical_and.reduce([np.asarray(m, bool) for m in promo_masks])
+                      if all(m is not None for m in promo_masks) else None)
+        # Stake the promo on the market-anchored combined prob (§8.2), not the raw.
+        bet_specs.append((f"PROMO MULTI ({len(promo.legs)} legs)",
+                          _multi_anchored_prob(promo), promo.combined_market_odds, promo_mask))
+
+    # Half-Kelly on prop legs — noisier and compounding in multis (round-2 §2.5).
+    prop_names = {c.name for c in candidates if c.market.startswith("player_")}
+    mults = [PROP_KELLY_MULTIPLIER if n in prop_names else 1.0 for n, _, _, _ in bet_specs]
+    staked = stake_bets([(n, p, o) for n, p, o, _ in bet_specs], bankroll, mults=mults)
+    placed = [(s, m) for s, (_, _, _, m) in zip(staked, bet_specs) if s.stake > 0]
+
+    print(f"\n=== Recommended stakes (0.25x Kelly, bankroll ${bankroll:.0f}) ===")
+    if not placed:
+        print("  No positive-edge bets to stake.")
+    else:
+        for s, _ in sorted(placed, key=lambda sm: sm[0].stake, reverse=True):
+            print(f"  ${s.stake:7.2f} ({s.fraction * 100:4.1f}% bank) on {s.name:35s} "
+                  f"@ {s.odds:.2f} (model {s.prob:.3f})")
+        total_frac = sum(s.fraction for s, _ in placed)
+        print(f"  total staked ${total_frac * bankroll:.2f} ({total_frac * 100:.1f}% of bankroll)")
+
+        # Joint sim off the per-leg masks when every staked bet has one (captures
+        # promo/single overlap, round-2 §3.4); else independent fallback.
+        masks = [m for _, m in placed]
+        if all(m is not None for m in masks):
+            sim = simulate_bankroll_joint(
+                [(s.odds, s.fraction) for s, _ in placed], np.vstack(masks), bankroll,
+                rounds=24, n_sims=20_000, rng=make_rng(),
+            )
+            joint_note = " (joint/correlated)"
+        else:
+            sim = simulate_bankroll(
+                [(s.prob, s.odds, s.fraction) for s, _ in placed], bankroll,
+                rounds=24, n_sims=20_000, rng=make_rng(),
+            )
+            joint_note = ""
+        rep = bankroll_report(sim, bankroll)
+        print(f"\n=== Bankroll sim{joint_note} (this edge profile x 24 rounds, ${bankroll:.0f} start) ===")
+        print(f"  median end ${rep['median_terminal']:.0f} "
+              f"(5th ${rep['p5_terminal']:.0f} / 95th ${rep['p95_terminal']:.0f})")
+        print(f"  P(profit) {rep['p_profit']:.2f} | P(bust <10% start) {rep['p_bust']:.2f}")
+        print(f"  median max drawdown {rep['median_max_drawdown'] * 100:.0f}% | "
+              f"P(drawdown >50%) {rep['p_drawdown_over_50pct']:.2f}")
+
+    print("\nReminder: this is a modelling/analytics tool. No model reliably beats")
+    print("the bookies long-term on AFL -- only stake what you can afford to lose.")
+    print("Gambling Help Online: gamblinghelponline.org.au | 1800 858 858")
+
+
+def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
+                 rain_mm: float | None = None, lineup_path: str | None = None,
+                 use_live: bool = False) -> None:
+    """The weekly deliverable (round-2 §10): per-match real-player projection
+    tables + same-game multis ranked by joint sim probability, saved to
+    reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log."""
+    client = SquiggleClient()
+    history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
+                        ignore_index=True)
+    if history.empty:
+        print("No historical data available.", file=sys.stderr)
+        return
+    upcoming = client.get_upcoming_games(year)
+    if round_no is None and not upcoming.empty:
+        round_no = int(upcoming["round"].iloc[0])
+    fixtures = upcoming[upcoming["round"] == round_no]
+    if fixtures.empty:
+        # Fall back to a completed round (backfill/grading). Profiles then include
+        # that round's games, so it's not strictly walk-forward — fine for a
+        # backfilled report, but live use should run before the round.
+        completed = client.get_completed_games(year)
+        fixtures = completed[completed["round"] == round_no]
+        if not fixtures.empty:
+            history = history[~((history["year"] == year) & (history["round"] == round_no))]
+    if fixtures.empty:
+        print(f"No games found for {year} round {round_no}.", file=sys.stderr)
+        return
+
+    player_log, log_source = load_player_log(history, prefer_real=True, return_source=True)
+    if log_source == "synthetic":
+        print("REFUSING: player log fell back to SYNTHETIC data — the round report is "
+              "real-players-only. Fix the data sources (DFS/Fryzigg) and retry.", file=sys.stderr)
+        return
+
+    current_season = int(player_log["year"].max())
+    team_hga = fit_team_hga(history)   # per-team venue HGA (§6.1)
+    elo, _ = build_ratings_from_history(attach_hga(history, team_hga), **load_fitted_elo_params())
+    scoring_profiles = team_scoring_profiles(history)
+    accuracy_profiles = team_shot_accuracy_profiles(history)
+    venue_factors = venue_scoring_factors(history)   # per-venue scoring (§6.4)
+    roles = classify_roles(player_log)
+    recent_log = player_log[player_log["year"] > current_season - PROP_RECENT_SEASONS]
+    if recent_log.empty:
+        recent_log = player_log
+    rate_priors = {stat: role_rate_priors(recent_log, stat, roles) for stat in PROP_LINES}  # §5.2
+    prop_calibrators = load_or_fit_prop_calibrators(
+        player_log, eval_start_year=current_season - PROP_CALIBRATION_LOOKBACK)
+    team_stat_profiles = team_stat_total_profiles(player_log)
+    league_totals = league_stat_totals(player_log)
+    volume_stats = [s for s in PROP_LINES if s in PACE_STATS]
+    mu_oob = expected_oob(load_boundary_throwins())
+    lineup = load_lineup(lineup_path)
+    # Live h2h/totals (The Odds API) merged with any --odds file; manual overrides
+    # live for hand-fixes (MULTI-CHANGES PART A). Props come from the file.
+    live = fetch_live_odds(round_no) if use_live else {}
+    manual = json.loads(Path(odds_path).read_text()) if odds_path else {}
+    odds_book = {**live, **manual}
+    odds_note = ""
+    if use_live:
+        prop_keys = [k for k in manual if not k.startswith("_")
+                     and " to win" not in k and not k.startswith("Total points")]
+        src = f"the --odds file ({len(prop_keys)} prop price(s))" if odds_path else "no prop source"
+        # The free/standard live feed carries H2H/totals only, NOT player props -- so
+        # most multi rungs (which are props) stay unpriced under --live-odds alone.
+        odds_note = (
+            f"_Live odds cover **H2H/totals only** ({len(live)} live leg(s) from The Odds API). "
+            f"Player-prop legs are priced off {src}; rungs with no prop price show '-' for "
+            f"Book/Edge and are NOT flagged VALUE. Edges shown are market-shrunk (capped)._")
+
+    rng = make_rng()
+    matches, odds_legs, predictions = [], [], []
+
+    for _, fx in fixtures.iterrows():
+        home_name, away_name = fx["hteam"], fx["ateam"]
+        match_id = f"{year}_r{round_no}_{home_name}_v_{away_name}"
+        venue = fx["venue"]
+        roofed = is_roofed(venue)
+        is_wet = _fixture_is_wet(fx, rain_mm, roofed)
+
+        mu_margin = elo.expected_margin(home_name, away_name,
+                                        hga=_fixture_hga(home_name, away_name, venue, team_hga))
+        hp = scoring_profiles.get(home_name, {"off_rate": 90.0, "def_rate": 90.0})
+        ap = scoring_profiles.get(away_name, {"off_rate": 90.0, "def_rate": 90.0})
+        mu_total = expected_total(hp["off_rate"], hp["def_rate"], ap["off_rate"], ap["def_rate"],
+                                  venue_factor=venue_factors.get(venue, 1.0))
+        ha = accuracy_profiles.get(home_name, float("nan"))
+        aa = accuracy_profiles.get(away_name, float("nan"))
+        match = simulate_match(Team(home_name, True), Team(away_name), mu_margin, mu_total,
+                               ha, aa, n_sims, rng, is_wet=is_wet)
+        total_pts = match["home_pts"] + match["away_pts"]
+        total_line = round(mu_total / 5) * 5 + 0.5
+
+        header = {
+            "home": home_name, "away": away_name, "venue": venue,
+            "roofed": roofed, "is_wet": is_wet, "mu_margin": mu_margin, "mu_total": mu_total,
+            "p_home": prob_event(match["home_win"] > 0), "p_away": prob_event(match["away_win"] > 0),
+            "p_draw": prob_event(match["draw"] > 0),
+            "total_line_name": f"Total {total_line}+", "p_total": prob_event(total_pts >= total_line),
+        }
+        predictions.append({"match_id": match_id, "market": "h2h", "subject": home_name,
+                            "line": "", "prob": header["p_home"]})
+        predictions.append({"match_id": match_id, "market": "h2h", "subject": away_name,
+                            "line": "", "prob": header["p_away"]})
+        predictions.append({"match_id": match_id, "market": "total_points", "subject": "total",
+                            "line": total_line, "prob": header["p_total"]})
+
+        match_legs = [
+            LegCandidate(f"{home_name} to win", match_id, "h2h", home_name, header["p_home"],
+                         odds_book.get(f"{home_name} to win", fair_odds(header["p_home"])),
+                         mask=(match["home_win"] > 0)),
+            LegCandidate(f"{away_name} to win", match_id, "h2h", away_name, header["p_away"],
+                         odds_book.get(f"{away_name} to win", fair_odds(header["p_away"])),
+                         mask=(match["away_win"] > 0)),
+        ]
+
+        pace = draw_pace(n_sims, rng)
+        projections = []
+        for team, is_home_team in ((home_name, True), (away_name, False)):
+            opponent = away_name if is_home_team else home_name
+            usage = _select_players(player_log, team, current_season,
+                                    PLAYERS_PER_TEAM_SAMPLE, confirmed=lineup.get(team))
+            samples = _team_player_samples(
+                usage, team, opponent, is_home_team, match, pace, player_log, roles,
+                rate_priors, team_stat_profiles, league_totals, volume_stats, is_wet, roofed,
+                n_sims, rng)
+            projections.append((team, projection_rows(samples, PROP_LINES, prop_calibrators)))
+
+            for player_name, stats in samples.items():
+                confirmed = (team not in lineup) or (player_name in lineup[team])
+                for stat, lines in PROP_LINES.items():
+                    arr = stats.get(stat)
+                    if arr is None:
+                        continue
+                    cal = prop_calibrators.get(stat)
+                    for line in lines:
+                        mask = arr >= line
+                        prob = prob_event(mask)
+                        if cal is not None:
+                            prob = float(cal.predict([prob])[0])
+                        if not (0.05 < prob < 0.97):
+                            continue
+                        name = f"{player_name} {line}+ {stat}"
+                        leg = LegCandidate(name, match_id, f"player_{stat}", player_name, prob,
+                                           odds_book.get(name, fair_odds(prob)),
+                                           confirmed=confirmed, mask=mask)
+                        match_legs.append(leg)
+                        predictions.append({"match_id": match_id, "market": f"player_{stat}",
+                                            "subject": player_name, "line": line, "prob": prob})
+                        if name in odds_book:
+                            odds_legs.append(leg)
+
+        for leg in match_legs[:2]:           # H2H legs with book odds feed cross-game multis
+            if leg.name in odds_book:
+                odds_legs.append(leg)
+
+        matches.append({
+            "header": header, "projections": projections,
+            "sgms": search_match_sgms(match_legs, odds_book=odds_book),
+            "n_legs": len(match_legs),     # so the report can explain an empty ladder
+        })
+
+    multis_section = ""
+    if odds_legs:
+        promo = build_promo_multi(odds_legs, joint_prob_fn=joint_prob_from_masks)
+        lines = ["## Cross-game multis"]
+        if promo is not None:
+            lines.append(f"- **Promo multi**: {' + '.join(l.name for l in promo.legs)} "
+                         f"-> combined {promo.combined_fair_prob:.3f} @ book {promo.combined_market_odds:.2f} "
+                         f"(EV {promo.promo['ev_pct'] * 100:+.1f}%)")
+        for i, mm in enumerate(build_anchor_multis(odds_legs, joint_prob_fn=joint_prob_from_masks), 1):
+            lines.append(f"- Anchor multi {i}: {' + '.join(l.name for l in mm.legs)} "
+                         f"-> {mm.combined_fair_prob:.3f}")
+        multis_section = "\n".join(lines) + "\n"
+
+    md = render_markdown(year, round_no, matches, has_odds=bool(odds_book),
+                         multis_section=multis_section, odds_note=odds_note)
+    out_dir = ROOT_DIR / "reports"
+    out_dir.mkdir(exist_ok=True)
+    out_path = out_dir / f"{year}_r{round_no}_report.md"
+    out_path.write_text(md, encoding="utf-8")
+    # Machine-readable predictions sidecar so the round can be graded later (§10.5).
+    pred_path = out_dir / f"{year}_r{round_no}_predictions.csv"
+    pd.DataFrame(predictions).to_csv(pred_path, index=False)
+    print(md)
+    print(f"\n[saved to {out_path} | predictions: {pred_path}]")
+
+
+def grade_round(year: int, round_no: int) -> None:
+    """Grade a completed round (§10.5): score every saved prediction against
+    what actually happened, append to reports/calibration_log.csv, and print the
+    round + cumulative calibration. Feeds Section 2's calibration work."""
+    out_dir = ROOT_DIR / "reports"
+    pred_path = out_dir / f"{year}_r{round_no}_predictions.csv"
+    if not pred_path.exists():
+        print(f"No predictions file {pred_path}; run round-report for {year} r{round_no} first.",
+              file=sys.stderr)
+        return
+    preds = pd.read_csv(pred_path)
+
+    client = SquiggleClient()
+    games = client.get_completed_games(year)
+    games = games[games["round"] == round_no]
+    if games.empty:
+        print(f"{year} round {round_no} is not completed yet — nothing to grade.", file=sys.stderr)
+        return
+    # Actual player stats for the round, matched by the REAL round number.
+    # Past seasons: Fryzigg raw `match_round` (its to_player_log round is a
+    # chronological ordinal, §7.2, and its unixtime is unreliable). Current
+    # season: DFS, which carries the real round via the Squiggle join.
+    player_round = pd.DataFrame(columns=["player", "disposals", "goals", "marks", "tackles"])
+    try:
+        from afl_bot.data.fryzigg import fetch_fryzigg_player_stats
+        raw = fetch_fryzigg_player_stats()
+        raw = raw.assign(_year=pd.to_datetime(raw["match_date"]).dt.year,
+                         _player=(raw["player_first_name"].str.strip() + " "
+                                  + raw["player_last_name"].str.strip()))
+        rnd = raw[(raw["_year"] == year) & (raw["match_round"].astype(str) == str(round_no))]
+        if not rnd.empty:
+            player_round = rnd.rename(columns={"_player": "player"})
+    except Exception:  # noqa: BLE001
+        pass
+    if player_round.empty:
+        try:
+            from afl_bot.data.dfs_australia import fetch_player_stats
+            from afl_bot.data.dfs_australia import to_player_log as _dfs_to_log
+            dfs = _dfs_to_log(fetch_player_stats(), games)
+            player_round = dfs[dfs["round"] == round_no]
+        except Exception:  # noqa: BLE001
+            pass
+
+    # actual H2H/total per match (totals keyed by match_id)
+    h2h_actual, total_actual = {}, {}
+    for _, g in games.iterrows():
+        h2h_actual[g["hteam"]] = int(g["hscore"] > g["ascore"])
+        h2h_actual[g["ateam"]] = int(g["ascore"] > g["hscore"])
+        total_actual[f"{year}_r{round_no}_{g['hteam']}_v_{g['ateam']}"] = g["hscore"] + g["ascore"]
+    player_stat = {  # (player, stat) -> actual value that round
+        (r["player"], stat): r[stat]
+        for _, r in player_round.iterrows() for stat in ("disposals", "goals", "marks", "tackles")
+    }
+
+    graded = []
+    for _, p in preds.iterrows():
+        market, subject, line = p["market"], p["subject"], p["line"]
+        if market == "h2h":
+            if subject not in h2h_actual:
+                continue
+            actual = h2h_actual[subject]
+        elif market == "total_points":
+            tot = total_actual.get(p["match_id"])
+            actual = int(tot >= float(line)) if tot is not None else None
+        elif market.startswith("player_"):
+            stat = market.split("_", 1)[1]
+            val = player_stat.get((subject, stat))
+            actual = int(val >= float(line)) if val is not None else None
+        else:
+            actual = None
+        if actual is None:
+            continue
+        graded.append({"year": year, "round": round_no, "market": market, "subject": subject,
+                       "line": line, "prob": float(p["prob"]), "actual": actual})
+
+    if not graded:
+        print("No predictions could be matched to actuals (player names/rounds).", file=sys.stderr)
+        return
+    graded_df = pd.DataFrame(graded)
+
+    log_path = out_dir / "calibration_log.csv"
+    if log_path.exists():
+        prev = pd.read_csv(log_path)
+        combined = pd.concat([prev[prev["round"] != round_no] if "round" in prev else prev, graded_df],
+                             ignore_index=True)
+    else:
+        combined = graded_df
+    combined.to_csv(log_path, index=False)
+
+    from afl_bot.backtest.walkforward import brier_score, log_loss
+    probs = graded_df["prob"].to_numpy()
+    actuals = graded_df["actual"].to_numpy(dtype=float)
+    print(f"=== Graded {year} Round {round_no}: {len(graded_df)} predictions ===")
+    print(f"  log loss {log_loss(probs, actuals):.4f} | brier {brier_score(probs, actuals):.4f} "
+          f"| mean pred {probs.mean():.3f} | hit rate {actuals.mean():.3f}")
+    cum_probs = combined["prob"].to_numpy()
+    cum_act = combined["actual"].to_numpy(dtype=float)
+    print(f"  cumulative ({len(combined)} preds across {combined['round'].nunique()} rounds): "
+          f"log loss {log_loss(cum_probs, cum_act):.4f} | brier {brier_score(cum_probs, cum_act):.4f}")
+    print(f"  [appended to {log_path}]")
+
+
+def fit_command(through: int, use_optuna: bool, n_trials: int) -> None:
+    """Re-tune Elo hyperparameters on completed seasons through ``through`` and
+    write a versioned ``elo_params.json`` artifact (round-2 §6.2) that run-round /
+    round-report then pick up — instead of hand-editing config defaults."""
+    client = SquiggleClient()
+    games = pd.concat([client.get_completed_games(y) for y in range(through - 7, through + 1)],
+                      ignore_index=True)
+    games = games[games["year"] <= through]
+    if games.empty:
+        print("No completed games to fit on.", file=sys.stderr)
+        return
+    artifact = fit_elo_params(games, train_end_year=through - 2, eval_start_year=through - 1,
+                              use_optuna=use_optuna, n_trials=n_trials)
+    print(json.dumps(artifact, indent=2))
+    print("\n[wrote elo_params.json -> run-round/round-report will use these tuned params]",
+          file=sys.stderr)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(prog="afl_bot")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    run_p = sub.add_parser("run-round", help="Pull a round, simulate, price, and build multis.")
+    run_p.add_argument("--year", type=int, required=True)
+    run_p.add_argument("--round", type=int, default=None, dest="round_no",
+                        help="Defaults to the next incomplete round.")
+    run_p.add_argument("--odds", type=str, default=None,
+                        help="Path to a JSON file mapping leg names -> market odds.")
+    run_p.add_argument("--n-sims", type=int, default=SIM_ITERATIONS, dest="n_sims")
+    run_p.add_argument("--synthetic-props", action="store_true", dest="synthetic_props",
+                        help="Use a synthetic player log instead of DFS Australia "
+                             "(for offline/testing use).")
+    run_p.add_argument("--rain-mm", type=float, default=None, dest="rain_mm",
+                        help="Price the round as if this much rain (mm) falls; applies "
+                             "wet-weather prop multipliers at open-air venues "
+                             f"(wet >= {WET_THRESHOLD_MM}mm).")
+    run_p.add_argument("--bankroll", type=float, default=DEFAULT_BANKROLL, dest="bankroll",
+                        help="Bankroll ($) for fractional-Kelly stake sizing and the "
+                             "bankroll Monte Carlo.")
+    run_p.add_argument("--lineup", type=str, default=None, dest="lineup_path",
+                        help="Path to a confirmed-lineup JSON {team: [players]}; "
+                             "players not named are excluded from multis.")
+    run_p.add_argument("--allow-synthetic-props", action="store_true", dest="allow_synthetic_props",
+                        help="Permit pricing player props from a synthetic fallback log "
+                             "when --odds is supplied (off by default for safety).")
+
+    rep_p = sub.add_parser("round-report",
+                           help="Weekly real-player report: per-match projections + SGM multis.")
+    rep_p.add_argument("--year", type=int, required=True)
+    rep_p.add_argument("--round", type=int, default=None, dest="round_no",
+                       help="Defaults to the next incomplete round.")
+    rep_p.add_argument("--odds", type=str, default=None,
+                       help="Optional JSON of leg names -> market odds for edges.")
+    rep_p.add_argument("--n-sims", type=int, default=SIM_ITERATIONS, dest="n_sims")
+    rep_p.add_argument("--rain-mm", type=float, default=None, dest="rain_mm",
+                       help=f"Price the round as wet (>= {WET_THRESHOLD_MM}mm) at open venues.")
+    rep_p.add_argument("--lineup", type=str, default=None, dest="lineup_path",
+                       help="Path to a confirmed-lineup JSON {team: [players]}.")
+    rep_p.add_argument("--live-odds", action="store_true", dest="use_live",
+                       help="Fetch live market odds (The Odds API; needs ODDS_API_KEY). "
+                            "Merged with --odds (which overrides, e.g. for prop prices).")
+
+    grade_p = sub.add_parser("grade-round",
+                             help="Score a completed round's saved predictions vs actuals.")
+    grade_p.add_argument("--year", type=int, required=True)
+    grade_p.add_argument("--round", type=int, required=True, dest="round_no")
+
+    fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
+    fit_p.add_argument("--through", type=int, required=True,
+                       help="Fit on completed seasons up to and including this year.")
+    fit_p.add_argument("--optuna", action="store_true", dest="use_optuna",
+                       help="Use Optuna (optional dep) instead of the dependency-free grid.")
+    fit_p.add_argument("--n-trials", type=int, default=150, dest="n_trials")
+
+    args = parser.parse_args(argv)
+    if args.command == "run-round":
+        run_round(args.year, args.round_no, args.odds, args.n_sims,
+                  args.synthetic_props, args.rain_mm, args.bankroll,
+                  args.lineup_path, args.allow_synthetic_props)
+    elif args.command == "round-report":
+        round_report(args.year, args.round_no, args.odds, args.n_sims,
+                     args.rain_mm, args.lineup_path, args.use_live)
+    elif args.command == "grade-round":
+        grade_round(args.year, args.round_no)
+    elif args.command == "fit":
+        fit_command(args.through, args.use_optuna, args.n_trials)
+
+
+if __name__ == "__main__":
+    main()

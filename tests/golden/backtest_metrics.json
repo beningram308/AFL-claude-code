@@ -1,0 +1,15 @@
+{
+  "_comment": "Golden walk-forward Elo backtest metrics on the deterministic synthetic season in tests/test_ci_backtest.py (seed 42). If a model change shifts these beyond tolerance the test fails, showing the accuracy delta (plan §5.3). Regenerate intentionally when the change is expected.",
+  "overall": {
+    "n_games": 360,
+    "log_loss": 0.5241,
+    "brier": 0.1706,
+    "margin_mae": 32.526
+  },
+  "props": {
+    "_comment": "Walk-forward prop backtest on the deterministic synthetic log in test_ci_backtest.py (4 seasons, seed 7, eval >= 2023).",
+    "n": 5184,
+    "log_loss": 0.4695,
+    "brier": 0.1556
+  }
+}

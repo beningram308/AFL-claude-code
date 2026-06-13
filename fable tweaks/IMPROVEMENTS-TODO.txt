@@ -1,0 +1,330 @@
+================================================================================
+IMPROVEMENTS TODO — WORK LIST FOR CLAUDE CODE (with data-source pointers)
+================================================================================
+Date: 2026-06-12 (v2 — adds WHERE-TO-FIND for every item needing new data)
+Full reasoning for every item: see FABLE-REVIEW-ROUND-2.txt (same folder).
+Work top to bottom. Rule: no item is "done" without a non-worse out-of-sample
+log loss / calibration score through the existing walkforward harness, and
+tests passing. Tick the [ ] when complete.
+
+--------------------------------------------------------------------------------
+1. LINEUPS & PLAYER POOL (do first — biggest real-money fix)
+--------------------------------------------------------------------------------
+[x] 1.1 In cli.py, restrict `usage_players` to players with games in the
+        CURRENT season (fall back to last season early in the year). Right now
+        a retired/injured player can be priced off his 2012+ career average.
+        WHERE: no new data — the DFS rows already in the cache identify
+        current-season players.
+        DONE: cli._select_players() pools to current season (>=18 players),
+        falls back to last season then all-history; verified it surfaces real
+        2026 Geelong players, not retired ones.
+[x] 1.2 Wire confirmed lineups into run_round; set confirmed=False on any
+        priced player not named (the multi builder already excludes them).
+        WHERE — IMPORTANT CORRECTION: squiggle.py's get_lineup uses q=lineup,
+        but Squiggle's documented query types are only teams / games / sources
+        / tips / standings / ladder (https://api.squiggle.com.au/) — q=lineup
+        likely returns nothing. The proven free lineup source is the OFFICIAL
+        AFL API (aflapi.afl.com.au), which is what fitzRoy's fetch_lineup
+        wraps. Port the endpoint from fitzRoy's source:
+          https://github.com/jimmyday12/fitzRoy/blob/main/R/fetch_lineup.R
+          docs: https://jimmyday12.github.io/fitzRoy/
+        Lineups are announced ~Thu 6:20pm AEST for most games — fetch fresh,
+        never cache long-term. Fallback (scrape politely):
+          https://www.footywire.com/afl/footy/afl_team_selections
+        DONE: AFL API roster endpoints are media-token-gated (404), so built
+        afl_bot/data/lineups.py:load_lineup reading a manual lineup JSON
+        {team:[players]} (same interchange as --odds); --lineup flag wired;
+        confirmed=False set on un-named priced players (multi builder excludes
+        them). Verified: a player in --odds but not the lineup is dropped.
+[x] 1.3 Raise PLAYERS_PER_TEAM_SAMPLE from 4 to the confirmed 22 (or 8-10
+        minimum) once 1.1/1.2 gate the pool.
+        DONE: raised to 10; with a confirmed lineup, prices all named players.
+[x] 1.4 Add --require-real-props (default ON when --odds is supplied): refuse
+        to print prop prices if the player log fell back to synthetic.
+        DONE: load_player_log(return_source=True); with --odds the prop
+        section is skipped if the log is synthetic (override:
+        --allow-synthetic-props). H2H/total/OOB markets still print.
+
+--------------------------------------------------------------------------------
+2. PROP BACKTEST + CALIBRATION (props are currently unproven)
+--------------------------------------------------------------------------------
+[x] 2.1 Build a walk-forward prop backtest: for each round of 2023-2025,
+        rebuild profiles with the existing as_of_year/as_of_round args, price
+        the standard lines (15/20/25 disposals, 1/2 goals, 4/6 marks, 3/5
+        tackles) for players who actually played, record hit/miss.
+        DONE: afl_bot/backtest/props.py:walk_forward_prop_predictions (vectorised
+        as-of EWMA shift(1), NB marginal). Real run: 266,058 preds (2023-25).
+[x] 2.2 Report calibration curves (calibration_curve already exists), log
+        loss, Brier per market type.
+        DONE: prop_calibration_report — disposals ll 0.361 (meanP .286 vs hit
+        .305), goals .388, marks .557, tackles .480. Model ~calibrated; isotonic
+        improves every market.
+[x] 2.3 Fit an IsotonicCalibrator PER MARKET TYPE on those walk-forward preds
+        (same pattern as the H2H one) and apply it in run_round before leg
+        classification and Kelly staking.
+        DONE: fit_prop_calibrators + load_or_fit_prop_calibrators (cached JSON,
+        compressed to step breakpoints ~6KB); applied in run-round AND
+        round-report (legs + projection tables).
+[x] 2.4 Add prop metrics to the golden-file CI test.
+        DONE: tests/test_ci_backtest.py golden prop backtest (5184 synth preds,
+        ll 0.4695) vs tests/golden/backtest_metrics.json["props"].
+[x] 2.5 Until 2.3 ships: halve Kelly fraction on prop legs vs H2H legs.
+        DONE (kept as a permanent prudent default): PROP_KELLY_MULTIPLIER=0.5
+        via stake_bets(mults=...); prop stakes verified halved (5%->2.5%).
+[ ] 2.6 (Optional, better) Validate against real historical prop LINES if any
+        land: no free archive exists; Champion Data's commercial API
+        (https://docs.api.afl.championdata.com/) is the industrial option.
+        Skip unless budget appears — 2.1's hit-rate backtest is sufficient.
+
+--------------------------------------------------------------------------------
+3. SGM JOINT PRICING (built but never wired)
+--------------------------------------------------------------------------------
+[x] 3.1 Store each LegCandidate's per-iteration boolean mask when priced
+        (samples >= line, margin > 0, etc.). ~50KB/leg at 50k sims.
+        DONE: LegCandidate.mask field; H2H/total/OOB/prop legs all carry masks.
+[x] 3.2 Pass joint_prob_fn = prob_event(AND of masks) into build_promo_multi /
+        build_anchor_multis so same-game combos price off the true joint sim
+        probability instead of being silently skipped.
+        DONE: multi.joint_prob_from_masks wired into both builders; verified a
+        same-game combo (Bailey Smith + Max Holmes disposals) now assembles.
+[x] 3.3 Allocate player GOALS from the iteration's team goal count
+        (multinomial on goal shares) so goal-stack SGMs are sum-constrained
+        like disposals are via the Dirichlet.
+        DONE: engine.allocate_player_goals (vectorised conditional-binomial
+        multinomial); CLI goals path uses it.
+[x] 3.4 Use the same leg masks to simulate the round's bets JOINTLY in the
+        bankroll sim (promo multi + overlapping singles are correlated).
+        DONE: staking.simulate_bankroll_joint bootstraps a shared sim index per
+        round; CLI uses it when all staked bets have masks.
+        WHERE: no new data for any of section 3 — pure wiring.
+
+--------------------------------------------------------------------------------
+4. WEATHER CONSISTENCY + AUTOMATION
+--------------------------------------------------------------------------------
+[x] 4.1 Apply wet effects inside the MATCH sim, not just props/OOB: multiply
+        mu_total by a fitted wet ratio (expect ~0.92-0.96) and cut shot
+        accuracy ~2-3pts when is_wet — so H2H/totals/margin move coherently
+        with the props in the same multi.
+        DONE: simulate_match(is_wet=) -> mu_total*WET_TOTAL_MULTIPLIER(0.93,
+        data-fitted 2022-25) + accuracy-WET_ACCURACY_PENALTY(0.02). Verified:
+        total 170->158 (0.93), goals ratio 0.92, margin/H2H preserved. Removed
+        the now-redundant goal rain multiplier from the prop path (the wet
+        match sim already lowers team_goals -> no double-count).
+        weather_effects.fit_wet_total_ratio added for refits.
+[x] 4.2 Wire Open-Meteo's FORECAST endpoint for the round's venues at bounce
+        time so is_wet is automatic; keep --rain-mm as manual override.
+        DONE: weather.forecast_game_rain (HOURLY forecast summed over the bounce
+        window); cli._fixture_is_wet auto-fetches it when --rain-mm is absent
+        (best-effort, dry on failure / outside the forecast horizon).
+[x] 4.3 Switch the historical weather fit + live flag from DAILY to HOURLY
+        rain at bounce time, then refit rain multipliers with
+        fit_rain_multipliers and replace the published defaults if the fit is
+        cleaner.
+        DONE: live flag uses hourly forecast at bounce time (4.2);
+        weather.fetch_hourly_archive + game_window_rain added for the historical
+        fit. FINDING: hourly in-game rain IS a cleaner signal (total wet/dry
+        ~0.87 at >=1mm in-game vs ~0.94 daily) — confirms the hypothesis. Kept
+        the data-backed 0.93 default for now: a bounded sample (4 venues, n_wet
+        ~14) is too thin to replace it; a full hourly backfill across all
+        venues/seasons would let fit_wet_total_ratio/fit_rain_multipliers refit
+        on hourly is_wet.
+
+--------------------------------------------------------------------------------
+5. SYSTEMATIC BIASES IN THE PROP PIPELINE
+--------------------------------------------------------------------------------
+[x] 5.1 Fix era bias in opponent_matchup_multiplier: compare opponent's EWMA
+        conceded to a SEASON-MATCHED (or EWMA) league baseline, not the 2012+
+        all-history mean.
+        DONE: league baseline now over the last PROP_RECENT_SEASONS(3) only
+        (recent_seasons param); tested an inflated all-history baseline (1.33)
+        collapses to ~1.0.
+[x] 5.2 Weight prop fits to recent seasons (last 3-4, or recency weights);
+        keep 2012+ only where the sample is needed (dispersion priors).
+        DONE: CLI computes role_rate_priors on a last-3-season log; dispersion
+        still pools the full 2012+ history. (player_rate_profile already EWMAs
+        the last 20 games.)
+[x] 5.3 Carry the real position labels through both loaders — they are
+        ALREADY DOWNLOADED and then dropped.
+        DONE: fryzigg/dfs to_player_log carry a `position` column
+        (player_position / startingPosition); priors.POSITION_TO_ROLE maps the
+        AFL codes -> coarse roles; classify_roles uses the modal real position
+        (box-score inference only for INT/SUB/no-label). 95% of 2024 players now
+        classified by real position; ruck count 117(box)->32(real, ~correct).
+[~] 5.4 (Unlocked by 5.3) Tagger flag / ruck-matchup features.
+        DEFERRED (experimental, per spec): real position labels now make tagger
+        detection possible, but Fable says "require backtest improvement" and
+        there's no prop-vs-opponent backtest harness yet to validate it without
+        adding noise. Revisit after a per-(player,stat,opponent) backtest exists.
+
+--------------------------------------------------------------------------------
+6. ELO / MATCH MODEL
+--------------------------------------------------------------------------------
+[x] 6.1 Per-team home-venue HGA (shrunk toward the league 10) + interstate
+        travel flag + days-rest differential.
+        DONE: afl_bot/ratings/hga.py (fit_team_hga shrunk to league; TEAM_STATE
+        + venue_state interstate flag; days_rest; game_hga_points/attach_hga).
+        EloRatings.fit/update/expected_margin consume a per-game hga_points
+        column. Sanity: Geelong +11.0 / West Coast +10.6 high, MCG tenants low
+        (Carlton +0.8, Melbourne +2.4) — matches published AFL HGA. Per-game HGA
+        IMPROVES the walk-forward (log loss 0.6266->0.6244, margin slope
+        1.268->1.236). CLI uses venue+interstate HGA for the upcoming margin.
+[x] 6.2 Implement `python -m afl_bot.cli fit --through <year>`: re-tune Elo
+        hyperparams via the existing tuning module, write a versioned params
+        artifact + metrics report. Stop hand-editing config defaults.
+        DONE: tuning.fit_elo_params writes data_cache/elo_params.json (tuned
+        params + held-out metrics + provenance: git sha/fit date/n_games);
+        cli `fit --through <year> [--optuna]`; run-round/round-report load it via
+        load_fitted_elo_params (opt-in — absent => config defaults, no auto-overfit).
+[x] 6.3 Add a margin-calibration check (regress actual on predicted margin,
+        slope ~1.0) to the backtest report.
+        DONE: walkforward.margin_calibration (slope/intercept/r2). Real 2018-25
+        slope 1.27 -> model is UNDER-confident in margins (points_per_400 a bit
+        low) -> a real lever for the `fit` command.
+[x] 6.4 Fit per-venue scoring factors and pass venue_factor into
+        expected_total in the CLI (currently always 1.0).
+        DONE: scoring.venue_scoring_factors (per-venue mean total / league,
+        EB-shrunk for small samples); CLI passes venue_factor to expected_total.
+        Sanity: Carrara 0.92, Docklands 1.04, MCG ~1.0.
+
+--------------------------------------------------------------------------------
+7. DATA INTEGRITY
+--------------------------------------------------------------------------------
+[x] 7.1 Canonical player-ID mapping across Fryzigg/DFS/Squiggle; add a test
+        asserting per-player-game stats agree on any overlapping season.
+        DONE: Fryzigg player_id now carried through to_player_log;
+        afl_bot/data/identity.py (normalise_player_name, build_player_id_map,
+        attach_player_id, validate_source_overlap = the A1.2 check). Real
+        overlap still gated (Fryzigg ends 2025, DFS 2026) -> n_overlap 0 for now;
+        logic tested on synthetic overlap.
+[x] 7.2 Normalise Fryzigg round ordinals (cumcount from 0) to real round
+        numbers; keep the ordinal as a separate sort column.
+        DONE: fryzigg.to_player_log maps match_round -> real round (numeric ->
+        int; Opening Round -> 0; finals continue after the last numeric round,
+        chronologically), keeps round_ordinal separately. (unixtime bug already
+        fixed earlier.) Verified 2024: Opening Round 0, rounds 1-24, finals 25-28.
+[x] 7.3 Snapshot the DFS pull to a dated parquet after every round
+        (dfs_<year>_r<round>.parquet) — CBA/kick-in history cannot be
+        re-downloaded later.
+        DONE: dfs_australia._snapshot_rounds writes dfs_<year>_r<round>.parquet
+        per (year, round) on every live fetch.
+[x] 7.4 Warn on odds-file keys that match no priced leg (silent typos =
+        silently missing legs).
+        DONE: run_round warns (stderr) listing odds keys that matched no leg
+        (ignores "_"-prefixed meta keys).
+[x] 7.5 Historical odds refresh: the aussportsbetting workbook updates weekly
+        during the season — re-download periodically rather than caching
+        forever. WHERE: https://www.aussportsbetting.com/data/ (AFL
+        historical odds xlsx; already wired in afl_bot/data/odds.py).
+        DONE: fetch_historical_odds(max_age_days=ODDS_MAX_AGE_DAYS=3) re-downloads
+        a cache older than the max; None = cache forever; force_refresh always.
+
+--------------------------------------------------------------------------------
+8. OUTPUT HONESTY
+--------------------------------------------------------------------------------
+[x] 8.1 Print combined EDGE on every anchor multi (model prob x book odds - 1)
+        and sort/filter by it — high probability is not value.
+        DONE: MultiResult.combined_edge; CLI ranks anchor multis by the
+        market-anchored combined edge and tags VALUE / -EV (not by probability).
+[x] 8.2 Shrink each multi leg's prob toward the devigged market before staking
+        (overestimates compound multiplicatively across legs).
+        DONE: pricing.market_anchored_prob (MULTI_MARKET_SHRINK=0.25);
+        cli._multi_anchored_prob scales the joint by each leg's anchor ratio;
+        the promo multi is staked on the anchored prob.
+[x] 8.3 Report Monte Carlo standard error per priced market; auto-bump n_sims
+        when an anchor's SE exceeds 0.002.
+        DONE: pricing.mc_standard_error; candidate-legs output shows SE (flags
+        anchors over MC_SE_TARGET=0.002); run-round auto-bumps n_sims to clear
+        the tightest anchor (verified 3000 -> 31876).
+[x] 8.4 Make the H2H draw rule explicit per book (refund => use
+        p_win/(1-p_draw); draw-loses => current behaviour).
+        DONE: odds JSON "_rules":{"h2h_draw":"refund"} -> run-round conditions
+        the win prob on a non-draw; default (draw loses) = current behaviour.
+
+--------------------------------------------------------------------------------
+9. FUTURE / WHEN DATA FLOWS
+--------------------------------------------------------------------------------
+[ ] 9.1 Boundary throw-in (OOB) real counts to replace the league prior —
+        the validated plug-point already exists (afl_bot/data/stoppages.py).
+        WHERE: free-tier option is the AFL website match-centre team stats
+        (Champion-Data-fed); fitzRoy's source="AFL" fetchers show the open
+        endpoints (https://github.com/jimmyday12/fitzRoy — R/fetch_player_
+        stats.R + R/helpers-afl-api.R). Per-match detailed stat endpoints may
+        need a media token; the commercial path is Champion Data's AFL Data
+        Platform (https://docs.api.afl.championdata.com/). Until counts land,
+        keep the "(prior)" flag and never stake the OOB market.
+[ ] 9.2 Live odds feed to replace the hand-built odds JSON. No free stable
+        AU bookmaker API exists; options are paid aggregators (e.g.
+        https://the-odds-api.com — has AFL h2h/lines on free tier with low
+        request caps) or manual entry. If using The Odds API, keep the JSON
+        format as the interchange so the CLI is source-agnostic.
+
+--------------------------------------------------------------------------------
+10. THE WEEKLY DELIVERABLE (what the user actually wants out of all this)
+--------------------------------------------------------------------------------
+A round report, runnable every week, real players only. Depends on Section 1
+(current-season player pool + lineup gating) and Section 3 (SGM joint pricing)
+— build those first, then this is mostly output wiring.
+
+[x] 10.1 New command: `python -m afl_bot.cli round-report --year 2026 --round N
+         [--odds odds.json]` (or extend run-round). For EVERY match in the
+         round print, with REAL player names only (hard-fail or clearly refuse
+         if the log is synthetic):
+         a) Match header: teams, venue, wet/roof flag, P(home)/P(away),
+            predicted margin + total, total-line probability.
+         b) Player projection table per team (confirmed lineup once wired;
+            current-season players until then): projected mean + P(15/20/25
+            disposals), P(1/2 goals), P(4/6 marks), P(3/5 tackles) per player.
+         DONE: cli.round_report + afl_bot/build/report.py. Refuses synthetic
+         logs. Verified on real 2026 r14 (upcoming) and 2025 r1 (completed).
+[x] 10.2 SGM MULTIS PER MATCH: using the Section-3 joint masks, search 2-3 leg
+         same-game combos (h2h + player props, prop + prop) and print the TOP
+         3-5 per match ranked by joint fair probability, showing:
+           legs | joint prob (from sim, NOT the naive product) | fair odds |
+           naive product for comparison | correlation gain/penalty
+         With --odds supplied, also show book odds, edge on the JOINT prob,
+         and only recommend combos with positive edge after the market
+         haircut (item 8.2).
+         DONE: report.search_match_sgms (joint via masks, naive product + corr
+         gain columns; book odds + edge on joint when --odds). [haircut 8.2 TODO]
+[x] 10.3 CROSS-GAME MULTIS: keep the existing promo + anchor multis in the
+         same report (they already work), plus recommended stakes.
+         DONE: promo + anchor multis rendered in the report from odds-matched legs.
+[x] 10.4 SAVE THE REPORT to a file per round (markdown or CSV alongside a
+         printed table): reports/2026_r14_report.md — so weeks are comparable
+         and results can be graded later.
+         DONE: writes reports/<year>_r<N>_report.md + a machine-readable
+         <year>_r<N>_predictions.csv sidecar.
+[x] 10.5 GRADING LOOP: after the round completes, a `grade-round` step that
+         scores every printed probability against what actually happened and
+         appends to a running calibration log (feeds Section 2's calibration).
+         This is what proves week-by-week whether the SGM probs are real.
+         DONE: cli.grade-round scores the saved predictions vs actuals (h2h/
+         total from results, props from Fryzigg raw match_round / DFS),
+         appends reports/calibration_log.csv, prints round + cumulative log
+         loss/Brier. Verified 2025 r1: 1114 preds, log loss 0.623.
+         FOUND: Fryzigg to_player_log unixtime is broken (1970 dates) — grading
+         matches props via raw match_round instead; fix unixtime under §7.2.
+
+================================================================================
+KEY LINKS (consolidated)
+--------------------------------------------------------------------------------
+Squiggle API (games/tips/ladder — NO lineup query): https://api.squiggle.com.au/
+fitzRoy fetch_lineup (AFL API port reference):
+  https://github.com/jimmyday12/fitzRoy/blob/main/R/fetch_lineup.R
+Footywire team selections (lineup fallback):
+  https://www.footywire.com/afl/footy/afl_team_selections
+Open-Meteo forecast: https://api.open-meteo.com/v1/forecast
+Open-Meteo hourly archive: https://archive-api.open-meteo.com/v1/archive
+DFS Australia stats/downloads: https://dfsaustralia.com/afl-stats-download/
+  and https://dfsaustralia.com/downloads/
+Fryzigg dataset (already wired): http://www.fryziggafl.net/static/fryziggafl.rds
+AFL Tables (deep history / tie-breaks): https://afltables.com
+Wheelo Ratings (benchmark): https://www.wheeloratings.com
+Aussportsbetting historical odds: https://www.aussportsbetting.com/data/
+Champion Data commercial API: https://docs.api.afl.championdata.com/
+The Odds API (live odds, paid/free tier): https://the-odds-api.com
+Matter of Stats (HGA/Elo sanity reference): https://www.matterofstats.com
+================================================================================
+Even a well-calibrated model loses regularly — these are accuracy upgrades,
+not risk removal. gamblinghelponline.org.au | 1800 858 858
+================================================================================
