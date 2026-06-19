@@ -12,7 +12,11 @@ from afl_bot.backtest.multis import (
     multi_calibration_report,
     multi_reliability_curve,
     walk_forward_multi_predictions,
+    walk_forward_sim_prop_predictions,
 )
+from afl_bot.backtest.props import apply_prop_calibration, fit_prop_calibrators
+from afl_bot.backtest.walkforward import log_loss
+from afl_bot.config import LEG_PROB_MAX, LEG_PROB_MIN
 from afl_bot.data.player_stats import synthetic_player_log
 
 TEAMS = [f"Team{i}" for i in range(8)]
@@ -152,11 +156,67 @@ def test_walk_forward_multi_predictions_no_calibration_column_by_default(synth_w
     assert "calibrated_joint_prob" not in preds.columns
 
 
+def test_walk_forward_sim_prop_predictions_shape_and_bounds(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_sim_prop_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+    )
+    assert not preds.empty
+    assert list(preds.columns) == ["year", "round", "player", "stat", "line", "prob", "actual"]
+    assert set(preds["round"]) <= {8, 9}
+    assert set(preds["stat"]) <= {"disposals", "goals", "marks", "tackles"}
+    assert set(preds["actual"].unique()) <= {0, 1}
+    # _build_match_legs gates every leg to the same bettable window live pricing uses.
+    assert preds["prob"].between(LEG_PROB_MIN, LEG_PROB_MAX, inclusive="neither").all()
+
+
+def test_walk_forward_sim_prop_predictions_no_leakage_across_rounds(synth_world):
+    games, player_log = synth_world
+    full_preds = walk_forward_sim_prop_predictions(
+        games, player_log, eval_year=2024, rounds=[8], n_sims=3000, seed=1,
+    )
+    truncated_games = games[~((games["year"] == 2024) & (games["round"] > 8))]
+    truncated_log = player_log[~((player_log["year"] == 2024) & (player_log["round"] > 8))]
+    truncated_preds = walk_forward_sim_prop_predictions(
+        truncated_games, truncated_log, eval_year=2024, rounds=[8], n_sims=3000, seed=1,
+    )
+    pd.testing.assert_frame_equal(
+        full_preds.sort_values(["player", "stat", "line"]).reset_index(drop=True),
+        truncated_preds.sort_values(["player", "stat", "line"]).reset_index(drop=True),
+    )
+
+
+def test_walk_forward_sim_prop_predictions_empty_when_round_not_in_games(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_sim_prop_predictions(
+        games, player_log, eval_year=2024, rounds=[999], n_sims=2000,
+    )
+    assert preds.empty
+
+
+def test_fit_prop_calibrators_works_on_sim_predictions(synth_world):
+    """Phase 3.1's whole point: `fit_prop_calibrators`/`apply_prop_calibration`
+    are agnostic to which walk-forward source produced (stat, line, prob,
+    actual) rows -- the real-sim predictions slot in unchanged."""
+    games, player_log = synth_world
+    preds = walk_forward_sim_prop_predictions(
+        games, player_log, eval_year=2024, rounds=[7, 8, 9, 10], n_sims=3000, seed=2,
+    )
+    cals = fit_prop_calibrators(preds, min_samples=5)
+    assert cals
+    calibrated = np.array([apply_prop_calibration(cals, stat, line, p)
+                           for p, stat, line in zip(preds["prob"], preds["stat"], preds["line"])])
+    raw = log_loss(preds["prob"].to_numpy(), preds["actual"].to_numpy(dtype=float))
+    cal = log_loss(calibrated, preds["actual"].to_numpy(dtype=float))
+    assert cal <= raw + 1e-9             # isotonic can't worsen in-sample log loss
+
+
 def test_walk_forward_multi_predictions_calibration_on_adds_bounded_column(synth_world):
     games, player_log = synth_world
     # Halves every probability: predict(p) = p * 0.5 (linear interp from (0,0) to (1,0.5)).
     halving = IsotonicCalibrator(x_=np.array([0.0, 1.0]), y_=np.array([0.0, 0.5]))
-    calibrators = {stat: halving for stat in ("disposals", "goals", "marks", "tackles")}
+    calibrators = {stat: {"pooled": halving, "lines": {}}
+                   for stat in ("disposals", "goals", "marks", "tackles")}
 
     preds = walk_forward_multi_predictions(
         games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
@@ -178,7 +238,8 @@ def test_walk_forward_multi_predictions_calibration_on_adds_bounded_column(synth
 def test_multi_calibration_report_and_curve_support_column_param(synth_world):
     games, player_log = synth_world
     halving = IsotonicCalibrator(x_=np.array([0.0, 1.0]), y_=np.array([0.0, 0.5]))
-    calibrators = {stat: halving for stat in ("disposals", "goals", "marks", "tackles")}
+    calibrators = {stat: {"pooled": halving, "lines": {}}
+                   for stat in ("disposals", "goals", "marks", "tackles")}
     preds = walk_forward_multi_predictions(
         games, player_log, eval_year=2024, rounds=[8, 9, 10], n_sims=3000, seed=1,
         prop_calibrators=calibrators,

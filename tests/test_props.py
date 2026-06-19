@@ -1,10 +1,14 @@
 """Walk-forward prop backtest + per-market calibration (round-2 §2)."""
 
+import json
+
 import numpy as np
 import pandas as pd
 
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.props import (
+    CALIBRATOR_CACHE_VERSION,
+    apply_prop_calibration,
     fit_prop_calibrators,
     load_or_fit_prop_calibrators,
     prop_calibration_report,
@@ -35,6 +39,21 @@ def test_prop_prob_monotone_and_bounded():
     assert prop_prob(20.0, 10.0, 0) == 1.0   # P(>=0) == 1
 
 
+def test_walk_forward_prop_predictions_defaults_to_live_prop_lines():
+    """Model-upgrade audit Phase 3.1: one PROP_LINES definition in config.py,
+    backtest exactly the lines actually priced live -- guards against a
+    second, narrower, stale line set drifting back in (the old
+    `backtest/props.py DEFAULT_PROP_LINES` bug this replaced)."""
+    from afl_bot.cli import PROP_LINES as cli_prop_lines
+    from afl_bot.config import PROP_LINES as config_prop_lines
+
+    assert cli_prop_lines is config_prop_lines
+    preds = walk_forward_prop_predictions(LOG, eval_start_year=2023)
+    seen_lines = {(stat, line) for stat, line in preds[["stat", "line"]].itertuples(index=False)}
+    expected_lines = {(stat, line) for stat, lines in config_prop_lines.items() for line in lines}
+    assert seen_lines == expected_lines
+
+
 def test_walk_forward_predictions_shape_and_walk_forward():
     preds = walk_forward_prop_predictions(LOG, eval_start_year=2023)
     assert not preds.empty
@@ -56,8 +75,30 @@ def test_fit_prop_calibrators_improve_in_sample():
     cals = fit_prop_calibrators(preds)
     for stat, grp in preds.groupby("stat"):
         raw = log_loss(grp["prob"].to_numpy(), grp["actual"].to_numpy(float))
-        cal = log_loss(cals[stat].predict(grp["prob"].to_numpy()), grp["actual"].to_numpy(float))
+        calibrated = np.array([apply_prop_calibration(cals, stat, line, p)
+                               for p, line in zip(grp["prob"], grp["line"])])
+        cal = log_loss(calibrated, grp["actual"].to_numpy(float))
         assert cal <= raw + 1e-9             # isotonic can't worsen in-sample log loss
+
+
+def test_fit_prop_calibrators_per_line_with_pooled_fallback():
+    preds = walk_forward_prop_predictions(LOG, eval_start_year=2023)
+    # A low threshold so at least one (stat, line) cell clears it and gets its
+    # own curve, while a deliberately huge threshold forces every cell back to
+    # the pooled fallback -- both paths of apply_prop_calibration's lookup.
+    per_line = fit_prop_calibrators(preds, min_samples=10)
+    all_pooled = fit_prop_calibrators(preds, min_samples=10**9)
+    assert any(entry["lines"] for entry in per_line.values())
+    assert all(entry["lines"] == {} for entry in all_pooled.values())
+    # Pooled fallback should match the pooled curve directly for any row.
+    stat, line = preds.iloc[0][["stat", "line"]]
+    prob = float(preds.iloc[0]["prob"])
+    assert apply_prop_calibration(all_pooled, stat, line, prob) == \
+        float(all_pooled[stat]["pooled"].predict([prob])[0])
+
+
+def test_apply_prop_calibration_missing_stat_is_passthrough():
+    assert apply_prop_calibration({}, "disposals", 20, 0.42) == 0.42
 
 
 def test_isotonic_calibrator_json_roundtrip():
@@ -72,3 +113,16 @@ def test_load_or_fit_prop_calibrators_caches(tmp_path):
     assert cals and (tmp_path / "prop_calibrators.json").exists()
     again = load_or_fit_prop_calibrators(LOG, eval_start_year=2023, cache_dir=tmp_path)
     assert set(again) == set(cals)
+    for stat in cals:
+        assert set(again[stat]) == {"pooled", "lines"} == set(cals[stat])
+        p = 0.4
+        assert again[stat]["pooled"].predict([p])[0] == cals[stat]["pooled"].predict([p])[0]
+
+
+def test_load_or_fit_prop_calibrators_refits_stale_cache_version(tmp_path):
+    path = tmp_path / "prop_calibrators.json"
+    path.write_text(json.dumps({"disposals": {"x": [0.0, 1.0], "y": [0.0, 1.0]}}))  # pre-Phase-3.2 flat shape
+    cals = load_or_fit_prop_calibrators(LOG, eval_start_year=2023, cache_dir=tmp_path)
+    assert cals and all(set(entry) == {"pooled", "lines"} for entry in cals.values())
+    data = json.loads(path.read_text())
+    assert data["_version"] == CALIBRATOR_CACHE_VERSION

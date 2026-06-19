@@ -107,6 +107,12 @@ WET_ACCURACY_PENALTY = 0.02
 PROP_PRIOR_STRENGTH = 8.0
 PROP_DISPERSION_PRIOR_STRENGTH = 5.0   # pseudo-games for pooling NB r toward the role prior
 PROP_CALIBRATION_LOOKBACK = 3          # seasons of walk-forward prop backtest to fit calibrators on
+# Minimum walk-forward samples for a (stat, line) cell to get its own
+# IsotonicCalibrator (model-upgrade audit Phase 3.2); below this, fall back to
+# the pooled per-stat curve -- the tail lines (35+ disposals, 8+ marks; the
+# $5 multi legs) are the ones a single per-stat curve under-serves, but they
+# also have the fewest historical hits, so they need their own floor.
+PROP_CALIBRATION_MIN_SAMPLES = 200
 # Era-matching: opponent-matchup league baselines and role priors use only the
 # last N seasons (stat levels drift with rule changes), keeping the full 2012+
 # history only where sample size matters, e.g. dispersion (round-2 §5.1/§5.2).
@@ -200,6 +206,19 @@ LEG_PROB_MAX = 0.78
 # Target combined odds for the three rungs of the same-game multi ladder
 # (REAL-MULTIS ADDENDUM 1). Selection uses closest fair-odds to each target.
 MULTI_TARGET_ODDS = (1.75, 3.50, 5.00)
+
+# Player-prop lines priced live (round-report/run-round) -- single source of
+# truth (model-upgrade audit Phase 3.1). `afl_bot.backtest.props` and
+# `afl_bot.backtest.multis` import this too, so the prop backtest/calibrators
+# are always fit on exactly the lines actually priced; nothing here can drift
+# out of sync with a separate backtest-only line set the way the old
+# `backtest/props.py DEFAULT_PROP_LINES` did.
+PROP_LINES = {
+    "disposals": [15, 20, 25, 30, 35],
+    "goals": [1, 2, 3],
+    "marks": [4, 5, 6, 7, 8],
+    "tackles": [3, 4, 5, 6, 7],
+}
 
 # ----------------------------------------------------------------------------- #
 # Simulation

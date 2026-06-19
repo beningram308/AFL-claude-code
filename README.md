@@ -331,6 +331,77 @@ trying, not a new correlation re-fit (Phase 2 already ruled that out on a
 smaller sample, and this larger run doesn't change that verdict — `corr_gain`
 is untouched by either raw or calibrated columns here, by construction).
 
+### Faithful prop calibration (model-upgrade audit Phase 3)
+
+Three changes, in order:
+
+**3.1 One line source of truth.** `PROP_LINES` moved from `cli.py` into
+`config.py` — `cli.py`, `build/report.py`'s `projection_rows`, and
+`backtest/multis.py` all import the same dict now. `backtest/props.py`'s
+separate, narrower, stale `DEFAULT_PROP_LINES` (disposals `[15,20,25]` vs
+live `[15,20,25,30,35]`, etc.) is deleted; `walk_forward_prop_predictions`
+defaults to the live lines. A guard test
+(`test_walk_forward_prop_predictions_defaults_to_live_prop_lines`) asserts
+the backtested line set equals the live one so this can't silently drift
+apart again.
+
+**3.2 Per-(stat, line) calibration.** `fit_prop_calibrators` now fits one
+`IsotonicCalibrator` per `(stat, line)` cell with at least
+`PROP_CALIBRATION_MIN_SAMPLES` (200) walk-forward predictions, falling back
+to the old pooled-per-stat curve for thinner cells (`apply_prop_calibration`
+does the lookup-with-fallback; every call site — `run-round`, `round-report`,
+`projection_rows`, the multi backtest — goes through it instead of a raw
+`.get(stat)`). The calibrator cache JSON schema changed shape to hold both
+curves per stat, with a `_version` field so a pre-Phase-3.2 cache is detected
+and silently refit rather than mis-read.
+
+**3.3 Calibrate against the real sim output.** `walk_forward_prop_predictions`
+(used for the calibrators `round-report`/`run-round` load by default) is
+still the closed-form shrunk-EWMA-NB *proxy* marginal — it doesn't see the
+TOG/CBA/matchup multipliers, shared pace draw, Dirichlet share allocation, or
+scoreline correlation the live sim actually prices through. New
+`afl_bot.backtest.multis.walk_forward_sim_prop_predictions` reuses
+`_build_match_legs` (the same per-round, anti-leakage leg construction the
+multi backtest already trusts) to emit one row per gated candidate leg with
+its **real sim** probability instead — same `fit_prop_calibrators` /
+`apply_prop_calibration` consume either source unchanged. `grade-multis`
+gained `--calibration-source {proxy,sim}` (default `proxy`, unchanged
+behaviour) to compare them:
+
+```
+python -m afl_bot.cli grade-multis --year 2024,2025 --n-sims 3000 --calibration-source sim
+```
+
+**Honest finding (acceptance test, same n=835 sample as the Phase 2.5 run):
+sim-sourced calibration does NOT pass the decision gate.** Log loss 0.5657
+vs the proxy source's 0.5680 — a 0.002 difference, within noise for n=835,
+not a real improvement. Worse: the sim-calibrated curve produces a **new**
+high bucket (0.6-0.8 predicted) that didn't exist under proxy calibration —
+predicted 0.684, actual only 0.433 (a +0.251 gap, the worst miscalibration in
+either run). The proxy run's own high bucket (0.4-0.6: predicted 0.458 vs
+actual 0.362, gap +0.096) is *not* meaningfully fixed by switching sources
+either (sim's 0.4-0.6 bucket: 0.480 vs 0.407, gap +0.073 — similar order of
+magnitude, smaller sample). A likely cause: `walk_forward_sim_prop_predictions`
+is gated to `LEG_PROB_MIN`/`LEG_PROB_MAX` (mirroring live pricing), so its
+per-`(stat, line)` sample is far smaller than the *ungated* proxy marginal's
+— more cells fall back to the pooled curve, and the pooled curve itself has
+less data to work with.
+
+**Per the project's "if it regresses or doesn't help, keep the default"
+rule (same precedent as Phase 2's correlation fit), `--calibration-source`
+stays `proxy` by default; `sim` is opt-in, not wired into
+`round-report`/`run-round`.** This is a real, if disappointing, result: the
+persistent multi-ladder overconfidence found in Phase 1 is **not** simply a
+calibration-fidelity problem — fitting against the true generative model's
+own marginal doesn't flatten the curve more than the cheap proxy does. The
+3.1/3.2 changes (single line source of truth, per-line calibration with
+fallback) ship anyway since they're correct and free-standing improvements;
+what doesn't ship is the assumption that 3.3 would fix the overconfidence.
+Open question for whoever picks this up next: is the sim-source sample
+(further thinned by the bettable-window gate) just too small, or is the
+overconfidence structural — e.g. in `corr_gain` itself, which no calibration
+source touches?
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

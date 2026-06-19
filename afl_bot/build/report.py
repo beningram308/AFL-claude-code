@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from itertools import combinations
 
+from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.build.multi import LegCandidate, _no_conflicts, combined_odds, joint_prob_from_masks
 from afl_bot.config import MULTI_MARKET_SHRINK, MULTI_TARGET_ODDS
 from afl_bot.pricing.edge import fair_odds, market_anchored_prob
@@ -22,8 +23,9 @@ from afl_bot.pricing.edge import fair_odds, market_anchored_prob
 def projection_rows(player_samples: dict[str, dict], lines: dict[str, list],
                     calibrators: dict | None = None) -> list[dict]:
     """One row per player: projected mean + P(line) for every stat/line, sorted
-    by projected disposals (descending). ``calibrators`` (per stat) apply the
-    §2.3 per-market calibration to the printed probabilities."""
+    by projected disposals (descending). ``calibrators`` (per ``(stat, line)``,
+    with a per-stat pooled fallback — see ``apply_prop_calibration``) apply
+    the §2.3 / Phase 3.2 calibration to the printed probabilities."""
     calibrators = calibrators or {}
     rows = []
     for player, samples in player_samples.items():
@@ -33,11 +35,9 @@ def projection_rows(player_samples: dict[str, dict], lines: dict[str, list],
             if arr is None:
                 continue
             row[f"{stat}_mean"] = float(arr.mean())
-            cal = calibrators.get(stat)
             for line in stat_lines:
                 p = float((arr >= line).mean())
-                if cal is not None:
-                    p = float(cal.predict([p])[0])
+                p = apply_prop_calibration(calibrators, stat, line, p)
                 row[f"{stat}_{line}+"] = p
         rows.append(row)
     rows.sort(key=lambda r: r.get("disposals_mean", 0.0), reverse=True)

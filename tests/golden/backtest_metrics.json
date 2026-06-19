@@ -7,9 +7,9 @@
     "margin_mae": 32.526
   },
   "props": {
-    "_comment": "Walk-forward prop backtest on the deterministic synthetic log in test_ci_backtest.py (4 seasons, seed 7, eval >= 2023).",
-    "n": 5184,
-    "log_loss": 0.4695,
-    "brier": 0.1556
+    "_comment": "Walk-forward prop backtest on the deterministic synthetic log in test_ci_backtest.py (4 seasons, seed 7, eval >= 2023). Regenerated 2026-06-19 (model-upgrade Phase 3.1): default lines moved from the old, narrower DEFAULT_PROP_LINES to the live config.PROP_LINES (single source of truth), roughly doubling n and including the easier-to-clear shorter lines, which lowers log loss/brier.",
+    "n": 10368,
+    "log_loss": 0.349,
+    "brier": 0.1116
   }
 }

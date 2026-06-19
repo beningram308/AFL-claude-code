@@ -25,7 +25,13 @@ from scipy.stats import nbinom
 
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.walkforward import brier_score, log_loss
-from afl_bot.config import CACHE_DIR, PROP_EWMA_HALFLIFE, PROP_PRIOR_STRENGTH
+from afl_bot.config import (
+    CACHE_DIR,
+    PROP_CALIBRATION_MIN_SAMPLES,
+    PROP_EWMA_HALFLIFE,
+    PROP_LINES,
+    PROP_PRIOR_STRENGTH,
+)
 from afl_bot.models.priors import (
     GLOBAL_ROLE,
     classify_roles,
@@ -34,13 +40,8 @@ from afl_bot.models.priors import (
     shrink,
 )
 
-DEFAULT_PROP_LINES = {
-    "disposals": [15, 20, 25],
-    "goals": [1, 2],
-    "marks": [4, 6],
-    "tackles": [3, 5],
-}
 CALIBRATOR_CACHE = "prop_calibrators"
+CALIBRATOR_CACHE_VERSION = 2   # bumped for the (stat, line) keying (model-upgrade Phase 3.2)
 
 
 def prop_prob(mean, dispersion, line):
@@ -59,8 +60,13 @@ def walk_forward_prop_predictions(
     """One row per (player-game, stat, line) in seasons >= ``eval_start_year``:
     the as-of predicted probability and the actual hit/miss. Profiles use only
     games before each game (EWMA shifted by one); dispersion + role priors are
-    fit on pre-eval seasons to keep the test honest."""
-    lines = lines or DEFAULT_PROP_LINES
+    fit on pre-eval seasons to keep the test honest.
+
+    ``lines`` defaults to the live ``PROP_LINES`` (model-upgrade audit Phase
+    3.1 — backtest exactly the lines actually priced; this used to default to
+    a separate, narrower, stale ``DEFAULT_PROP_LINES`` that drifted out of
+    sync with what `run-round`/`round-report` price)."""
+    lines = lines or PROP_LINES
     stats = stats or list(lines)
     log = log.sort_values(["player", "year", "round", "unixtime"]).reset_index(drop=True)
 
@@ -127,29 +133,85 @@ def prop_calibration_report(preds: pd.DataFrame) -> dict:
     return report
 
 
-def fit_prop_calibrators(preds: pd.DataFrame) -> dict[str, IsotonicCalibrator]:
-    """An ``IsotonicCalibrator`` per stat, fit on the walk-forward predictions
-    (round-2 §2.3)."""
-    return {
-        stat: IsotonicCalibrator().fit(grp["prob"].to_numpy(), grp["actual"].to_numpy(dtype=float))
-        for stat, grp in preds.groupby("stat")
-    }
+def fit_prop_calibrators(
+    preds: pd.DataFrame, *, min_samples: int = PROP_CALIBRATION_MIN_SAMPLES,
+) -> dict[str, dict]:
+    """Per-``(stat, line)`` ``IsotonicCalibrator``, with a pooled per-stat
+    fallback for ``(stat, line)`` cells with fewer than ``min_samples``
+    walk-forward predictions (model-upgrade audit Phase 3.2 — a single curve
+    per stat pools 15+ and 35+ disposals despite very different base rates,
+    starving the tail lines that dominate multi value of their own fit).
+    Returns ``{stat: {"pooled": IsotonicCalibrator, "lines": {line: IsotonicCalibrator}}}``;
+    ``apply_prop_calibration`` does the lookup-with-fallback."""
+    calibrators: dict[str, dict] = {}
+    for stat, grp in preds.groupby("stat"):
+        pooled = IsotonicCalibrator().fit(grp["prob"].to_numpy(), grp["actual"].to_numpy(dtype=float))
+        by_line: dict[float, IsotonicCalibrator] = {}
+        for line, line_grp in grp.groupby("line"):
+            if len(line_grp) < min_samples:
+                continue
+            by_line[float(line)] = IsotonicCalibrator().fit(
+                line_grp["prob"].to_numpy(), line_grp["actual"].to_numpy(dtype=float))
+        calibrators[stat] = {"pooled": pooled, "lines": by_line}
+    return calibrators
+
+
+def apply_prop_calibration(calibrators: dict[str, dict], stat: str, line, prob: float) -> float:
+    """Calibrate one leg's probability: look up the ``(stat, line)`` curve,
+    falling back to the pooled per-stat curve when this exact line wasn't fit
+    (too few samples) or has no entry; returns ``prob`` unchanged if ``stat``
+    has no calibrator at all (e.g. calibrators is ``{}``)."""
+    entry = calibrators.get(stat)
+    if entry is None:
+        return prob
+    cal = entry["lines"].get(float(line), entry["pooled"])
+    return float(cal.predict([prob])[0])
 
 
 def load_or_fit_prop_calibrators(log: pd.DataFrame, *, eval_start_year: int,
-                                 cache_dir=CACHE_DIR, force_refresh: bool = False) -> dict[str, IsotonicCalibrator]:
-    """Cached per-stat calibrators: load the JSON artifact if present, else run
-    the walk-forward backtest, fit, and persist. Returns ``{}`` if there isn't
-    enough history to backtest (callers then skip calibration)."""
-    path = cache_dir / f"{CALIBRATOR_CACHE}.json"
+                                 cache_dir=CACHE_DIR, force_refresh: bool = False,
+                                 cache_name: str = CALIBRATOR_CACHE,
+                                 predictions: pd.DataFrame | None = None) -> dict[str, dict]:
+    """Cached per-``(stat, line)`` calibrators: load the JSON artifact if
+    present, else run the walk-forward backtest, fit, and persist. Returns
+    ``{}`` if there isn't enough history to backtest (callers then skip
+    calibration via ``apply_prop_calibration``'s no-op fallback).
+
+    ``predictions`` lets a caller supply an already-computed (year, round,
+    player, stat, line, prob, actual) frame to fit on instead of this
+    module's own ``walk_forward_prop_predictions`` proxy marginal -- e.g.
+    `afl_bot.backtest.multis.walk_forward_sim_prop_predictions`'s real-sim
+    predictions (model-upgrade audit Phase 3.1). ``cache_name`` then lets
+    that alternate source cache to its own artifact instead of colliding with
+    the proxy-marginal ``prop_calibrators.json``."""
+    path = cache_dir / f"{cache_name}.json"
     if path.exists() and not force_refresh:
         data = json.loads(path.read_text())
-        return {stat: IsotonicCalibrator.from_dict(d) for stat, d in data.items()}
+        if data.get("_version") == CALIBRATOR_CACHE_VERSION:
+            return {
+                stat: {
+                    "pooled": IsotonicCalibrator.from_dict(entry["pooled"]),
+                    "lines": {float(line): IsotonicCalibrator.from_dict(d)
+                              for line, d in entry["lines"].items()},
+                }
+                for stat, entry in data.items() if stat != "_version"
+            }
+        # Stale pre-Phase-3.2 flat {stat: calibrator} cache -- refit below.
 
-    preds = walk_forward_prop_predictions(log, eval_start_year=eval_start_year)
+    preds = predictions if predictions is not None else walk_forward_prop_predictions(
+        log, eval_start_year=eval_start_year)
     if preds.empty:
         return {}
     calibrators = fit_prop_calibrators(preds)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({stat: c.to_dict() for stat, c in calibrators.items()}))
+    path.write_text(json.dumps({
+        "_version": CALIBRATOR_CACHE_VERSION,
+        **{
+            stat: {
+                "pooled": entry["pooled"].to_dict(),
+                "lines": {str(line): c.to_dict() for line, c in entry["lines"].items()},
+            }
+            for stat, entry in calibrators.items()
+        },
+    }))
     return calibrators

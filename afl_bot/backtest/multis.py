@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.backtest.walkforward import brier_score, calibration_curve, log_loss
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import search_match_sgms
@@ -92,12 +93,14 @@ def _build_match_legs(history: pd.DataFrame, player_log: pd.DataFrame, fixtures:
     .load_fitted_correlation_params`) -- model-upgrade audit Phase 2's
     re-run-the-Phase-1-backtest acceptance check.
 
-    ``prop_calibrators`` (per-stat `IsotonicCalibrator`, e.g. from
-    `afl_bot.backtest.props.load_or_fit_prop_calibrators`) optionally
-    calibrates each player-prop leg's stored probability (h2h legs pass
-    through uncalibrated -- the prop calibrators are per-stat, not H2H) --
-    Phase 2.5's calibration-ON mode."""
-    from afl_bot.cli import PLAYERS_PER_TEAM_SAMPLE, PROP_LINES, _fixture_hga, _select_players, _team_player_samples
+    ``prop_calibrators`` (per-``(stat, line)`` with a pooled per-stat
+    fallback, e.g. from `afl_bot.backtest.props.load_or_fit_prop_calibrators`,
+    applied via `apply_prop_calibration`) optionally calibrates each
+    player-prop leg's stored probability (h2h legs pass through uncalibrated
+    -- the prop calibrators don't cover H2H) -- Phase 2.5's calibration-ON
+    mode."""
+    from afl_bot.cli import PLAYERS_PER_TEAM_SAMPLE, _fixture_hga, _select_players, _team_player_samples
+    from afl_bot.config import PROP_LINES
 
     cp = correlation_params or {}
     score_correlation = cp.get("SCORE_SHOT_CORRELATION", SCORE_SHOT_CORRELATION)
@@ -170,13 +173,12 @@ def _build_match_legs(history: pd.DataFrame, player_log: pd.DataFrame, fixtures:
                     arr = stats.get(stat)
                     if arr is None:
                         continue
-                    cal = (prop_calibrators or {}).get(stat)
                     for line in lines:
                         mask = arr >= line
                         prob = prob_event(mask)
                         if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
-                        calibrated_prob = float(cal.predict([prob])[0]) if cal is not None else prob
+                        calibrated_prob = apply_prop_calibration(prop_calibrators or {}, stat, line, prob)
                         name = f"{player_name} {line}+ {stat}"
                         match_legs.append(LegCandidate(
                             name, match_id, f"player_{stat}", player_name, prob,
@@ -244,6 +246,25 @@ def _fetch_actual_player_log(year: int, games_year: pd.DataFrame) -> pd.DataFram
     return pd.DataFrame(columns=["player", "round", "disposals", "goals", "marks", "tackles"])
 
 
+def _truncate_before_round(games: pd.DataFrame, player_log: pd.DataFrame,
+                           eval_year: int, round_no) -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None, None]:
+    """``(history, log)`` truncated to strictly before ``(eval_year, round_no)``
+    -- the anti-leakage contract every walk-forward loop in this module shares.
+    Returns ``(None, None)`` when either truncated frame would be empty (not
+    enough history yet, e.g. the first eval round of the dataset)."""
+    before_games = (games["year"] < eval_year) | (
+        (games["year"] == eval_year) & (games["round"] < round_no))
+    history = games[before_games]
+    if history.empty:
+        return None, None
+    before_log = (player_log["year"] < eval_year) | (
+        (player_log["year"] == eval_year) & (player_log["round"] < round_no))
+    log = player_log[before_log]
+    if log.empty:
+        return None, None
+    return history, log
+
+
 def walk_forward_multi_predictions(
     games: pd.DataFrame, player_log: pd.DataFrame, *, eval_year: int,
     rounds: list[int] | None = None, n_sims: int = SIM_ITERATIONS, seed: int | None = None,
@@ -286,15 +307,8 @@ def walk_forward_multi_predictions(
         fixtures = year_games[year_games["round"] == round_no]
         if fixtures.empty:
             continue
-        before_games = (games["year"] < eval_year) | (
-            (games["year"] == eval_year) & (games["round"] < round_no))
-        history = games[before_games]
-        if history.empty:
-            continue
-        before_log = (player_log["year"] < eval_year) | (
-            (player_log["year"] == eval_year) & (player_log["round"] < round_no))
-        log = player_log[before_log]
-        if log.empty:
+        history, log = _truncate_before_round(games, player_log, eval_year, round_no)
+        if history is None:
             continue
 
         legs_by_match, leg_info_by_match = _build_match_legs(
@@ -333,6 +347,72 @@ def walk_forward_multi_predictions(
                 rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+def walk_forward_sim_prop_predictions(
+    games: pd.DataFrame, player_log: pd.DataFrame, *, eval_year: int,
+    rounds: list[int] | None = None, n_sims: int = SIM_ITERATIONS, seed: int | None = None,
+    correlation_params: dict | None = None,
+) -> pd.DataFrame:
+    """One row per (year, round, player, stat, line) leg `_build_match_legs`
+    would have priced, with the predicted RAW sim probability vs actual hit
+    (model-upgrade audit Phase 3.1 -- "calibrate against the real sim
+    output"). Same shape as `afl_bot.backtest.props.walk_forward_prop_predictions`
+    (year/round/player/stat/line/prob/actual), so `fit_prop_calibrators` works
+    unchanged on either source, but the probabilities come from the FULL live
+    multiplier stack (TOG/CBA/matchup, shared pace draw, Dirichlet share
+    allocation, scoreline correlation via `_team_player_samples`/`simulate_match`)
+    instead of `walk_forward_prop_predictions`'s simplified shrunk-EWMA NB
+    marginal. Don't build a second sim path: this reuses `_build_match_legs`,
+    the same per-round leg construction `walk_forward_multi_predictions`
+    already trusts (anti-leakage by the same truncation contract), just
+    without the 3-leg combo search -- every gated candidate leg becomes one
+    row here, not only the ones that end up in a selected SGM rung.
+
+    Legs are gated to ``LEG_PROB_MIN``/``LEG_PROB_MAX`` inside
+    `_build_match_legs`, same as live pricing -- this fits calibrators on
+    exactly the probability window that's ever shown to a bettor, not the
+    full [0,1] range. ``prop_calibrators=None`` is fixed (passing one in here
+    would calibrate the very data used to fit the next one)."""
+    games = games.sort_values(["year", "round", "unixtime"]).reset_index(drop=True)
+    year_games = games[games["year"] == eval_year]
+    if rounds is None:
+        rounds = sorted(year_games["round"].unique())
+
+    rng = make_rng(seed) if seed is not None else make_rng()
+    actual_log = _fetch_actual_player_log(eval_year, year_games)
+
+    rows = []
+    for round_no in rounds:
+        fixtures = year_games[year_games["round"] == round_no]
+        if fixtures.empty:
+            continue
+        history, log = _truncate_before_round(games, player_log, eval_year, round_no)
+        if history is None:
+            continue
+
+        legs_by_match, leg_info_by_match = _build_match_legs(
+            history, log, fixtures, eval_year, round_no, n_sims, rng,
+            correlation_params=correlation_params)
+        player_round = actual_log[actual_log["round"] == str(round_no)] if not actual_log.empty else actual_log
+        _, player_stat = _actual_results(fixtures, player_round)
+
+        for match_id, match_legs in legs_by_match.items():
+            leg_info = leg_info_by_match[match_id]
+            for leg in match_legs:
+                info = leg_info[leg.name]
+                if info["market"] == "h2h":
+                    continue   # H2H is calibrated/blended separately (ensemble.py)
+                val = player_stat.get((info["subject"], info["market"].split("_", 1)[1]))
+                if val is None:
+                    continue
+                rows.append({
+                    "year": eval_year, "round": round_no, "player": info["subject"],
+                    "stat": info["market"].split("_", 1)[1], "line": info["line"],
+                    "prob": leg.fair_prob, "actual": int(val >= float(info["line"])),
+                })
+
+    return pd.DataFrame(rows, columns=["year", "round", "player", "stat", "line", "prob", "actual"])
 
 
 def multi_calibration_report(preds: pd.DataFrame, column: str = "joint_prob") -> dict:

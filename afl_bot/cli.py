@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 
 from afl_bot.backtest.ensemble import assemble_signals, fit_market_blend, squiggle_consensus
-from afl_bot.backtest.props import load_or_fit_prop_calibrators
+from afl_bot.backtest.props import apply_prop_calibration, load_or_fit_prop_calibrators
 from afl_bot.backtest.tuning import fit_elo_params, load_fitted_elo_params
 from afl_bot.build.multi import (
     LegCandidate,
@@ -57,6 +57,7 @@ from afl_bot.config import (
     PLAYER_FORM_WINDOW,
     PROP_CALIBRATION_LOOKBACK,
     PROP_KELLY_MULTIPLIER,
+    PROP_LINES,
     PROP_RECENT_SEASONS,
     ROOT_DIR,
     SHARE_CONCENTRATION,
@@ -119,12 +120,6 @@ from afl_bot.sim.engine import (
     simulate_team_stat_total,
 )
 
-PROP_LINES = {
-    "disposals": [15, 20, 25, 30, 35],
-    "goals": [1, 2, 3],
-    "marks": [4, 5, 6, 7, 8],
-    "tackles": [3, 4, 5, 6, 7],
-}
 # Top-usage players per team to price when there's no confirmed lineup. Raised
 # from 4 once the pool is gated to current-season/confirmed players so the VALUE
 # search has real breadth (Fable round-2 §1.3); a supplied lineup prices all 22.
@@ -552,12 +547,10 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
                     samples = player_samples[player_name].get(stat)
                     if samples is None:
                         continue
-                    cal = prop_calibrators.get(stat)
                     for line in lines:
                         leg_mask = samples >= line
                         prob = prob_event(leg_mask)
-                        if cal is not None:
-                            prob = float(cal.predict([prob])[0])   # per-market calibration (§2.3)
+                        prob = apply_prop_calibration(prop_calibrators, stat, line, prob)  # §2.3, Phase 3.2
                         if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
                         leg_name = f"{player_name} {line}+ {stat}"
@@ -842,12 +835,10 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                     arr = stats.get(stat)
                     if arr is None:
                         continue
-                    cal = prop_calibrators.get(stat)
                     for line in lines:
                         mask = arr >= line
                         prob = prob_event(mask)
-                        if cal is not None:
-                            prob = float(cal.predict([prob])[0])
+                        prob = apply_prop_calibration(prop_calibrators, stat, line, prob)
                         if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
                         name = f"{player_name} {line}+ {stat}"
@@ -1009,27 +1000,40 @@ def grade_round(year: int, round_no: int) -> None:
 
 
 def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
-                 with_calibration: bool = True) -> None:
+                 with_calibration: bool = True, calibration_source: str = "proxy") -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
-    (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3): for
-    each completed round across every year in `years`, reconstruct the
-    ladder `round-report` would have built from data strictly before that
-    round, and grade the selected rungs' joint probability against what
-    actually happened. Until this reliability curve is flat, treat multi
-    prices as unproven, not evidence (see MODEL-UPGRADE-INSTRUCTIONS.md).
+    (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
+    3.1's calibration-source choice): for each completed round across every
+    year in `years`, reconstruct the ladder `round-report` would have built
+    from data strictly before that round, and grade the selected rungs'
+    joint probability against what actually happened. Until this reliability
+    curve is flat, treat multi prices as unproven, not evidence (see
+    MODEL-UPGRADE-INSTRUCTIONS.md).
 
-    `with_calibration=True` (default) additionally fits the per-stat prop
-    calibrators once per year (on seasons strictly before it, written to a
-    backtest-only cache dir so this never touches the live
-    `prop_calibrators.json` `round-report` uses) and reports a second,
-    calibration-ON reliability curve alongside the raw one -- Phase 2.5's
-    "is the overconfidence in the legs, not the correlation?" check."""
+    `with_calibration=True` (default) additionally fits prop calibrators once
+    per year (on seasons strictly before it, written to a backtest-only cache
+    dir so this never touches the live `prop_calibrators.json` `round-report`
+    uses) and reports a second, calibration-ON reliability curve alongside
+    the raw one -- Phase 2.5's "is the overconfidence in the legs, not the
+    correlation?" check.
+
+    `calibration_source`: `"proxy"` (default) fits on
+    `walk_forward_prop_predictions`'s simplified shrunk-EWMA NB marginal --
+    Phase 2.5's original calibration-ON mode. `"sim"` instead fits on
+    `walk_forward_sim_prop_predictions`'s REAL sim-pipeline probabilities
+    (model-upgrade audit Phase 3.1's "calibrate against the real sim
+    output") -- much more expensive (a full per-round sim pass per prior
+    season, not a closed-form NB marginal), but the acceptance test for
+    Phase 3's whole premise: if `"sim"`'s calibrated curve is flatter than
+    `"proxy"`'s, calibration fidelity (not just calibration's presence) was
+    the missing lever."""
     from afl_bot.backtest.multis import (
         multi_calibration_report,
         multi_reliability_curve,
         walk_forward_multi_predictions,
+        walk_forward_sim_prop_predictions,
     )
-    from afl_bot.backtest.props import load_or_fit_prop_calibrators
+    from afl_bot.backtest.props import fit_prop_calibrators, load_or_fit_prop_calibrators
 
     client = SquiggleClient()
     fetch_years = sorted(set(_history_years(min(years), lookback=7)) | set(years))
@@ -1045,10 +1049,29 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     for year in years:
         prop_calibrators = None
         if with_calibration:
-            prior_log = player_log[player_log["year"] < year]
-            prop_calibrators = load_or_fit_prop_calibrators(
-                prior_log, eval_start_year=year - PROP_CALIBRATION_LOOKBACK,
-                cache_dir=backtest_cal_cache, force_refresh=True) or None
+            eval_start_year = year - PROP_CALIBRATION_LOOKBACK
+            if calibration_source == "sim":
+                # One walk_forward_sim_prop_predictions call per prior season
+                # (it takes a single eval_year), concatenated -- mirrors the
+                # multi-season window load_or_fit_prop_calibrators's proxy
+                # path covers via eval_start_year. games/player_log already
+                # span back further than eval_start_year, and
+                # _truncate_before_round re-enforces strictly-before-round
+                # per call, so passing the full frames here leaks nothing
+                # into a given cal_year's predictions.
+                sim_frames = [
+                    walk_forward_sim_prop_predictions(
+                        games, player_log, eval_year=cal_year, rounds=None,
+                        n_sims=n_sims, seed=1)
+                    for cal_year in range(eval_start_year, year)
+                ]
+                sim_preds = pd.concat(sim_frames, ignore_index=True) if sim_frames else pd.DataFrame()
+                prop_calibrators = fit_prop_calibrators(sim_preds) if not sim_preds.empty else None
+            else:
+                prior_log = player_log[player_log["year"] < year]
+                prop_calibrators = load_or_fit_prop_calibrators(
+                    prior_log, eval_start_year=eval_start_year,
+                    cache_dir=backtest_cal_cache, force_refresh=True) or None
         preds = walk_forward_multi_predictions(
             games, player_log, eval_year=year, rounds=rounds, n_sims=n_sims,
             prop_calibrators=prop_calibrators)
@@ -1187,6 +1210,13 @@ def main(argv: list[str] | None = None) -> None:
     multis_p.add_argument("--n-sims", type=int, default=SIM_ITERATIONS, dest="n_sims")
     multis_p.add_argument("--no-calibration", action="store_true", dest="no_calibration",
                           help="Skip the calibration-ON comparison (raw reliability curve only).")
+    multis_p.add_argument("--calibration-source", choices=["proxy", "sim"], default="proxy",
+                          dest="calibration_source",
+                          help="'proxy' (default) fits calibrators on the shrunk-EWMA NB "
+                               "marginal (Phase 2.5). 'sim' fits on the real sim pipeline's "
+                               "probabilities instead (Phase 3.1) -- much slower, but the "
+                               "acceptance test for whether calibration fidelity flattens the "
+                               "curve further than 'proxy' did.")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1215,7 +1245,8 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "grade-multis":
         rounds = [int(r) for r in args.rounds.split(",")] if args.rounds else None
         years = [int(y) for y in args.year.split(",")]
-        grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration)
+        grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration,
+                    calibration_source=args.calibration_source)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":
