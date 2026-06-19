@@ -1,110 +1,420 @@
 match_id,market,subject,line,prob
-2026_r14_Melbourne_v_Essendon,h2h,Melbourne,,0.7285
-2026_r14_Melbourne_v_Essendon,h2h,Essendon,,0.26268
-2026_r14_Melbourne_v_Essendon,total_points,total,180.5,0.465
-2026_r14_Melbourne_v_Essendon,player_disposals,Jack Steele,15,0.9555125725338491
-2026_r14_Melbourne_v_Essendon,player_disposals,Jack Steele,20,0.7915218902015289
-2026_r14_Melbourne_v_Essendon,player_disposals,Jack Steele,25,0.49955869373345113
-2026_r14_Melbourne_v_Essendon,player_goals,Jack Steele,1,0.3315240083507306
+2026_r14_Western Bulldogs_v_Adelaide,h2h,Western Bulldogs,,0.60974
+2026_r14_Western Bulldogs_v_Adelaide,h2h,Adelaide,,0.38128
+2026_r14_Western Bulldogs_v_Adelaide,total_points,total,180.5,0.45912
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Marcus Bontempelli,15,0.9694132334581773
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Marcus Bontempelli,20,0.8440748440748441
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Marcus Bontempelli,25,0.5777414075286416
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Marcus Bontempelli,1,0.6682832201745876
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Marcus Bontempelli,2,0.3315240083507306
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Marcus Bontempelli,4,0.4758620689655172
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Marcus Bontempelli,6,0.1299821534800713
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Marcus Bontempelli,5,0.4613997113997114
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Bailey Dale,15,0.9694132334581773
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Bailey Dale,20,0.8620689655172413
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Bailey Dale,25,0.6296791443850265
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Bailey Dale,1,0.11807958477508645
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Bailey Dale,4,0.6628621597892889
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Bailey Dale,6,0.22852233676975944
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Bailey Dale,3,0.12384105960264893
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Ryley Sanders,15,0.9215938303341902
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Ryley Sanders,20,0.7396593673965937
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Ryley Sanders,25,0.4363207547169811
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Ryley Sanders,1,0.29415904292751566
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Ryley Sanders,2,0.05064715813168259
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Ryley Sanders,4,0.3653250773993808
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Ryley Sanders,6,0.07522123893805312
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Ryley Sanders,3,0.7960526315789473
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Ryley Sanders,5,0.19902912621359223
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Ed Richards,15,0.9555125725338491
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Ed Richards,20,0.7731854838709677
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Ed Richards,25,0.48404785643070786
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Ed Richards,1,0.5570400822199383
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Ed Richards,2,0.18884758364312262
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Ed Richards,4,0.44145454545454543
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Ed Richards,6,0.11950790861159927
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Ed Richards,3,0.8797595190380761
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Ed Richards,5,0.29664045746962125
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Matthew Kennedy,15,0.8986409966024915
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Matthew Kennedy,20,0.6043587594300083
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Matthew Kennedy,25,0.2836943441636582
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Matthew Kennedy,1,0.16613032984714396
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Matthew Kennedy,4,0.46674268339034586
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Matthew Kennedy,6,0.11950790861159927
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Matthew Kennedy,3,0.9481865284974094
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Matthew Kennedy,5,0.4124775583482944
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Tom Liberatore,15,0.8986409966024915
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Tom Liberatore,20,0.6495238095238095
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Tom Liberatore,25,0.33532423208191137
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Tom Liberatore,1,0.14995224450811845
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Tom Liberatore,4,0.2763990267639905
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Tom Liberatore,5,0.519642857142857
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Bailey Williams,15,0.6948798328108673
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Bailey Williams,20,0.3187710033605377
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Bailey Williams,25,0.1304926764314247
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Bailey Williams,1,0.23608017817371937
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Bailey Williams,4,0.7829670329670331
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Bailey Williams,6,0.34360788276907533
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Bailey Williams,3,0.19902912621359223
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Connor Budarick,15,0.6296791443850265
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Connor Budarick,20,0.2836943441636582
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Connor Budarick,25,0.10473556861389562
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Connor Budarick,1,0.14995224450811845
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Connor Budarick,4,0.5681233933161954
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Connor Budarick,6,0.175
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Connor Budarick,3,0.3627906976744186
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Joel Freijah,15,0.7440068493150686
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Joel Freijah,20,0.4064070351758794
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Joel Freijah,25,0.16902404526166911
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Joel Freijah,1,0.36585365853658536
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Joel Freijah,2,0.09376126938333937
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Joel Freijah,4,0.3653250773993808
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Joel Freijah,6,0.07707355242566509
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Joel Freijah,3,0.8484419263456091
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Joel Freijah,5,0.26037817865681395
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Adam Treloar,15,0.8310626702997275
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Adam Treloar,20,0.49955869373345113
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Adam Treloar,25,0.2185792349726776
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Adam Treloar,1,0.38149350649350655
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Adam Treloar,2,0.09376126938333937
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Adam Treloar,4,0.26406649616368283
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Adam Treloar,3,0.3282747603833866
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Wayne Milera,15,0.9305555555555556
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Wayne Milera,20,0.7440068493150686
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Wayne Milera,25,0.48404785643070786
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Wayne Milera,4,0.8704663212435233
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Wayne Milera,6,0.5357757560855667
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Wayne Milera,3,0.3959798994974875
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Wayne Milera,5,0.06263345195729537
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Jordan Dawson,15,0.9555125725338491
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Jordan Dawson,20,0.7915218902015289
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Jordan Dawson,25,0.49955869373345113
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Jordan Dawson,1,0.6534954407294831
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Jordan Dawson,2,0.28061224489795933
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Jordan Dawson,4,0.8704663212435233
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Jordan Dawson,6,0.5357757560855667
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Jordan Dawson,5,0.8484419263456091
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Rory Laird,15,0.9555125725338491
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Rory Laird,20,0.7915218902015289
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Rory Laird,25,0.49955869373345113
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Rory Laird,4,0.88
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Rory Laird,6,0.5357757560855667
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Rory Laird,3,0.6719524281466799
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Rory Laird,5,0.13513513513513514
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Josh Worrell,15,0.9215938303341902
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Josh Worrell,20,0.7209876543209874
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Josh Worrell,25,0.4363207547169811
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Josh Worrell,4,0.9012658227848102
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Josh Worrell,6,0.6266601082144612
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Josh Worrell,3,0.26037817865681395
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Sam Berry,15,0.8654761904761905
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Sam Berry,20,0.6043587594300083
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Sam Berry,25,0.28695652173913044
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Sam Berry,1,0.19856459330143542
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Sam Berry,4,0.16856780735107732
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Sam Berry,5,0.8819188191881919
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,James Peatling,15,0.8310626702997275
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,James Peatling,20,0.49955869373345113
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,James Peatling,25,0.22874149659863946
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,James Peatling,1,0.28061224489795933
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,James Peatling,2,0.05064715813168259
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,James Peatling,4,0.44145454545454543
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,James Peatling,6,0.11950790861159927
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,James Peatling,5,0.5674676524953789
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Izak Rankine,15,0.7915218902015289
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Izak Rankine,20,0.48404785643070786
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Izak Rankine,25,0.21353509878100044
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Izak Rankine,1,0.6534954407294831
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Izak Rankine,2,0.28061224489795933
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Izak Rankine,4,0.46674268339034586
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Izak Rankine,6,0.1299821534800713
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Izak Rankine,3,0.8041958041958043
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Izak Rankine,5,0.26037817865681395
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Josh Rachele,15,0.6043587594300083
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Josh Rachele,20,0.26224328593996843
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Josh Rachele,25,0.09279279279279279
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Josh Rachele,1,0.7316486161251504
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Josh Rachele,2,0.3690337601862631
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Josh Rachele,4,0.6266601082144612
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Josh Rachele,6,0.22852233676975944
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Josh Rachele,3,0.5674676524953789
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Josh Rachele,5,0.08848146671980871
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Alex Neal-Bullen,15,0.7209876543209874
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Alex Neal-Bullen,20,0.3515358361774744
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Alex Neal-Bullen,25,0.14007954043305354
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Alex Neal-Bullen,1,0.46444644464446444
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Alex Neal-Bullen,2,0.14995224450811845
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Alex Neal-Bullen,4,0.6670862177470107
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Alex Neal-Bullen,6,0.26406649616368283
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Alex Neal-Bullen,3,0.8041958041958043
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Alex Neal-Bullen,5,0.26037817865681395
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Brayden Cook,15,0.6495238095238095
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Brayden Cook,20,0.3187710033605377
+2026_r14_Western Bulldogs_v_Adelaide,player_disposals,Brayden Cook,25,0.10473556861389562
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Brayden Cook,1,0.3315240083507306
+2026_r14_Western Bulldogs_v_Adelaide,player_goals,Brayden Cook,2,0.07676348547717844
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Brayden Cook,4,0.6266601082144612
+2026_r14_Western Bulldogs_v_Adelaide,player_marks,Brayden Cook,6,0.20383693045563545
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Brayden Cook,3,0.3959798994974875
+2026_r14_Western Bulldogs_v_Adelaide,player_tackles,Brayden Cook,5,0.06263345195729537
+2026_r14_Geelong_v_Gold Coast,h2h,Geelong,,0.76364
+2026_r14_Geelong_v_Gold Coast,h2h,Gold Coast,,0.22868
+2026_r14_Geelong_v_Gold Coast,total_points,total,185.5,0.4567
+2026_r14_Geelong_v_Gold Coast,player_disposals,Bailey Smith,20,0.9555125725338491
+2026_r14_Geelong_v_Gold Coast,player_disposals,Bailey Smith,25,0.8620689655172413
+2026_r14_Geelong_v_Gold Coast,player_goals,Bailey Smith,1,0.3488372093023256
+2026_r14_Geelong_v_Gold Coast,player_goals,Bailey Smith,2,0.07676348547717844
+2026_r14_Geelong_v_Gold Coast,player_marks,Bailey Smith,4,0.560294117647059
+2026_r14_Geelong_v_Gold Coast,player_marks,Bailey Smith,6,0.175
+2026_r14_Geelong_v_Gold Coast,player_tackles,Bailey Smith,5,0.519642857142857
+2026_r14_Geelong_v_Gold Coast,player_disposals,Max Holmes,15,0.9694132334581773
+2026_r14_Geelong_v_Gold Coast,player_disposals,Max Holmes,20,0.8986409966024915
+2026_r14_Geelong_v_Gold Coast,player_disposals,Max Holmes,25,0.6948798328108673
+2026_r14_Geelong_v_Gold Coast,player_goals,Max Holmes,1,0.24601524601524596
+2026_r14_Geelong_v_Gold Coast,player_marks,Max Holmes,4,0.7165775401069518
+2026_r14_Geelong_v_Gold Coast,player_marks,Max Holmes,6,0.2763990267639905
+2026_r14_Geelong_v_Gold Coast,player_tackles,Max Holmes,3,0.7261761158021713
+2026_r14_Geelong_v_Gold Coast,player_tackles,Max Holmes,5,0.14583333333333334
+2026_r14_Geelong_v_Gold Coast,player_disposals,Gryan Miers,15,0.8620689655172413
+2026_r14_Geelong_v_Gold Coast,player_disposals,Gryan Miers,20,0.5777414075286416
+2026_r14_Geelong_v_Gold Coast,player_disposals,Gryan Miers,25,0.2836943441636582
+2026_r14_Geelong_v_Gold Coast,player_goals,Gryan Miers,1,0.29415904292751566
+2026_r14_Geelong_v_Gold Coast,player_goals,Gryan Miers,2,0.0663744520976832
+2026_r14_Geelong_v_Gold Coast,player_marks,Gryan Miers,4,0.7165775401069518
+2026_r14_Geelong_v_Gold Coast,player_marks,Gryan Miers,6,0.2763990267639905
+2026_r14_Geelong_v_Gold Coast,player_tackles,Gryan Miers,3,0.4791288566243194
+2026_r14_Geelong_v_Gold Coast,player_tackles,Gryan Miers,5,0.07429871114480661
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tanner Bruhn,15,0.8654761904761905
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tanner Bruhn,20,0.5777414075286416
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tanner Bruhn,25,0.2836943441636582
+2026_r14_Geelong_v_Gold Coast,player_goals,Tanner Bruhn,1,0.1288343558282208
+2026_r14_Geelong_v_Gold Coast,player_marks,Tanner Bruhn,4,0.6372759856630822
+2026_r14_Geelong_v_Gold Coast,player_marks,Tanner Bruhn,6,0.22852233676975944
+2026_r14_Geelong_v_Gold Coast,player_tackles,Tanner Bruhn,3,0.8041958041958043
+2026_r14_Geelong_v_Gold Coast,player_tackles,Tanner Bruhn,5,0.20733532934131738
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tom Stewart,15,0.7915218902015289
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tom Stewart,20,0.48404785643070786
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tom Stewart,25,0.21353509878100044
+2026_r14_Geelong_v_Gold Coast,player_goals,Tom Stewart,1,0.09376126938333937
+2026_r14_Geelong_v_Gold Coast,player_marks,Tom Stewart,4,0.7389975550122252
+2026_r14_Geelong_v_Gold Coast,player_marks,Tom Stewart,6,0.3049114933931688
+2026_r14_Geelong_v_Gold Coast,player_tackles,Tom Stewart,3,0.19902912621359223
+2026_r14_Geelong_v_Gold Coast,player_disposals,Lawson Humphries,15,0.7731854838709677
+2026_r14_Geelong_v_Gold Coast,player_disposals,Lawson Humphries,20,0.4414976599063963
+2026_r14_Geelong_v_Gold Coast,player_disposals,Lawson Humphries,25,0.1788218793828892
+2026_r14_Geelong_v_Gold Coast,player_goals,Lawson Humphries,1,0.19227230910763562
+2026_r14_Geelong_v_Gold Coast,player_marks,Lawson Humphries,4,0.7943067033976124
+2026_r14_Geelong_v_Gold Coast,player_marks,Lawson Humphries,6,0.38860598345003183
+2026_r14_Geelong_v_Gold Coast,player_tackles,Lawson Humphries,3,0.33619702176403216
+2026_r14_Geelong_v_Gold Coast,player_disposals,Jack Bowes,15,0.7209876543209874
+2026_r14_Geelong_v_Gold Coast,player_disposals,Jack Bowes,20,0.3836553945249599
+2026_r14_Geelong_v_Gold Coast,player_disposals,Jack Bowes,25,0.16821602478973005
+2026_r14_Geelong_v_Gold Coast,player_goals,Jack Bowes,1,0.5856929955290611
+2026_r14_Geelong_v_Gold Coast,player_goals,Jack Bowes,2,0.23427529626253418
+2026_r14_Geelong_v_Gold Coast,player_marks,Jack Bowes,4,0.38860598345003183
+2026_r14_Geelong_v_Gold Coast,player_marks,Jack Bowes,6,0.07707355242566509
+2026_r14_Geelong_v_Gold Coast,player_tackles,Jack Bowes,3,0.5205327413984462
+2026_r14_Geelong_v_Gold Coast,player_tackles,Jack Bowes,5,0.07894736842105263
+2026_r14_Geelong_v_Gold Coast,player_disposals,Oliver Dempsey,15,0.7731854838709677
+2026_r14_Geelong_v_Gold Coast,player_disposals,Oliver Dempsey,20,0.4414976599063963
+2026_r14_Geelong_v_Gold Coast,player_disposals,Oliver Dempsey,25,0.1788218793828892
+2026_r14_Geelong_v_Gold Coast,player_goals,Oliver Dempsey,1,0.6682832201745876
+2026_r14_Geelong_v_Gold Coast,player_goals,Oliver Dempsey,2,0.3315240083507306
+2026_r14_Geelong_v_Gold Coast,player_marks,Oliver Dempsey,4,0.6628621597892889
+2026_r14_Geelong_v_Gold Coast,player_marks,Oliver Dempsey,6,0.22852233676975944
+2026_r14_Geelong_v_Gold Coast,player_tackles,Oliver Dempsey,3,0.3959798994974875
+2026_r14_Geelong_v_Gold Coast,player_tackles,Oliver Dempsey,5,0.056436271401395045
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tom Atkins,15,0.7440068493150686
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tom Atkins,20,0.4064070351758794
+2026_r14_Geelong_v_Gold Coast,player_disposals,Tom Atkins,25,0.16902404526166911
+2026_r14_Geelong_v_Gold Coast,player_goals,Tom Atkins,1,0.16613032984714396
+2026_r14_Geelong_v_Gold Coast,player_marks,Tom Atkins,4,0.10087719298245613
+2026_r14_Geelong_v_Gold Coast,player_tackles,Tom Atkins,5,0.8484419263456091
+2026_r14_Geelong_v_Gold Coast,player_disposals,James Worpel,15,0.7915218902015289
+2026_r14_Geelong_v_Gold Coast,player_disposals,James Worpel,20,0.48404785643070786
+2026_r14_Geelong_v_Gold Coast,player_disposals,James Worpel,25,0.20488721804511278
+2026_r14_Geelong_v_Gold Coast,player_goals,James Worpel,1,0.29415904292751566
+2026_r14_Geelong_v_Gold Coast,player_goals,James Worpel,2,0.05064715813168259
+2026_r14_Geelong_v_Gold Coast,player_marks,James Worpel,4,0.20383693045563545
+2026_r14_Geelong_v_Gold Coast,player_tackles,James Worpel,5,0.4791288566243194
+2026_r14_Geelong_v_Gold Coast,player_disposals,Noah Anderson,20,0.9093959731543624
+2026_r14_Geelong_v_Gold Coast,player_disposals,Noah Anderson,25,0.7209876543209874
+2026_r14_Geelong_v_Gold Coast,player_goals,Noah Anderson,1,0.24601524601524596
+2026_r14_Geelong_v_Gold Coast,player_marks,Noah Anderson,4,0.6372759856630822
+2026_r14_Geelong_v_Gold Coast,player_marks,Noah Anderson,6,0.20383693045563545
+2026_r14_Geelong_v_Gold Coast,player_tackles,Noah Anderson,3,0.7202380952380952
+2026_r14_Geelong_v_Gold Coast,player_tackles,Noah Anderson,5,0.12972972972973001
+2026_r14_Geelong_v_Gold Coast,player_disposals,John Noble,15,0.9694132334581773
+2026_r14_Geelong_v_Gold Coast,player_disposals,John Noble,20,0.8654761904761905
+2026_r14_Geelong_v_Gold Coast,player_disposals,John Noble,25,0.6296791443850265
+2026_r14_Geelong_v_Gold Coast,player_goals,John Noble,1,0.24601524601524596
+2026_r14_Geelong_v_Gold Coast,player_marks,John Noble,4,0.9012658227848102
+2026_r14_Geelong_v_Gold Coast,player_marks,John Noble,6,0.560294117647059
+2026_r14_Geelong_v_Gold Coast,player_tackles,John Noble,3,0.20295378751786566
+2026_r14_Geelong_v_Gold Coast,player_disposals,Christian Petracca,15,0.9694132334581773
+2026_r14_Geelong_v_Gold Coast,player_disposals,Christian Petracca,20,0.8620689655172413
+2026_r14_Geelong_v_Gold Coast,player_disposals,Christian Petracca,25,0.6139534883720931
+2026_r14_Geelong_v_Gold Coast,player_goals,Christian Petracca,1,0.5213414634146343
+2026_r14_Geelong_v_Gold Coast,player_goals,Christian Petracca,2,0.18884758364312262
+2026_r14_Geelong_v_Gold Coast,player_marks,Christian Petracca,4,0.39414414414414417
+2026_r14_Geelong_v_Gold Coast,player_marks,Christian Petracca,6,0.07707355242566509
+2026_r14_Geelong_v_Gold Coast,player_tackles,Christian Petracca,3,0.8041958041958043
+2026_r14_Geelong_v_Gold Coast,player_tackles,Christian Petracca,5,0.20733532934131738
+2026_r14_Geelong_v_Gold Coast,player_disposals,Touk Miller,15,0.9644970414201184
+2026_r14_Geelong_v_Gold Coast,player_disposals,Touk Miller,20,0.8013698630136986
+2026_r14_Geelong_v_Gold Coast,player_disposals,Touk Miller,25,0.5329512893982808
+2026_r14_Geelong_v_Gold Coast,player_goals,Touk Miller,1,0.24601524601524596
+2026_r14_Geelong_v_Gold Coast,player_marks,Touk Miller,4,0.46674268339034586
+2026_r14_Geelong_v_Gold Coast,player_marks,Touk Miller,6,0.11950790861159927
+2026_r14_Geelong_v_Gold Coast,player_tackles,Touk Miller,3,0.9272727272727272
+2026_r14_Geelong_v_Gold Coast,player_tackles,Touk Miller,5,0.3627906976744186
+2026_r14_Geelong_v_Gold Coast,player_disposals,Bodhi Uwland,15,0.8986409966024915
+2026_r14_Geelong_v_Gold Coast,player_disposals,Bodhi Uwland,20,0.6495238095238095
+2026_r14_Geelong_v_Gold Coast,player_disposals,Bodhi Uwland,25,0.33532423208191137
+2026_r14_Geelong_v_Gold Coast,player_goals,Bodhi Uwland,1,0.07676348547717844
+2026_r14_Geelong_v_Gold Coast,player_marks,Bodhi Uwland,4,0.8206896551724137
+2026_r14_Geelong_v_Gold Coast,player_marks,Bodhi Uwland,6,0.4060822898032201
+2026_r14_Geelong_v_Gold Coast,player_tackles,Bodhi Uwland,3,0.14285714285714285
+2026_r14_Geelong_v_Gold Coast,player_disposals,Matt Rowell,15,0.9555125725338491
+2026_r14_Geelong_v_Gold Coast,player_disposals,Matt Rowell,20,0.7915218902015289
+2026_r14_Geelong_v_Gold Coast,player_disposals,Matt Rowell,25,0.49955869373345113
+2026_r14_Geelong_v_Gold Coast,player_goals,Matt Rowell,1,0.29415904292751566
+2026_r14_Geelong_v_Gold Coast,player_goals,Matt Rowell,2,0.05064715813168259
+2026_r14_Geelong_v_Gold Coast,player_marks,Matt Rowell,4,0.07707355242566509
+2026_r14_Geelong_v_Gold Coast,player_tackles,Matt Rowell,5,0.8797595190380761
+2026_r14_Geelong_v_Gold Coast,player_disposals,Daniel Rioli,15,0.8986409966024915
+2026_r14_Geelong_v_Gold Coast,player_disposals,Daniel Rioli,20,0.6495238095238095
+2026_r14_Geelong_v_Gold Coast,player_disposals,Daniel Rioli,25,0.33532423208191137
+2026_r14_Geelong_v_Gold Coast,player_goals,Daniel Rioli,1,0.11807958477508645
+2026_r14_Geelong_v_Gold Coast,player_marks,Daniel Rioli,4,0.560294117647059
+2026_r14_Geelong_v_Gold Coast,player_marks,Daniel Rioli,6,0.175
+2026_r14_Geelong_v_Gold Coast,player_tackles,Daniel Rioli,3,0.27930763178599544
+2026_r14_Geelong_v_Gold Coast,player_disposals,Joel Jeffrey,15,0.6296791443850265
+2026_r14_Geelong_v_Gold Coast,player_disposals,Joel Jeffrey,20,0.2836943441636582
+2026_r14_Geelong_v_Gold Coast,player_disposals,Joel Jeffrey,25,0.10473556861389562
+2026_r14_Geelong_v_Gold Coast,player_goals,Joel Jeffrey,1,0.16613032984714396
+2026_r14_Geelong_v_Gold Coast,player_marks,Joel Jeffrey,4,0.6628621597892889
+2026_r14_Geelong_v_Gold Coast,player_marks,Joel Jeffrey,6,0.22852233676975944
+2026_r14_Geelong_v_Gold Coast,player_tackles,Joel Jeffrey,3,0.20295378751786566
+2026_r14_Geelong_v_Gold Coast,player_disposals,Mac Andrew,15,0.6948798328108673
+2026_r14_Geelong_v_Gold Coast,player_disposals,Mac Andrew,20,0.3187710033605377
+2026_r14_Geelong_v_Gold Coast,player_disposals,Mac Andrew,25,0.1304926764314247
+2026_r14_Geelong_v_Gold Coast,player_goals,Mac Andrew,1,0.11807958477508645
+2026_r14_Geelong_v_Gold Coast,player_marks,Mac Andrew,4,0.9012658227848102
+2026_r14_Geelong_v_Gold Coast,player_marks,Mac Andrew,6,0.5357757560855667
+2026_r14_Geelong_v_Gold Coast,player_tackles,Mac Andrew,3,0.11906816220880069
+2026_r14_Geelong_v_Gold Coast,player_disposals,Wil Powell,15,0.6139534883720931
+2026_r14_Geelong_v_Gold Coast,player_disposals,Wil Powell,20,0.2836943441636582
+2026_r14_Geelong_v_Gold Coast,player_disposals,Wil Powell,25,0.0960735171261487
+2026_r14_Geelong_v_Gold Coast,player_goals,Wil Powell,1,0.16613032984714396
+2026_r14_Geelong_v_Gold Coast,player_marks,Wil Powell,4,0.7389975550122252
+2026_r14_Geelong_v_Gold Coast,player_marks,Wil Powell,6,0.30199430199430194
+2026_r14_Geelong_v_Gold Coast,player_tackles,Wil Powell,3,0.7202380952380952
+2026_r14_Geelong_v_Gold Coast,player_tackles,Wil Powell,5,0.12972972972973001
+2026_r14_Melbourne_v_Essendon,h2h,Melbourne,,0.72686
+2026_r14_Melbourne_v_Essendon,h2h,Essendon,,0.26522
+2026_r14_Melbourne_v_Essendon,total_points,total,180.5,0.46578
+2026_r14_Melbourne_v_Essendon,player_disposals,Jack Steele,15,0.9644970414201184
+2026_r14_Melbourne_v_Essendon,player_disposals,Jack Steele,20,0.8310626702997275
+2026_r14_Melbourne_v_Essendon,player_disposals,Jack Steele,25,0.5329512893982808
+2026_r14_Melbourne_v_Essendon,player_goals,Jack Steele,1,0.33149171270718236
 2026_r14_Melbourne_v_Essendon,player_goals,Jack Steele,2,0.0663744520976832
-2026_r14_Melbourne_v_Essendon,player_marks,Jack Steele,4,0.560294117647059
+2026_r14_Melbourne_v_Essendon,player_marks,Jack Steele,4,0.571764705882353
 2026_r14_Melbourne_v_Essendon,player_marks,Jack Steele,6,0.20383693045563545
-2026_r14_Melbourne_v_Essendon,player_tackles,Jack Steele,3,0.9481865284974094
-2026_r14_Melbourne_v_Essendon,player_tackles,Jack Steele,5,0.3959798994974875
-2026_r14_Melbourne_v_Essendon,player_disposals,Jake Bowey,15,0.9065420560747663
-2026_r14_Melbourne_v_Essendon,player_disposals,Jake Bowey,20,0.6948798328108673
-2026_r14_Melbourne_v_Essendon,player_disposals,Jake Bowey,25,0.35189075630252103
-2026_r14_Melbourne_v_Essendon,player_goals,Jake Bowey,1,0.06369426751592357
-2026_r14_Melbourne_v_Essendon,player_marks,Jake Bowey,4,0.8206896551724137
-2026_r14_Melbourne_v_Essendon,player_marks,Jake Bowey,6,0.4460431654676259
-2026_r14_Melbourne_v_Essendon,player_tackles,Jake Bowey,3,0.17370689655172414
-2026_r14_Melbourne_v_Essendon,player_disposals,Kysaiah Pickett,15,0.8620689655172413
-2026_r14_Melbourne_v_Essendon,player_disposals,Kysaiah Pickett,20,0.5329512893982808
-2026_r14_Melbourne_v_Essendon,player_disposals,Kysaiah Pickett,25,0.2836943441636582
-2026_r14_Melbourne_v_Essendon,player_goals,Kysaiah Pickett,1,0.8208955223880597
-2026_r14_Melbourne_v_Essendon,player_goals,Kysaiah Pickett,2,0.5570400822199383
+2026_r14_Melbourne_v_Essendon,player_tackles,Jack Steele,5,0.519642857142857
+2026_r14_Melbourne_v_Essendon,player_disposals,Jake Bowey,15,0.9137466307277629
+2026_r14_Melbourne_v_Essendon,player_disposals,Jake Bowey,20,0.7209876543209874
+2026_r14_Melbourne_v_Essendon,player_disposals,Jake Bowey,25,0.4064070351758794
+2026_r14_Melbourne_v_Essendon,player_goals,Jake Bowey,1,0.05064715813168259
+2026_r14_Melbourne_v_Essendon,player_marks,Jake Bowey,4,0.8366013071895425
+2026_r14_Melbourne_v_Essendon,player_marks,Jake Bowey,6,0.46674268339034586
+2026_r14_Melbourne_v_Essendon,player_tackles,Jake Bowey,3,0.19902912621359223
+2026_r14_Melbourne_v_Essendon,player_disposals,Kysaiah Pickett,15,0.8986409966024915
+2026_r14_Melbourne_v_Essendon,player_disposals,Kysaiah Pickett,20,0.6296791443850265
+2026_r14_Melbourne_v_Essendon,player_disposals,Kysaiah Pickett,25,0.32581967213114754
+2026_r14_Melbourne_v_Essendon,player_goals,Kysaiah Pickett,1,0.8620689655172413
+2026_r14_Melbourne_v_Essendon,player_goals,Kysaiah Pickett,2,0.5856929955290611
 2026_r14_Melbourne_v_Essendon,player_marks,Kysaiah Pickett,4,0.46674268339034586
 2026_r14_Melbourne_v_Essendon,player_marks,Kysaiah Pickett,6,0.1299821534800713
-2026_r14_Melbourne_v_Essendon,player_tackles,Kysaiah Pickett,3,0.7751798561151079
-2026_r14_Melbourne_v_Essendon,player_tackles,Kysaiah Pickett,5,0.14583333333333334
-2026_r14_Melbourne_v_Essendon,player_disposals,Max Gawn,15,0.8310626702997275
-2026_r14_Melbourne_v_Essendon,player_disposals,Max Gawn,20,0.49955869373345113
-2026_r14_Melbourne_v_Essendon,player_disposals,Max Gawn,25,0.22874149659863946
+2026_r14_Melbourne_v_Essendon,player_tackles,Kysaiah Pickett,3,0.8041958041958043
+2026_r14_Melbourne_v_Essendon,player_tackles,Kysaiah Pickett,5,0.20295378751786566
+2026_r14_Melbourne_v_Essendon,player_disposals,Max Gawn,15,0.8654761904761905
+2026_r14_Melbourne_v_Essendon,player_disposals,Max Gawn,20,0.6043587594300083
+2026_r14_Melbourne_v_Essendon,player_disposals,Max Gawn,25,0.2836943441636582
 2026_r14_Melbourne_v_Essendon,player_goals,Max Gawn,1,0.4473567303420702
 2026_r14_Melbourne_v_Essendon,player_goals,Max Gawn,2,0.11774461028192376
-2026_r14_Melbourne_v_Essendon,player_marks,Max Gawn,4,0.7389975550122252
-2026_r14_Melbourne_v_Essendon,player_marks,Max Gawn,6,0.34360788276907533
-2026_r14_Melbourne_v_Essendon,player_tackles,Max Gawn,3,0.14583333333333334
+2026_r14_Melbourne_v_Essendon,player_marks,Max Gawn,4,0.7943067033976124
+2026_r14_Melbourne_v_Essendon,player_marks,Max Gawn,6,0.41033672670321064
+2026_r14_Melbourne_v_Essendon,player_tackles,Max Gawn,3,0.12972972972973001
 2026_r14_Melbourne_v_Essendon,player_disposals,Tom Sparrow,15,0.8986409966024915
-2026_r14_Melbourne_v_Essendon,player_disposals,Tom Sparrow,20,0.6495238095238095
-2026_r14_Melbourne_v_Essendon,player_disposals,Tom Sparrow,25,0.3515358361774744
-2026_r14_Melbourne_v_Essendon,player_goals,Tom Sparrow,1,0.44
+2026_r14_Melbourne_v_Essendon,player_disposals,Tom Sparrow,20,0.6296791443850265
+2026_r14_Melbourne_v_Essendon,player_disposals,Tom Sparrow,25,0.33532423208191137
+2026_r14_Melbourne_v_Essendon,player_goals,Tom Sparrow,1,0.4473567303420702
 2026_r14_Melbourne_v_Essendon,player_goals,Tom Sparrow,2,0.11774461028192376
 2026_r14_Melbourne_v_Essendon,player_marks,Tom Sparrow,4,0.560294117647059
 2026_r14_Melbourne_v_Essendon,player_marks,Tom Sparrow,6,0.18161094224924013
-2026_r14_Melbourne_v_Essendon,player_tackles,Tom Sparrow,3,0.8823529411764706
-2026_r14_Melbourne_v_Essendon,player_tackles,Tom Sparrow,5,0.3282747603833866
-2026_r14_Melbourne_v_Essendon,player_disposals,Christian Salem,15,0.8310626702997275
-2026_r14_Melbourne_v_Essendon,player_disposals,Christian Salem,20,0.49955869373345113
-2026_r14_Melbourne_v_Essendon,player_disposals,Christian Salem,25,0.22874149659863946
-2026_r14_Melbourne_v_Essendon,player_goals,Christian Salem,1,0.11807958477508645
-2026_r14_Melbourne_v_Essendon,player_marks,Christian Salem,4,0.7943067033976124
-2026_r14_Melbourne_v_Essendon,player_marks,Christian Salem,6,0.4392523364485981
+2026_r14_Melbourne_v_Essendon,player_tackles,Tom Sparrow,3,0.9481865284974094
+2026_r14_Melbourne_v_Essendon,player_tackles,Tom Sparrow,5,0.3627741553052756
+2026_r14_Melbourne_v_Essendon,player_disposals,Christian Salem,15,0.8620689655172413
+2026_r14_Melbourne_v_Essendon,player_disposals,Christian Salem,20,0.5777414075286416
+2026_r14_Melbourne_v_Essendon,player_disposals,Christian Salem,25,0.2836943441636582
+2026_r14_Melbourne_v_Essendon,player_goals,Christian Salem,1,0.11774461028192376
+2026_r14_Melbourne_v_Essendon,player_marks,Christian Salem,4,0.8366013071895425
+2026_r14_Melbourne_v_Essendon,player_marks,Christian Salem,6,0.4758620689655172
 2026_r14_Melbourne_v_Essendon,player_tackles,Christian Salem,3,0.08848146671980871
-2026_r14_Melbourne_v_Essendon,player_disposals,Ed Langdon,15,0.8986409966024915
-2026_r14_Melbourne_v_Essendon,player_disposals,Ed Langdon,20,0.6495238095238095
-2026_r14_Melbourne_v_Essendon,player_disposals,Ed Langdon,25,0.34375
-2026_r14_Melbourne_v_Essendon,player_goals,Ed Langdon,1,0.38149350649350655
+2026_r14_Melbourne_v_Essendon,player_disposals,Ed Langdon,15,0.9065420560747663
+2026_r14_Melbourne_v_Essendon,player_disposals,Ed Langdon,20,0.6948798328108673
+2026_r14_Melbourne_v_Essendon,player_disposals,Ed Langdon,25,0.35189075630252103
+2026_r14_Melbourne_v_Essendon,player_goals,Ed Langdon,1,0.3690337601862631
 2026_r14_Melbourne_v_Essendon,player_goals,Ed Langdon,2,0.09376126938333937
 2026_r14_Melbourne_v_Essendon,player_marks,Ed Langdon,4,0.9012658227848102
-2026_r14_Melbourne_v_Essendon,player_marks,Ed Langdon,6,0.6266601082144612
-2026_r14_Melbourne_v_Essendon,player_tackles,Ed Langdon,3,0.20295378751786566
-2026_r14_Melbourne_v_Essendon,player_disposals,Trent Rivers,15,0.7731854838709677
-2026_r14_Melbourne_v_Essendon,player_disposals,Trent Rivers,20,0.4414976599063963
-2026_r14_Melbourne_v_Essendon,player_disposals,Trent Rivers,25,0.1788218793828892
+2026_r14_Melbourne_v_Essendon,player_marks,Ed Langdon,6,0.6628621597892889
+2026_r14_Melbourne_v_Essendon,player_tackles,Ed Langdon,3,0.19902912621359223
+2026_r14_Melbourne_v_Essendon,player_disposals,Trent Rivers,15,0.8310626702997275
+2026_r14_Melbourne_v_Essendon,player_disposals,Trent Rivers,20,0.49955869373345113
+2026_r14_Melbourne_v_Essendon,player_disposals,Trent Rivers,25,0.22874149659863946
 2026_r14_Melbourne_v_Essendon,player_goals,Trent Rivers,1,0.29415904292751566
 2026_r14_Melbourne_v_Essendon,player_goals,Trent Rivers,2,0.05064715813168259
-2026_r14_Melbourne_v_Essendon,player_marks,Trent Rivers,4,0.7722586691658857
-2026_r14_Melbourne_v_Essendon,player_marks,Trent Rivers,6,0.3653250773993808
-2026_r14_Melbourne_v_Essendon,player_tackles,Trent Rivers,3,0.17370689655172414
+2026_r14_Melbourne_v_Essendon,player_marks,Trent Rivers,4,0.7829670329670331
+2026_r14_Melbourne_v_Essendon,player_marks,Trent Rivers,6,0.38860598345003183
+2026_r14_Melbourne_v_Essendon,player_tackles,Trent Rivers,3,0.19902912621359223
 2026_r14_Melbourne_v_Essendon,player_disposals,Caleb Windsor,15,0.6296791443850265
 2026_r14_Melbourne_v_Essendon,player_disposals,Caleb Windsor,20,0.2836943441636582
 2026_r14_Melbourne_v_Essendon,player_disposals,Caleb Windsor,25,0.10473556861389562
-2026_r14_Melbourne_v_Essendon,player_goals,Caleb Windsor,1,0.24601524601524596
+2026_r14_Melbourne_v_Essendon,player_goals,Caleb Windsor,1,0.23427529626253418
 2026_r14_Melbourne_v_Essendon,player_marks,Caleb Windsor,4,0.26406649616368283
-2026_r14_Melbourne_v_Essendon,player_marks,Caleb Windsor,6,0.06181818181818187
 2026_r14_Melbourne_v_Essendon,player_tackles,Caleb Windsor,3,0.26037817865681395
 2026_r14_Melbourne_v_Essendon,player_disposals,Koltyn Tholstrup,15,0.6296791443850265
 2026_r14_Melbourne_v_Essendon,player_disposals,Koltyn Tholstrup,20,0.2836943441636582
 2026_r14_Melbourne_v_Essendon,player_disposals,Koltyn Tholstrup,25,0.10473556861389562
-2026_r14_Melbourne_v_Essendon,player_goals,Koltyn Tholstrup,1,0.4473567303420702
-2026_r14_Melbourne_v_Essendon,player_goals,Koltyn Tholstrup,2,0.11774461028192376
+2026_r14_Melbourne_v_Essendon,player_goals,Koltyn Tholstrup,1,0.39874902267396406
+2026_r14_Melbourne_v_Essendon,player_goals,Koltyn Tholstrup,2,0.09376126938333937
 2026_r14_Melbourne_v_Essendon,player_marks,Koltyn Tholstrup,4,0.6670862177470107
 2026_r14_Melbourne_v_Essendon,player_marks,Koltyn Tholstrup,6,0.2763990267639905
-2026_r14_Melbourne_v_Essendon,player_tackles,Koltyn Tholstrup,3,0.12972972972973001
-2026_r14_Melbourne_v_Essendon,player_disposals,Archie Roberts,20,0.9093959731543624
-2026_r14_Melbourne_v_Essendon,player_disposals,Archie Roberts,25,0.7209876543209874
+2026_r14_Melbourne_v_Essendon,player_tackles,Koltyn Tholstrup,3,0.14583333333333334
+2026_r14_Melbourne_v_Essendon,player_disposals,Archie Roberts,20,0.9215938303341902
+2026_r14_Melbourne_v_Essendon,player_disposals,Archie Roberts,25,0.7915218902015289
 2026_r14_Melbourne_v_Essendon,player_goals,Archie Roberts,1,0.0663744520976832
 2026_r14_Melbourne_v_Essendon,player_marks,Archie Roberts,4,0.9012658227848102
-2026_r14_Melbourne_v_Essendon,player_marks,Archie Roberts,6,0.571764705882353
-2026_r14_Melbourne_v_Essendon,player_tackles,Archie Roberts,3,0.07869481765834928
+2026_r14_Melbourne_v_Essendon,player_marks,Archie Roberts,6,0.6266601082144612
+2026_r14_Melbourne_v_Essendon,player_tackles,Archie Roberts,3,0.08848146671980871
 2026_r14_Melbourne_v_Essendon,player_disposals,Zach Merrett,15,0.9694132334581773
-2026_r14_Melbourne_v_Essendon,player_disposals,Zach Merrett,20,0.8620689655172413
-2026_r14_Melbourne_v_Essendon,player_disposals,Zach Merrett,25,0.6296791443850265
+2026_r14_Melbourne_v_Essendon,player_disposals,Zach Merrett,20,0.8986409966024915
+2026_r14_Melbourne_v_Essendon,player_disposals,Zach Merrett,25,0.6948798328108673
 2026_r14_Melbourne_v_Essendon,player_goals,Zach Merrett,1,0.39874902267396406
 2026_r14_Melbourne_v_Essendon,player_goals,Zach Merrett,2,0.09376126938333937
-2026_r14_Melbourne_v_Essendon,player_marks,Zach Merrett,4,0.7722586691658857
-2026_r14_Melbourne_v_Essendon,player_marks,Zach Merrett,6,0.38860598345003183
-2026_r14_Melbourne_v_Essendon,player_tackles,Zach Merrett,3,0.8819188191881919
-2026_r14_Melbourne_v_Essendon,player_tackles,Zach Merrett,5,0.29664045746962125
+2026_r14_Melbourne_v_Essendon,player_marks,Zach Merrett,4,0.7943067033976124
+2026_r14_Melbourne_v_Essendon,player_marks,Zach Merrett,6,0.39414414414414417
+2026_r14_Melbourne_v_Essendon,player_tackles,Zach Merrett,3,0.8823529411764706
+2026_r14_Melbourne_v_Essendon,player_tackles,Zach Merrett,5,0.3282747603833866
 2026_r14_Melbourne_v_Essendon,player_disposals,Darcy Parish,15,0.9694132334581773
-2026_r14_Melbourne_v_Essendon,player_disposals,Darcy Parish,20,0.8620689655172413
-2026_r14_Melbourne_v_Essendon,player_disposals,Darcy Parish,25,0.6296791443850265
-2026_r14_Melbourne_v_Essendon,player_goals,Darcy Parish,1,0.23427529626253418
+2026_r14_Melbourne_v_Essendon,player_disposals,Darcy Parish,20,0.8986409966024915
+2026_r14_Melbourne_v_Essendon,player_disposals,Darcy Parish,25,0.6948798328108673
+2026_r14_Melbourne_v_Essendon,player_goals,Darcy Parish,1,0.23328228688106176
 2026_r14_Melbourne_v_Essendon,player_marks,Darcy Parish,4,0.7389975550122252
-2026_r14_Melbourne_v_Essendon,player_marks,Darcy Parish,6,0.3049114933931688
-2026_r14_Melbourne_v_Essendon,player_tackles,Darcy Parish,3,0.48881036513545345
-2026_r14_Melbourne_v_Essendon,player_tackles,Darcy Parish,5,0.06263345195729537
+2026_r14_Melbourne_v_Essendon,player_marks,Darcy Parish,6,0.34360788276907533
+2026_r14_Melbourne_v_Essendon,player_tackles,Darcy Parish,3,0.5674676524953789
+2026_r14_Melbourne_v_Essendon,player_tackles,Darcy Parish,5,0.07127429805615551
 2026_r14_Melbourne_v_Essendon,player_disposals,Elijah Tsatas,15,0.9137466307277629
 2026_r14_Melbourne_v_Essendon,player_disposals,Elijah Tsatas,20,0.7209876543209874
 2026_r14_Melbourne_v_Essendon,player_disposals,Elijah Tsatas,25,0.4363207547169811
@@ -113,106 +423,104 @@ match_id,market,subject,line,prob
 2026_r14_Melbourne_v_Essendon,player_marks,Elijah Tsatas,4,0.560294117647059
 2026_r14_Melbourne_v_Essendon,player_marks,Elijah Tsatas,6,0.18161094224924013
 2026_r14_Melbourne_v_Essendon,player_tackles,Elijah Tsatas,3,0.11906816220880069
-2026_r14_Melbourne_v_Essendon,player_disposals,Will Setterfield,15,0.9093959731543624
-2026_r14_Melbourne_v_Essendon,player_disposals,Will Setterfield,20,0.6948798328108673
+2026_r14_Melbourne_v_Essendon,player_disposals,Will Setterfield,15,0.9137466307277629
+2026_r14_Melbourne_v_Essendon,player_disposals,Will Setterfield,20,0.7209876543209874
 2026_r14_Melbourne_v_Essendon,player_disposals,Will Setterfield,25,0.3836553945249599
-2026_r14_Melbourne_v_Essendon,player_goals,Will Setterfield,1,0.23328228688106176
-2026_r14_Melbourne_v_Essendon,player_marks,Will Setterfield,4,0.7134146341463414
+2026_r14_Melbourne_v_Essendon,player_goals,Will Setterfield,1,0.18884758364312262
+2026_r14_Melbourne_v_Essendon,player_marks,Will Setterfield,4,0.7185430463576158
 2026_r14_Melbourne_v_Essendon,player_marks,Will Setterfield,6,0.3049114933931688
-2026_r14_Melbourne_v_Essendon,player_tackles,Will Setterfield,5,0.4124775583482944
-2026_r14_Melbourne_v_Essendon,player_disposals,Sam Durham,15,0.7440068493150686
-2026_r14_Melbourne_v_Essendon,player_disposals,Sam Durham,20,0.4064070351758794
-2026_r14_Melbourne_v_Essendon,player_disposals,Sam Durham,25,0.16902404526166911
-2026_r14_Melbourne_v_Essendon,player_goals,Sam Durham,1,0.29415904292751566
-2026_r14_Melbourne_v_Essendon,player_goals,Sam Durham,2,0.05064715813168259
+2026_r14_Melbourne_v_Essendon,player_tackles,Will Setterfield,5,0.48881036513545345
+2026_r14_Melbourne_v_Essendon,player_disposals,Sam Durham,15,0.76
+2026_r14_Melbourne_v_Essendon,player_disposals,Sam Durham,20,0.4363207547169811
+2026_r14_Melbourne_v_Essendon,player_disposals,Sam Durham,25,0.1788218793828892
+2026_r14_Melbourne_v_Essendon,player_goals,Sam Durham,1,0.3315240083507306
+2026_r14_Melbourne_v_Essendon,player_goals,Sam Durham,2,0.0663744520976832
 2026_r14_Melbourne_v_Essendon,player_marks,Sam Durham,4,0.42461964038727523
-2026_r14_Melbourne_v_Essendon,player_marks,Sam Durham,6,0.11950790861159927
-2026_r14_Melbourne_v_Essendon,player_tackles,Sam Durham,3,0.5205327413984462
-2026_r14_Melbourne_v_Essendon,player_tackles,Sam Durham,5,0.07127429805615551
-2026_r14_Melbourne_v_Essendon,player_disposals,Andrew McGrath,15,0.6296791443850265
-2026_r14_Melbourne_v_Essendon,player_disposals,Andrew McGrath,20,0.2836943441636582
-2026_r14_Melbourne_v_Essendon,player_disposals,Andrew McGrath,25,0.10473556861389562
-2026_r14_Melbourne_v_Essendon,player_goals,Andrew McGrath,1,0.09172259507829977
+2026_r14_Melbourne_v_Essendon,player_marks,Sam Durham,6,0.12396694214876033
+2026_r14_Melbourne_v_Essendon,player_tackles,Sam Durham,3,0.5674676524953789
+2026_r14_Melbourne_v_Essendon,player_tackles,Sam Durham,5,0.07869481765834928
+2026_r14_Melbourne_v_Essendon,player_disposals,Andrew McGrath,15,0.6948798328108673
+2026_r14_Melbourne_v_Essendon,player_disposals,Andrew McGrath,20,0.33532423208191137
+2026_r14_Melbourne_v_Essendon,player_disposals,Andrew McGrath,25,0.14007954043305354
+2026_r14_Melbourne_v_Essendon,player_goals,Andrew McGrath,1,0.07676348547717844
 2026_r14_Melbourne_v_Essendon,player_marks,Andrew McGrath,4,0.560294117647059
 2026_r14_Melbourne_v_Essendon,player_marks,Andrew McGrath,6,0.18161094224924013
 2026_r14_Melbourne_v_Essendon,player_tackles,Andrew McGrath,3,0.11906816220880069
-2026_r14_Melbourne_v_Essendon,player_disposals,Jordan Ridley,15,0.49955869373345113
-2026_r14_Melbourne_v_Essendon,player_disposals,Jordan Ridley,20,0.20488721804511278
-2026_r14_Melbourne_v_Essendon,player_disposals,Jordan Ridley,25,0.07231920199501245
-2026_r14_Melbourne_v_Essendon,player_marks,Jordan Ridley,4,0.8366013071895425
-2026_r14_Melbourne_v_Essendon,player_marks,Jordan Ridley,6,0.47126436781609193
-2026_r14_Melbourne_v_Essendon,player_disposals,Jye Caldwell,15,0.7440068493150686
-2026_r14_Melbourne_v_Essendon,player_disposals,Jye Caldwell,20,0.4064070351758794
-2026_r14_Melbourne_v_Essendon,player_disposals,Jye Caldwell,25,0.16902404526166911
+2026_r14_Melbourne_v_Essendon,player_disposals,Jordan Ridley,15,0.5397489539748956
+2026_r14_Melbourne_v_Essendon,player_disposals,Jordan Ridley,20,0.23139158576051785
+2026_r14_Melbourne_v_Essendon,player_disposals,Jordan Ridley,25,0.0960735171261487
+2026_r14_Melbourne_v_Essendon,player_marks,Jordan Ridley,4,0.8704663212435233
+2026_r14_Melbourne_v_Essendon,player_marks,Jordan Ridley,6,0.5357757560855667
+2026_r14_Melbourne_v_Essendon,player_disposals,Jye Caldwell,15,0.7731854838709677
+2026_r14_Melbourne_v_Essendon,player_disposals,Jye Caldwell,20,0.4525627044711014
+2026_r14_Melbourne_v_Essendon,player_disposals,Jye Caldwell,25,0.1987704918032787
 2026_r14_Melbourne_v_Essendon,player_goals,Jye Caldwell,1,0.39874902267396406
-2026_r14_Melbourne_v_Essendon,player_goals,Jye Caldwell,2,0.09376126938333937
+2026_r14_Melbourne_v_Essendon,player_goals,Jye Caldwell,2,0.09970674486803519
 2026_r14_Melbourne_v_Essendon,player_marks,Jye Caldwell,4,0.38860598345003183
 2026_r14_Melbourne_v_Essendon,player_marks,Jye Caldwell,6,0.11950790861159927
-2026_r14_Melbourne_v_Essendon,player_tackles,Jye Caldwell,3,0.8484419263456091
-2026_r14_Melbourne_v_Essendon,player_tackles,Jye Caldwell,5,0.23974763406940067
+2026_r14_Melbourne_v_Essendon,player_tackles,Jye Caldwell,3,0.8819188191881919
+2026_r14_Melbourne_v_Essendon,player_tackles,Jye Caldwell,5,0.29664045746962125
 2026_r14_Melbourne_v_Essendon,player_disposals,Zak Johnson,15,0.7440068493150686
 2026_r14_Melbourne_v_Essendon,player_disposals,Zak Johnson,20,0.4363207547169811
 2026_r14_Melbourne_v_Essendon,player_disposals,Zak Johnson,25,0.1788218793828892
 2026_r14_Melbourne_v_Essendon,player_goals,Zak Johnson,1,0.05064715813168259
 2026_r14_Melbourne_v_Essendon,player_marks,Zak Johnson,4,0.8704663212435233
 2026_r14_Melbourne_v_Essendon,player_marks,Zak Johnson,6,0.5357757560855667
-2026_r14_North Melbourne_v_West Coast,h2h,North Melbourne,,0.67596
-2026_r14_North Melbourne_v_West Coast,h2h,West Coast,,0.31598
-2026_r14_North Melbourne_v_West Coast,total_points,total,175.5,0.48064
-2026_r14_North Melbourne_v_West Coast,player_disposals,Harry Sheezel,15,0.9694132334581773
-2026_r14_North Melbourne_v_West Coast,player_disposals,Harry Sheezel,20,0.8932524858497479
-2026_r14_North Melbourne_v_West Coast,player_disposals,Harry Sheezel,25,0.6495238095238095
+2026_r14_North Melbourne_v_West Coast,h2h,North Melbourne,,0.67336
+2026_r14_North Melbourne_v_West Coast,h2h,West Coast,,0.31766
+2026_r14_North Melbourne_v_West Coast,total_points,total,175.5,0.48026
+2026_r14_North Melbourne_v_West Coast,player_disposals,Harry Sheezel,20,0.9093959731543624
+2026_r14_North Melbourne_v_West Coast,player_disposals,Harry Sheezel,25,0.7209876543209874
 2026_r14_North Melbourne_v_West Coast,player_goals,Harry Sheezel,1,0.38149350649350655
 2026_r14_North Melbourne_v_West Coast,player_goals,Harry Sheezel,2,0.09376126938333937
-2026_r14_North Melbourne_v_West Coast,player_marks,Harry Sheezel,4,0.7943067033976124
-2026_r14_North Melbourne_v_West Coast,player_marks,Harry Sheezel,6,0.38860598345003183
-2026_r14_North Melbourne_v_West Coast,player_tackles,Harry Sheezel,3,0.8797595190380761
-2026_r14_North Melbourne_v_West Coast,player_tackles,Harry Sheezel,5,0.27930763178599544
+2026_r14_North Melbourne_v_West Coast,player_marks,Harry Sheezel,4,0.8366013071895425
+2026_r14_North Melbourne_v_West Coast,player_marks,Harry Sheezel,6,0.46674268339034586
+2026_r14_North Melbourne_v_West Coast,player_tackles,Harry Sheezel,3,0.8819188191881919
+2026_r14_North Melbourne_v_West Coast,player_tackles,Harry Sheezel,5,0.3282747603833866
 2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Davies-Uniacke,15,0.9555125725338491
-2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Davies-Uniacke,20,0.7731854838709677
-2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Davies-Uniacke,25,0.48404785643070786
-2026_r14_North Melbourne_v_West Coast,player_goals,Luke Davies-Uniacke,1,0.3315240083507306
+2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Davies-Uniacke,20,0.7969348659003831
+2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Davies-Uniacke,25,0.5329512893982808
+2026_r14_North Melbourne_v_West Coast,player_goals,Luke Davies-Uniacke,1,0.29415904292751566
 2026_r14_North Melbourne_v_West Coast,player_goals,Luke Davies-Uniacke,2,0.0663744520976832
 2026_r14_North Melbourne_v_West Coast,player_marks,Luke Davies-Uniacke,4,0.560294117647059
 2026_r14_North Melbourne_v_West Coast,player_marks,Luke Davies-Uniacke,6,0.175
-2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Davies-Uniacke,3,0.9444444444444444
-2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Davies-Uniacke,5,0.3627741553052756
-2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Parker,15,0.9305555555555556
-2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Parker,20,0.7440068493150686
-2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Parker,25,0.4525627044711014
-2026_r14_North Melbourne_v_West Coast,player_goals,Luke Parker,1,0.23427529626253418
-2026_r14_North Melbourne_v_West Coast,player_marks,Luke Parker,4,0.7829670329670331
-2026_r14_North Melbourne_v_West Coast,player_marks,Luke Parker,6,0.3653250773993808
-2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Parker,3,0.5674676524953789
+2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Davies-Uniacke,3,0.9481865284974094
+2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Davies-Uniacke,5,0.4124775583482944
+2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Parker,15,0.9555125725338491
+2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Parker,20,0.7915218902015289
+2026_r14_North Melbourne_v_West Coast,player_disposals,Luke Parker,25,0.49955869373345113
+2026_r14_North Melbourne_v_West Coast,player_goals,Luke Parker,1,0.2666666666666667
+2026_r14_North Melbourne_v_West Coast,player_marks,Luke Parker,4,0.7943067033976124
+2026_r14_North Melbourne_v_West Coast,player_marks,Luke Parker,6,0.38860598345003183
+2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Parker,3,0.6020025031289111
 2026_r14_North Melbourne_v_West Coast,player_tackles,Luke Parker,5,0.08848146671980871
-2026_r14_North Melbourne_v_West Coast,player_disposals,Caleb Daniel,15,0.9093959731543624
-2026_r14_North Melbourne_v_West Coast,player_disposals,Caleb Daniel,20,0.6948798328108673
-2026_r14_North Melbourne_v_West Coast,player_disposals,Caleb Daniel,25,0.3515358361774744
-2026_r14_North Melbourne_v_West Coast,player_goals,Caleb Daniel,1,0.05064715813168259
+2026_r14_North Melbourne_v_West Coast,player_disposals,Caleb Daniel,15,0.9215938303341902
+2026_r14_North Melbourne_v_West Coast,player_disposals,Caleb Daniel,20,0.7396593673965937
+2026_r14_North Melbourne_v_West Coast,player_disposals,Caleb Daniel,25,0.4363207547169811
 2026_r14_North Melbourne_v_West Coast,player_marks,Caleb Daniel,4,0.7185430463576158
 2026_r14_North Melbourne_v_West Coast,player_marks,Caleb Daniel,6,0.3049114933931688
 2026_r14_North Melbourne_v_West Coast,player_tackles,Caleb Daniel,3,0.26037817865681395
-2026_r14_North Melbourne_v_West Coast,player_disposals,Colby McKercher,15,0.9032258064516129
+2026_r14_North Melbourne_v_West Coast,player_disposals,Colby McKercher,15,0.9137466307277629
 2026_r14_North Melbourne_v_West Coast,player_disposals,Colby McKercher,20,0.6948798328108673
-2026_r14_North Melbourne_v_West Coast,player_disposals,Colby McKercher,25,0.33532423208191137
-2026_r14_North Melbourne_v_West Coast,player_goals,Colby McKercher,1,0.3315240083507306
+2026_r14_North Melbourne_v_West Coast,player_disposals,Colby McKercher,25,0.3836553945249599
+2026_r14_North Melbourne_v_West Coast,player_goals,Colby McKercher,1,0.35275754422476585
 2026_r14_North Melbourne_v_West Coast,player_goals,Colby McKercher,2,0.07676348547717844
-2026_r14_North Melbourne_v_West Coast,player_marks,Colby McKercher,4,0.39414414414414417
+2026_r14_North Melbourne_v_West Coast,player_marks,Colby McKercher,4,0.38860598345003183
 2026_r14_North Melbourne_v_West Coast,player_marks,Colby McKercher,6,0.07707355242566509
-2026_r14_North Melbourne_v_West Coast,player_tackles,Colby McKercher,3,0.4791288566243194
-2026_r14_North Melbourne_v_West Coast,player_tackles,Colby McKercher,5,0.06263345195729537
-2026_r14_North Melbourne_v_West Coast,player_disposals,Jy Simpkin,15,0.8654761904761905
-2026_r14_North Melbourne_v_West Coast,player_disposals,Jy Simpkin,20,0.6043587594300083
-2026_r14_North Melbourne_v_West Coast,player_disposals,Jy Simpkin,25,0.2836943441636582
-2026_r14_North Melbourne_v_West Coast,player_goals,Jy Simpkin,1,0.4473567303420702
-2026_r14_North Melbourne_v_West Coast,player_goals,Jy Simpkin,2,0.11807958477508645
-2026_r14_North Melbourne_v_West Coast,player_marks,Jy Simpkin,4,0.6857142857142857
-2026_r14_North Melbourne_v_West Coast,player_marks,Jy Simpkin,6,0.26406649616368283
-2026_r14_North Melbourne_v_West Coast,player_tackles,Jy Simpkin,3,0.3592307692307693
+2026_r14_North Melbourne_v_West Coast,player_tackles,Colby McKercher,3,0.4124775583482944
+2026_r14_North Melbourne_v_West Coast,player_tackles,Colby McKercher,5,0.056436271401395045
+2026_r14_North Melbourne_v_West Coast,player_disposals,Jy Simpkin,15,0.8986409966024915
+2026_r14_North Melbourne_v_West Coast,player_disposals,Jy Simpkin,20,0.6296791443850265
+2026_r14_North Melbourne_v_West Coast,player_disposals,Jy Simpkin,25,0.3187710033605377
+2026_r14_North Melbourne_v_West Coast,player_goals,Jy Simpkin,1,0.46707040121120363
+2026_r14_North Melbourne_v_West Coast,player_goals,Jy Simpkin,2,0.15780730897009967
+2026_r14_North Melbourne_v_West Coast,player_marks,Jy Simpkin,4,0.7165775401069518
+2026_r14_North Melbourne_v_West Coast,player_marks,Jy Simpkin,6,0.2763990267639905
+2026_r14_North Melbourne_v_West Coast,player_tackles,Jy Simpkin,3,0.3538812785388128
 2026_r14_North Melbourne_v_West Coast,player_disposals,Finn O'Sullivan,15,0.7731854838709677
-2026_r14_North Melbourne_v_West Coast,player_disposals,Finn O'Sullivan,20,0.4363207547169811
+2026_r14_North Melbourne_v_West Coast,player_disposals,Finn O'Sullivan,20,0.4371584699453552
 2026_r14_North Melbourne_v_West Coast,player_disposals,Finn O'Sullivan,25,0.1788218793828892
-2026_r14_North Melbourne_v_West Coast,player_goals,Finn O'Sullivan,1,0.36585365853658536
+2026_r14_North Melbourne_v_West Coast,player_goals,Finn O'Sullivan,1,0.3690337601862631
 2026_r14_North Melbourne_v_West Coast,player_goals,Finn O'Sullivan,2,0.09376126938333937
 2026_r14_North Melbourne_v_West Coast,player_marks,Finn O'Sullivan,4,0.6670862177470107
 2026_r14_North Melbourne_v_West Coast,player_marks,Finn O'Sullivan,6,0.26406649616368283
@@ -221,58 +529,58 @@ match_id,market,subject,line,prob
 2026_r14_North Melbourne_v_West Coast,player_disposals,Dylan Stephens,15,0.8310626702997275
 2026_r14_North Melbourne_v_West Coast,player_disposals,Dylan Stephens,20,0.49955869373345113
 2026_r14_North Melbourne_v_West Coast,player_disposals,Dylan Stephens,25,0.22874149659863946
-2026_r14_North Melbourne_v_West Coast,player_goals,Dylan Stephens,1,0.23427529626253418
-2026_r14_North Melbourne_v_West Coast,player_marks,Dylan Stephens,4,0.7165775401069518
-2026_r14_North Melbourne_v_West Coast,player_marks,Dylan Stephens,6,0.2763990267639905
-2026_r14_North Melbourne_v_West Coast,player_tackles,Dylan Stephens,3,0.26037817865681395
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tristan Xerri,15,0.4525627044711014
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tristan Xerri,20,0.16902404526166911
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tristan Xerri,25,0.06224066390041486
-2026_r14_North Melbourne_v_West Coast,player_goals,Tristan Xerri,1,0.25688073394495425
+2026_r14_North Melbourne_v_West Coast,player_goals,Dylan Stephens,1,0.23328228688106176
+2026_r14_North Melbourne_v_West Coast,player_marks,Dylan Stephens,4,0.7389975550122252
+2026_r14_North Melbourne_v_West Coast,player_marks,Dylan Stephens,6,0.3049114933931688
+2026_r14_North Melbourne_v_West Coast,player_tackles,Dylan Stephens,3,0.17870722433460076
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tristan Xerri,15,0.49955869373345113
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tristan Xerri,20,0.20488721804511278
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tristan Xerri,25,0.07231920199501245
+2026_r14_North Melbourne_v_West Coast,player_goals,Tristan Xerri,1,0.24601524601524596
 2026_r14_North Melbourne_v_West Coast,player_marks,Tristan Xerri,4,0.15810276679841898
-2026_r14_North Melbourne_v_West Coast,player_tackles,Tristan Xerri,5,0.4613997113997114
+2026_r14_North Melbourne_v_West Coast,player_tackles,Tristan Xerri,5,0.5674676524953789
 2026_r14_North Melbourne_v_West Coast,player_disposals,George Wardlaw,15,0.7731854838709677
-2026_r14_North Melbourne_v_West Coast,player_disposals,George Wardlaw,20,0.4363207547169811
+2026_r14_North Melbourne_v_West Coast,player_disposals,George Wardlaw,20,0.4414976599063963
 2026_r14_North Melbourne_v_West Coast,player_disposals,George Wardlaw,25,0.1788218793828892
-2026_r14_North Melbourne_v_West Coast,player_goals,George Wardlaw,1,0.4857142857142857
-2026_r14_North Melbourne_v_West Coast,player_goals,George Wardlaw,2,0.16613032984714396
-2026_r14_North Melbourne_v_West Coast,player_marks,George Wardlaw,4,0.22852233676975944
-2026_r14_North Melbourne_v_West Coast,player_tackles,George Wardlaw,5,0.5205327413984462
-2026_r14_North Melbourne_v_West Coast,player_disposals,Harley Reid,15,0.8986409966024915
-2026_r14_North Melbourne_v_West Coast,player_disposals,Harley Reid,20,0.6296791443850265
-2026_r14_North Melbourne_v_West Coast,player_disposals,Harley Reid,25,0.3187710033605377
-2026_r14_North Melbourne_v_West Coast,player_goals,Harley Reid,1,0.5816513761467891
-2026_r14_North Melbourne_v_West Coast,player_goals,Harley Reid,2,0.23427529626253418
-2026_r14_North Melbourne_v_West Coast,player_marks,Harley Reid,4,0.20383693045563545
-2026_r14_North Melbourne_v_West Coast,player_tackles,Harley Reid,3,0.7647058823529411
+2026_r14_North Melbourne_v_West Coast,player_goals,George Wardlaw,1,0.5213414634146343
+2026_r14_North Melbourne_v_West Coast,player_goals,George Wardlaw,2,0.18884758364312262
+2026_r14_North Melbourne_v_West Coast,player_marks,George Wardlaw,4,0.20383693045563545
+2026_r14_North Melbourne_v_West Coast,player_tackles,George Wardlaw,5,0.5674676524953789
+2026_r14_North Melbourne_v_West Coast,player_disposals,Harley Reid,15,0.9093959731543624
+2026_r14_North Melbourne_v_West Coast,player_disposals,Harley Reid,20,0.6495238095238095
+2026_r14_North Melbourne_v_West Coast,player_disposals,Harley Reid,25,0.32581967213114754
+2026_r14_North Melbourne_v_West Coast,player_goals,Harley Reid,1,0.5856929955290611
+2026_r14_North Melbourne_v_West Coast,player_goals,Harley Reid,2,0.24601524601524596
+2026_r14_North Melbourne_v_West Coast,player_marks,Harley Reid,4,0.18161094224924013
+2026_r14_North Melbourne_v_West Coast,player_tackles,Harley Reid,3,0.7751798561151079
 2026_r14_North Melbourne_v_West Coast,player_tackles,Harley Reid,5,0.17370689655172414
 2026_r14_North Melbourne_v_West Coast,player_disposals,Tim Kelly,15,0.8986409966024915
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tim Kelly,20,0.6043587594300083
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tim Kelly,20,0.6296791443850265
 2026_r14_North Melbourne_v_West Coast,player_disposals,Tim Kelly,25,0.2836943441636582
-2026_r14_North Melbourne_v_West Coast,player_goals,Tim Kelly,1,0.23328228688106176
+2026_r14_North Melbourne_v_West Coast,player_goals,Tim Kelly,1,0.18884758364312262
 2026_r14_North Melbourne_v_West Coast,player_marks,Tim Kelly,4,0.38860598345003183
 2026_r14_North Melbourne_v_West Coast,player_marks,Tim Kelly,6,0.07707355242566509
 2026_r14_North Melbourne_v_West Coast,player_tackles,Tim Kelly,3,0.6719524281466799
 2026_r14_North Melbourne_v_West Coast,player_tackles,Tim Kelly,5,0.11906816220880069
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tom McCarthy,15,0.8620689655172413
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tom McCarthy,20,0.5258620689655172
-2026_r14_North Melbourne_v_West Coast,player_disposals,Tom McCarthy,25,0.22874149659863946
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tom McCarthy,15,0.8654761904761905
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tom McCarthy,20,0.5329512893982808
+2026_r14_North Melbourne_v_West Coast,player_disposals,Tom McCarthy,25,0.26224328593996843
 2026_r14_North Melbourne_v_West Coast,player_goals,Tom McCarthy,1,0.11807958477508645
-2026_r14_North Melbourne_v_West Coast,player_marks,Tom McCarthy,4,0.8688524590163934
-2026_r14_North Melbourne_v_West Coast,player_marks,Tom McCarthy,6,0.4460431654676259
+2026_r14_North Melbourne_v_West Coast,player_marks,Tom McCarthy,4,0.8704663212435233
+2026_r14_North Melbourne_v_West Coast,player_marks,Tom McCarthy,6,0.46674268339034586
 2026_r14_North Melbourne_v_West Coast,player_tackles,Tom McCarthy,3,0.19902912621359223
 2026_r14_North Melbourne_v_West Coast,player_disposals,Josh Lindsay,15,0.6948798328108673
 2026_r14_North Melbourne_v_West Coast,player_disposals,Josh Lindsay,20,0.3187710033605377
 2026_r14_North Melbourne_v_West Coast,player_disposals,Josh Lindsay,25,0.10473556861389562
 2026_r14_North Melbourne_v_West Coast,player_goals,Josh Lindsay,1,0.16613032984714396
 2026_r14_North Melbourne_v_West Coast,player_marks,Josh Lindsay,4,0.6372759856630822
-2026_r14_North Melbourne_v_West Coast,player_marks,Josh Lindsay,6,0.22852233676975944
-2026_r14_North Melbourne_v_West Coast,player_disposals,Liam Duggan,15,0.6948798328108673
-2026_r14_North Melbourne_v_West Coast,player_disposals,Liam Duggan,20,0.3187710033605377
-2026_r14_North Melbourne_v_West Coast,player_disposals,Liam Duggan,25,0.10473556861389562
-2026_r14_North Melbourne_v_West Coast,player_marks,Liam Duggan,4,0.8688524590163934
-2026_r14_North Melbourne_v_West Coast,player_marks,Liam Duggan,6,0.46674268339034586
-2026_r14_North Melbourne_v_West Coast,player_tackles,Liam Duggan,3,0.22702702702702704
+2026_r14_North Melbourne_v_West Coast,player_marks,Josh Lindsay,6,0.20689655172413798
+2026_r14_North Melbourne_v_West Coast,player_disposals,Liam Duggan,15,0.7440068493150686
+2026_r14_North Melbourne_v_West Coast,player_disposals,Liam Duggan,20,0.3836553945249599
+2026_r14_North Melbourne_v_West Coast,player_disposals,Liam Duggan,25,0.15025380710659902
+2026_r14_North Melbourne_v_West Coast,player_marks,Liam Duggan,4,0.88
+2026_r14_North Melbourne_v_West Coast,player_marks,Liam Duggan,6,0.5357757560855667
+2026_r14_North Melbourne_v_West Coast,player_tackles,Liam Duggan,3,0.26037817865681395
 2026_r14_North Melbourne_v_West Coast,player_disposals,Willem Duursma,15,0.5397489539748956
 2026_r14_North Melbourne_v_West Coast,player_disposals,Willem Duursma,20,0.21353509878100044
 2026_r14_North Melbourne_v_West Coast,player_disposals,Willem Duursma,25,0.07231920199501245
@@ -285,223 +593,218 @@ match_id,market,subject,line,prob
 2026_r14_North Melbourne_v_West Coast,player_disposals,Milan Murdock,15,0.48404785643070786
 2026_r14_North Melbourne_v_West Coast,player_disposals,Milan Murdock,20,0.16902404526166911
 2026_r14_North Melbourne_v_West Coast,player_goals,Milan Murdock,1,0.6682832201745876
-2026_r14_North Melbourne_v_West Coast,player_goals,Milan Murdock,2,0.33149171270718236
+2026_r14_North Melbourne_v_West Coast,player_goals,Milan Murdock,2,0.3315240083507306
 2026_r14_North Melbourne_v_West Coast,player_marks,Milan Murdock,4,0.230712711241734
 2026_r14_North Melbourne_v_West Coast,player_tackles,Milan Murdock,3,0.7960526315789473
 2026_r14_North Melbourne_v_West Coast,player_tackles,Milan Murdock,5,0.17870722433460076
-2026_r14_North Melbourne_v_West Coast,player_disposals,Ryan Maric,15,0.6296791443850265
-2026_r14_North Melbourne_v_West Coast,player_disposals,Ryan Maric,20,0.26224328593996843
-2026_r14_North Melbourne_v_West Coast,player_disposals,Ryan Maric,25,0.09279279279279279
-2026_r14_North Melbourne_v_West Coast,player_goals,Ryan Maric,1,0.3315240083507306
-2026_r14_North Melbourne_v_West Coast,player_goals,Ryan Maric,2,0.0663744520976832
-2026_r14_North Melbourne_v_West Coast,player_marks,Ryan Maric,4,0.44145454545454543
-2026_r14_North Melbourne_v_West Coast,player_marks,Ryan Maric,6,0.11950790861159927
+2026_r14_North Melbourne_v_West Coast,player_disposals,Ryan Maric,15,0.7209876543209874
+2026_r14_North Melbourne_v_West Coast,player_disposals,Ryan Maric,20,0.32581967213114754
+2026_r14_North Melbourne_v_West Coast,player_disposals,Ryan Maric,25,0.1304926764314247
+2026_r14_North Melbourne_v_West Coast,player_goals,Ryan Maric,1,0.23608017817371937
+2026_r14_North Melbourne_v_West Coast,player_marks,Ryan Maric,4,0.46674268339034586
+2026_r14_North Melbourne_v_West Coast,player_marks,Ryan Maric,6,0.12396694214876033
 2026_r14_North Melbourne_v_West Coast,player_tackles,Ryan Maric,3,0.26037817865681395
-2026_r14_North Melbourne_v_West Coast,player_disposals,Deven Robertson,15,0.49955869373345113
-2026_r14_North Melbourne_v_West Coast,player_disposals,Deven Robertson,20,0.1987704918032787
-2026_r14_North Melbourne_v_West Coast,player_disposals,Deven Robertson,25,0.07231920199501245
-2026_r14_North Melbourne_v_West Coast,player_goals,Deven Robertson,1,0.16613032984714396
-2026_r14_North Melbourne_v_West Coast,player_marks,Deven Robertson,4,0.20383693045563545
+2026_r14_North Melbourne_v_West Coast,player_disposals,Deven Robertson,15,0.4525627044711014
+2026_r14_North Melbourne_v_West Coast,player_disposals,Deven Robertson,20,0.16821602478973005
+2026_r14_North Melbourne_v_West Coast,player_goals,Deven Robertson,1,0.14995224450811845
+2026_r14_North Melbourne_v_West Coast,player_marks,Deven Robertson,4,0.175
 2026_r14_North Melbourne_v_West Coast,player_tackles,Deven Robertson,3,0.7751798561151079
 2026_r14_North Melbourne_v_West Coast,player_tackles,Deven Robertson,5,0.17370689655172414
-2026_r14_North Melbourne_v_West Coast,player_disposals,Jack Graham,15,0.6139534883720931
-2026_r14_North Melbourne_v_West Coast,player_disposals,Jack Graham,20,0.26224328593996843
-2026_r14_North Melbourne_v_West Coast,player_disposals,Jack Graham,25,0.08270676691729324
-2026_r14_North Melbourne_v_West Coast,player_goals,Jack Graham,1,0.39874902267396406
-2026_r14_North Melbourne_v_West Coast,player_goals,Jack Graham,2,0.09970674486803519
-2026_r14_North Melbourne_v_West Coast,player_marks,Jack Graham,4,0.175
-2026_r14_North Melbourne_v_West Coast,player_tackles,Jack Graham,5,0.6247582205029011
-2026_r14_Port Adelaide_v_Sydney,h2h,Port Adelaide,,0.44344
-2026_r14_Port Adelaide_v_Sydney,h2h,Sydney,,0.54666
-2026_r14_Port Adelaide_v_Sydney,total_points,total,175.5,0.45918
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Zak Butters,15,0.9694132334581773
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Zak Butters,20,0.8654761904761905
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Zak Butters,25,0.6296791443850265
-2026_r14_Port Adelaide_v_Sydney,player_goals,Zak Butters,1,0.19856459330143542
+2026_r14_North Melbourne_v_West Coast,player_disposals,Jack Graham,15,0.6948798328108673
+2026_r14_North Melbourne_v_West Coast,player_disposals,Jack Graham,20,0.3187710033605377
+2026_r14_North Melbourne_v_West Coast,player_disposals,Jack Graham,25,0.10473556861389562
+2026_r14_North Melbourne_v_West Coast,player_goals,Jack Graham,1,0.35275754422476585
+2026_r14_North Melbourne_v_West Coast,player_goals,Jack Graham,2,0.07676348547717844
+2026_r14_North Melbourne_v_West Coast,player_marks,Jack Graham,4,0.1299821534800713
+2026_r14_North Melbourne_v_West Coast,player_tackles,Jack Graham,5,0.7472527472527473
+2026_r14_Port Adelaide_v_Sydney,h2h,Port Adelaide,,0.4447
+2026_r14_Port Adelaide_v_Sydney,h2h,Sydney,,0.54536
+2026_r14_Port Adelaide_v_Sydney,total_points,total,175.5,0.45796
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Zak Butters,20,0.9065420560747663
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Zak Butters,25,0.7209876543209874
+2026_r14_Port Adelaide_v_Sydney,player_goals,Zak Butters,1,0.19227230910763562
 2026_r14_Port Adelaide_v_Sydney,player_marks,Zak Butters,4,0.38860598345003183
 2026_r14_Port Adelaide_v_Sydney,player_marks,Zak Butters,6,0.07707355242566509
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Zak Butters,3,0.8041958041958043
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Zak Butters,5,0.20295378751786566
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Connor Rozee,15,0.8654761904761905
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Connor Rozee,20,0.6043587594300083
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Connor Rozee,25,0.2836943441636582
-2026_r14_Port Adelaide_v_Sydney,player_goals,Connor Rozee,1,0.35275754422476585
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Zak Butters,3,0.8484419263456091
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Zak Butters,5,0.23974763406940067
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Connor Rozee,15,0.9137466307277629
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Connor Rozee,20,0.6948798328108673
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Connor Rozee,25,0.3836553945249599
+2026_r14_Port Adelaide_v_Sydney,player_goals,Connor Rozee,1,0.3315240083507306
 2026_r14_Port Adelaide_v_Sydney,player_goals,Connor Rozee,2,0.07676348547717844
-2026_r14_Port Adelaide_v_Sydney,player_marks,Connor Rozee,4,0.5357757560855667
-2026_r14_Port Adelaide_v_Sydney,player_marks,Connor Rozee,6,0.1637426900584795
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Connor Rozee,3,0.5674676524953789
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Connor Rozee,5,0.08848146671980871
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Jason Horne-Francis,15,0.9093959731543624
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Jason Horne-Francis,20,0.6948798328108673
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Jason Horne-Francis,25,0.3515358361774744
-2026_r14_Port Adelaide_v_Sydney,player_goals,Jason Horne-Francis,1,0.6682832201745876
-2026_r14_Port Adelaide_v_Sydney,player_goals,Jason Horne-Francis,2,0.3315240083507306
-2026_r14_Port Adelaide_v_Sydney,player_marks,Jason Horne-Francis,4,0.5357757560855667
-2026_r14_Port Adelaide_v_Sydney,player_marks,Jason Horne-Francis,6,0.1299821534800713
+2026_r14_Port Adelaide_v_Sydney,player_marks,Connor Rozee,4,0.560294117647059
+2026_r14_Port Adelaide_v_Sydney,player_marks,Connor Rozee,6,0.175
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Connor Rozee,3,0.6719524281466799
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Connor Rozee,5,0.11906816220880069
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Jason Horne-Francis,15,0.9215938303341902
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Jason Horne-Francis,20,0.7209876543209874
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Jason Horne-Francis,25,0.3836553945249599
+2026_r14_Port Adelaide_v_Sydney,player_goals,Jason Horne-Francis,1,0.7316486161251504
+2026_r14_Port Adelaide_v_Sydney,player_goals,Jason Horne-Francis,2,0.36585365853658536
+2026_r14_Port Adelaide_v_Sydney,player_marks,Jason Horne-Francis,4,0.560294117647059
+2026_r14_Port Adelaide_v_Sydney,player_marks,Jason Horne-Francis,6,0.175
 2026_r14_Port Adelaide_v_Sydney,player_tackles,Jason Horne-Francis,3,0.7261761158021713
 2026_r14_Port Adelaide_v_Sydney,player_tackles,Jason Horne-Francis,5,0.12972972972973001
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Jase Burgoyne,15,0.8620689655172413
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Jase Burgoyne,20,0.5329512893982808
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Jase Burgoyne,25,0.26224328593996843
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Jase Burgoyne,15,0.8654761904761905
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Jase Burgoyne,20,0.5777414075286416
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Jase Burgoyne,25,0.2836943441636582
 2026_r14_Port Adelaide_v_Sydney,player_goals,Jase Burgoyne,1,0.16613032984714396
-2026_r14_Port Adelaide_v_Sydney,player_marks,Jase Burgoyne,4,0.560294117647059
-2026_r14_Port Adelaide_v_Sydney,player_marks,Jase Burgoyne,6,0.175
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Jase Burgoyne,3,0.519642857142857
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Jase Burgoyne,5,0.07429871114480661
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Kane Farrell,15,0.7209876543209874
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Kane Farrell,20,0.3515358361774744
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Kane Farrell,25,0.14007954043305354
-2026_r14_Port Adelaide_v_Sydney,player_goals,Kane Farrell,1,0.15780730897009967
+2026_r14_Port Adelaide_v_Sydney,player_marks,Jase Burgoyne,4,0.6266601082144612
+2026_r14_Port Adelaide_v_Sydney,player_marks,Jase Burgoyne,6,0.18161094224924013
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Jase Burgoyne,3,0.48881036513545345
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Jase Burgoyne,5,0.06263345195729537
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Kane Farrell,15,0.7440068493150686
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Kane Farrell,20,0.3836553945249599
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Kane Farrell,25,0.16821602478973005
+2026_r14_Port Adelaide_v_Sydney,player_goals,Kane Farrell,1,0.16613032984714396
 2026_r14_Port Adelaide_v_Sydney,player_marks,Kane Farrell,4,0.7389975550122252
 2026_r14_Port Adelaide_v_Sydney,player_marks,Kane Farrell,6,0.3049114933931688
 2026_r14_Port Adelaide_v_Sydney,player_tackles,Kane Farrell,3,0.17370689655172414
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Ollie Wines,15,0.7396593673965937
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Ollie Wines,20,0.3836553945249599
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Ollie Wines,25,0.15025380710659902
-2026_r14_Port Adelaide_v_Sydney,player_goals,Ollie Wines,1,0.16613032984714396
-2026_r14_Port Adelaide_v_Sydney,player_marks,Ollie Wines,4,0.41887905604719766
-2026_r14_Port Adelaide_v_Sydney,player_marks,Ollie Wines,6,0.07707355242566509
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Ollie Wines,3,0.6247582205029011
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Ollie Wines,5,0.08848146671980871
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Willem Drew,15,0.8013698630136986
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Ollie Wines,15,0.7731854838709677
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Ollie Wines,20,0.4363207547169811
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Ollie Wines,25,0.1788218793828892
+2026_r14_Port Adelaide_v_Sydney,player_goals,Ollie Wines,1,0.15780730897009967
+2026_r14_Port Adelaide_v_Sydney,player_marks,Ollie Wines,4,0.44145454545454543
+2026_r14_Port Adelaide_v_Sydney,player_marks,Ollie Wines,6,0.10087719298245613
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Ollie Wines,3,0.6719524281466799
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Ollie Wines,5,0.11906816220880069
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Willem Drew,15,0.8310626702997275
 2026_r14_Port Adelaide_v_Sydney,player_disposals,Willem Drew,20,0.48404785643070786
 2026_r14_Port Adelaide_v_Sydney,player_disposals,Willem Drew,25,0.21353509878100044
-2026_r14_Port Adelaide_v_Sydney,player_goals,Willem Drew,1,0.11807958477508645
-2026_r14_Port Adelaide_v_Sydney,player_marks,Willem Drew,4,0.3049114933931688
-2026_r14_Port Adelaide_v_Sydney,player_marks,Willem Drew,6,0.06181818181818187
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Willem Drew,5,0.6247582205029011
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Darcy Byrne-Jones,15,0.7396593673965937
+2026_r14_Port Adelaide_v_Sydney,player_goals,Willem Drew,1,0.09970674486803519
+2026_r14_Port Adelaide_v_Sydney,player_marks,Willem Drew,4,0.30199430199430194
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Willem Drew,5,0.7472527472527473
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Darcy Byrne-Jones,15,0.7440068493150686
 2026_r14_Port Adelaide_v_Sydney,player_disposals,Darcy Byrne-Jones,20,0.3836553945249599
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Darcy Byrne-Jones,25,0.15025380710659902
-2026_r14_Port Adelaide_v_Sydney,player_goals,Darcy Byrne-Jones,1,0.18884758364312262
-2026_r14_Port Adelaide_v_Sydney,player_marks,Darcy Byrne-Jones,4,0.5861204013377925
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Darcy Byrne-Jones,25,0.16821602478973005
+2026_r14_Port Adelaide_v_Sydney,player_goals,Darcy Byrne-Jones,1,0.24601524601524596
+2026_r14_Port Adelaide_v_Sydney,player_marks,Darcy Byrne-Jones,4,0.560294117647059
 2026_r14_Port Adelaide_v_Sydney,player_marks,Darcy Byrne-Jones,6,0.175
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Darcy Byrne-Jones,3,0.23974763406940067
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Will Brodie,15,0.7440068493150686
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Will Brodie,20,0.4064070351758794
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Will Brodie,25,0.16821602478973005
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Darcy Byrne-Jones,3,0.26037817865681395
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Will Brodie,15,0.7915218902015289
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Will Brodie,20,0.4414976599063963
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Will Brodie,25,0.1788218793828892
 2026_r14_Port Adelaide_v_Sydney,player_goals,Will Brodie,1,0.18884758364312262
 2026_r14_Port Adelaide_v_Sydney,player_marks,Will Brodie,4,0.07707355242566509
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Will Brodie,3,0.8135593220338984
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Will Brodie,5,0.20733532934131738
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Will Brodie,3,0.8484419263456091
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Will Brodie,5,0.26037817865681395
 2026_r14_Port Adelaide_v_Sydney,player_disposals,Logan Evans,15,0.7209876543209874
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Logan Evans,20,0.32581967213114754
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Logan Evans,25,0.1304926764314247
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Logan Evans,20,0.3515358361774744
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Logan Evans,25,0.14007954043305354
 2026_r14_Port Adelaide_v_Sydney,player_goals,Logan Evans,1,0.09970674486803519
 2026_r14_Port Adelaide_v_Sydney,player_marks,Logan Evans,4,0.7722586691658857
-2026_r14_Port Adelaide_v_Sydney,player_marks,Logan Evans,6,0.3260680034873583
+2026_r14_Port Adelaide_v_Sydney,player_marks,Logan Evans,6,0.34360788276907533
 2026_r14_Port Adelaide_v_Sydney,player_tackles,Logan Evans,3,0.26037817865681395
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Isaac Heeney,15,0.9555125725338491
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Isaac Heeney,20,0.7915218902015289
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Isaac Heeney,25,0.5258620689655172
-2026_r14_Port Adelaide_v_Sydney,player_goals,Isaac Heeney,1,0.7316486161251504
-2026_r14_Port Adelaide_v_Sydney,player_goals,Isaac Heeney,2,0.3690337601862631
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Isaac Heeney,15,0.9694132334581773
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Isaac Heeney,20,0.8440748440748441
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Isaac Heeney,25,0.6043587594300083
+2026_r14_Port Adelaide_v_Sydney,player_goals,Isaac Heeney,1,0.7842435094001792
+2026_r14_Port Adelaide_v_Sydney,player_goals,Isaac Heeney,2,0.4473567303420702
 2026_r14_Port Adelaide_v_Sydney,player_marks,Isaac Heeney,4,0.3514412416851441
 2026_r14_Port Adelaide_v_Sydney,player_marks,Isaac Heeney,6,0.07707355242566509
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Isaac Heeney,5,0.519642857142857
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Nick Blakey,15,0.8986409966024915
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Nick Blakey,20,0.6948798328108673
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Nick Blakey,25,0.3515358361774744
-2026_r14_Port Adelaide_v_Sydney,player_goals,Nick Blakey,1,0.18884758364312262
-2026_r14_Port Adelaide_v_Sydney,player_marks,Nick Blakey,4,0.6372759856630822
-2026_r14_Port Adelaide_v_Sydney,player_marks,Nick Blakey,6,0.22852233676975944
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Isaac Heeney,5,0.5674676524953789
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Nick Blakey,15,0.9137466307277629
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Nick Blakey,20,0.7209876543209874
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Nick Blakey,25,0.4064070351758794
+2026_r14_Port Adelaide_v_Sydney,player_goals,Nick Blakey,1,0.19856459330143542
+2026_r14_Port Adelaide_v_Sydney,player_marks,Nick Blakey,4,0.6628621597892889
+2026_r14_Port Adelaide_v_Sydney,player_marks,Nick Blakey,6,0.230712711241734
 2026_r14_Port Adelaide_v_Sydney,player_tackles,Nick Blakey,3,0.11906816220880069
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Peter Ladhams,15,0.3187710033605377
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Peter Ladhams,15,0.33532423208191137
 2026_r14_Port Adelaide_v_Sydney,player_disposals,Peter Ladhams,20,0.10473556861389562
 2026_r14_Port Adelaide_v_Sydney,player_goals,Peter Ladhams,1,0.4473567303420702
-2026_r14_Port Adelaide_v_Sydney,player_goals,Peter Ladhams,2,0.11774461028192376
-2026_r14_Port Adelaide_v_Sydney,player_marks,Peter Ladhams,4,0.11950790861159927
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Peter Ladhams,3,0.12384105960264893
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Errol Gulden,15,0.9305555555555556
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Errol Gulden,20,0.7731854838709677
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Errol Gulden,25,0.48404785643070786
-2026_r14_Port Adelaide_v_Sydney,player_goals,Errol Gulden,1,0.3690337601862631
+2026_r14_Port Adelaide_v_Sydney,player_goals,Peter Ladhams,2,0.11807958477508645
+2026_r14_Port Adelaide_v_Sydney,player_marks,Peter Ladhams,4,0.12396694214876033
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Peter Ladhams,3,0.08848146671980871
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Errol Gulden,15,0.9644970414201184
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Errol Gulden,20,0.8310626702997275
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Errol Gulden,25,0.5397489539748956
+2026_r14_Port Adelaide_v_Sydney,player_goals,Errol Gulden,1,0.38149350649350655
 2026_r14_Port Adelaide_v_Sydney,player_goals,Errol Gulden,2,0.09376126938333937
-2026_r14_Port Adelaide_v_Sydney,player_marks,Errol Gulden,4,0.5973534971644613
-2026_r14_Port Adelaide_v_Sydney,player_marks,Errol Gulden,6,0.18161094224924013
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Errol Gulden,3,0.9565217391304348
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Errol Gulden,5,0.4613997113997114
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Callum Mills,15,0.9093959731543624
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Callum Mills,20,0.6948798328108673
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Callum Mills,25,0.35189075630252103
-2026_r14_Port Adelaide_v_Sydney,player_goals,Callum Mills,1,0.0663744520976832
-2026_r14_Port Adelaide_v_Sydney,player_marks,Callum Mills,4,0.8704663212435233
-2026_r14_Port Adelaide_v_Sydney,player_marks,Callum Mills,6,0.5357757560855667
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Callum Mills,3,0.3627741553052756
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Justin McInerney,15,0.7440068493150686
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Justin McInerney,20,0.4064070351758794
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Justin McInerney,25,0.16902404526166911
+2026_r14_Port Adelaide_v_Sydney,player_marks,Errol Gulden,4,0.6670862177470107
+2026_r14_Port Adelaide_v_Sydney,player_marks,Errol Gulden,6,0.230712711241734
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Errol Gulden,5,0.48881036513545345
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Callum Mills,15,0.9137466307277629
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Callum Mills,20,0.7209876543209874
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Callum Mills,25,0.4363207547169811
+2026_r14_Port Adelaide_v_Sydney,player_goals,Callum Mills,1,0.07676348547717844
+2026_r14_Port Adelaide_v_Sydney,player_marks,Callum Mills,4,0.9012658227848102
+2026_r14_Port Adelaide_v_Sydney,player_marks,Callum Mills,6,0.560294117647059
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Callum Mills,3,0.3627906976744186
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Callum Mills,5,0.056436271401395045
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Justin McInerney,15,0.7731854838709677
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Justin McInerney,20,0.4525627044711014
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Justin McInerney,25,0.1987704918032787
 2026_r14_Port Adelaide_v_Sydney,player_goals,Justin McInerney,1,0.4473567303420702
 2026_r14_Port Adelaide_v_Sydney,player_goals,Justin McInerney,2,0.11807958477508645
-2026_r14_Port Adelaide_v_Sydney,player_marks,Justin McInerney,4,0.4460431654676259
-2026_r14_Port Adelaide_v_Sydney,player_marks,Justin McInerney,6,0.11950790861159927
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Justin McInerney,3,0.33619702176403216
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Riley Bice,15,0.8440748440748441
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Riley Bice,20,0.5258620689655172
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Riley Bice,25,0.26224328593996843
+2026_r14_Port Adelaide_v_Sydney,player_marks,Justin McInerney,4,0.4760076775431862
+2026_r14_Port Adelaide_v_Sydney,player_marks,Justin McInerney,6,0.1299821534800713
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Justin McInerney,3,0.3066169617893756
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Riley Bice,15,0.8620689655172413
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Riley Bice,20,0.5329512893982808
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Riley Bice,25,0.2836943441636582
 2026_r14_Port Adelaide_v_Sydney,player_goals,Riley Bice,1,0.07676348547717844
-2026_r14_Port Adelaide_v_Sydney,player_marks,Riley Bice,4,0.7389975550122252
-2026_r14_Port Adelaide_v_Sydney,player_marks,Riley Bice,6,0.3049114933931688
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Riley Bice,3,0.17870722433460076
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Chad Warner,15,0.8986409966024915
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Chad Warner,20,0.6495238095238095
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Chad Warner,25,0.33532423208191137
-2026_r14_Port Adelaide_v_Sydney,player_goals,Chad Warner,1,0.5570400822199383
-2026_r14_Port Adelaide_v_Sydney,player_goals,Chad Warner,2,0.19227230910763562
+2026_r14_Port Adelaide_v_Sydney,player_marks,Riley Bice,4,0.7500000000000001
+2026_r14_Port Adelaide_v_Sydney,player_marks,Riley Bice,6,0.32507739938080493
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Riley Bice,3,0.19902912621359223
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Chad Warner,15,0.9093959731543624
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Chad Warner,20,0.6948798328108673
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Chad Warner,25,0.35189075630252103
+2026_r14_Port Adelaide_v_Sydney,player_goals,Chad Warner,1,0.5816513761467891
+2026_r14_Port Adelaide_v_Sydney,player_goals,Chad Warner,2,0.23328228688106176
 2026_r14_Port Adelaide_v_Sydney,player_marks,Chad Warner,4,0.41033672670321064
 2026_r14_Port Adelaide_v_Sydney,player_marks,Chad Warner,6,0.07707355242566509
 2026_r14_Port Adelaide_v_Sydney,player_tackles,Chad Warner,3,0.6247582205029011
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Chad Warner,5,0.11906816220880069
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Angus Sheldrick,15,0.7209876543209874
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Angus Sheldrick,20,0.3836553945249599
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Angus Sheldrick,25,0.16821602478973005
-2026_r14_Port Adelaide_v_Sydney,player_goals,Angus Sheldrick,1,0.3315240083507306
-2026_r14_Port Adelaide_v_Sydney,player_goals,Angus Sheldrick,2,0.0663744520976832
-2026_r14_Port Adelaide_v_Sydney,player_marks,Angus Sheldrick,4,0.18161094224924013
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Angus Sheldrick,3,0.8041958041958043
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Angus Sheldrick,5,0.22702702702702704
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Brodie Grundy,15,0.7731854838709677
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Brodie Grundy,20,0.4414976599063963
-2026_r14_Port Adelaide_v_Sydney,player_disposals,Brodie Grundy,25,0.19138755980861244
-2026_r14_Port Adelaide_v_Sydney,player_goals,Brodie Grundy,1,0.3488372093023256
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Chad Warner,5,0.103448275862069
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Angus Sheldrick,15,0.7731854838709677
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Angus Sheldrick,20,0.4414976599063963
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Angus Sheldrick,25,0.1987704918032787
+2026_r14_Port Adelaide_v_Sydney,player_goals,Angus Sheldrick,1,0.24601524601524596
+2026_r14_Port Adelaide_v_Sydney,player_marks,Angus Sheldrick,4,0.175
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Angus Sheldrick,3,0.8484419263456091
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Angus Sheldrick,5,0.26037817865681395
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Brodie Grundy,15,0.8013698630136986
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Brodie Grundy,20,0.49955869373345113
+2026_r14_Port Adelaide_v_Sydney,player_disposals,Brodie Grundy,25,0.22874149659863946
+2026_r14_Port Adelaide_v_Sydney,player_goals,Brodie Grundy,1,0.35275754422476585
 2026_r14_Port Adelaide_v_Sydney,player_goals,Brodie Grundy,2,0.07676348547717844
-2026_r14_Port Adelaide_v_Sydney,player_marks,Brodie Grundy,4,0.20689655172413798
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Brodie Grundy,3,0.7647058823529411
-2026_r14_Port Adelaide_v_Sydney,player_tackles,Brodie Grundy,5,0.17370689655172414
-2026_r14_Richmond_v_Brisbane Lions,h2h,Richmond,,0.24696
-2026_r14_Richmond_v_Brisbane Lions,h2h,Brisbane Lions,,0.7456
-2026_r14_Richmond_v_Brisbane Lions,total_points,total,185.5,0.50044
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jayden Short,15,0.8986409966024915
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jayden Short,20,0.6139534883720931
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jayden Short,25,0.2836943441636582
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Jayden Short,1,0.18884758364312262
+2026_r14_Port Adelaide_v_Sydney,player_marks,Brodie Grundy,4,0.22852233676975944
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Brodie Grundy,3,0.8041958041958043
+2026_r14_Port Adelaide_v_Sydney,player_tackles,Brodie Grundy,5,0.20295378751786566
+2026_r14_Richmond_v_Brisbane Lions,h2h,Richmond,,0.2458
+2026_r14_Richmond_v_Brisbane Lions,h2h,Brisbane Lions,,0.74676
+2026_r14_Richmond_v_Brisbane Lions,total_points,total,185.5,0.50244
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jayden Short,15,0.9137466307277629
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jayden Short,20,0.6948798328108673
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jayden Short,25,0.35189075630252103
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Jayden Short,1,0.19227230910763562
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Jayden Short,4,0.9012658227848102
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jayden Short,6,0.560294117647059
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jayden Short,6,0.6266601082144612
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jayden Short,3,0.056436271401395045
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jack Ross,15,0.8986409966024915
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jack Ross,20,0.6296791443850265
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jack Ross,25,0.3187710033605377
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Jack Ross,1,0.3488372093023256
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jack Ross,15,0.9093959731543624
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jack Ross,20,0.6495238095238095
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jack Ross,25,0.32581967213114754
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Jack Ross,1,0.3315240083507306
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Jack Ross,2,0.07676348547717844
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jack Ross,4,0.38860598345003183
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jack Ross,4,0.39414414414414417
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Jack Ross,6,0.07707355242566509
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jack Ross,3,0.9272727272727272
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jack Ross,5,0.33619702176403216
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tim Taranto,15,0.9215938303341902
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tim Taranto,20,0.7209876543209874
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tim Taranto,25,0.3836553945249599
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Tim Taranto,1,0.4473567303420702
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Tim Taranto,2,0.11807958477508645
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jack Ross,3,0.9481865284974094
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jack Ross,5,0.3627741553052756
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tim Taranto,15,0.9555125725338491
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tim Taranto,20,0.7731854838709677
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tim Taranto,25,0.4634146341463415
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Tim Taranto,1,0.46444644464446444
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Tim Taranto,2,0.14995224450811845
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Tim Taranto,4,0.3049114933931688
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Tim Taranto,6,0.07354555433589456
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Tim Taranto,3,0.8484419263456091
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Tim Taranto,5,0.20295378751786566
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jacob Hopper,15,0.8986409966024915
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jacob Hopper,20,0.6296791443850265
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jacob Hopper,25,0.2836943441636582
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Jacob Hopper,1,0.11816823086480328
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jacob Hopper,4,0.230712711241734
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jacob Hopper,3,0.33619702176403216
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Tim Taranto,6,0.06181818181818187
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Tim Taranto,3,0.8797595190380761
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Tim Taranto,5,0.26037817865681395
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jacob Hopper,15,0.9093959731543624
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jacob Hopper,20,0.6948798328108673
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jacob Hopper,25,0.33532423208191137
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Jacob Hopper,1,0.11807958477508645
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jacob Hopper,4,0.22852233676975944
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jacob Hopper,3,0.3592307692307693
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Kane McAuliffe,15,0.7915218902015289
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Kane McAuliffe,20,0.4525627044711014
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Kane McAuliffe,25,0.1788218793828892
@@ -509,12 +812,12 @@ match_id,market,subject,line,prob
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Kane McAuliffe,4,0.34360788276907533
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Kane McAuliffe,6,0.07354555433589456
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Kane McAuliffe,3,0.5674676524953789
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Kane McAuliffe,5,0.06263345195729537
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dion Prestia,15,0.5329512893982808
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dion Prestia,20,0.21353509878100044
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dion Prestia,25,0.07231920199501245
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Dion Prestia,1,0.19856459330143542
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Dion Prestia,4,0.20383693045563545
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Kane McAuliffe,5,0.07127429805615551
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dion Prestia,15,0.6043587594300083
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dion Prestia,20,0.26224328593996843
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dion Prestia,25,0.07985028072364315
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Dion Prestia,1,0.19227230910763562
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Dion Prestia,4,0.22852233676975944
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Dion Prestia,3,0.26037817865681395
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Patrick Retschko,15,0.7209876543209874
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Patrick Retschko,20,0.33532423208191137
@@ -523,258 +826,254 @@ match_id,market,subject,line,prob
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Patrick Retschko,4,0.5357757560855667
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Patrick Retschko,6,0.1299821534800713
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Patrick Retschko,3,0.3282747603833866
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Toby Nankervis,15,0.4363207547169811
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Toby Nankervis,20,0.15025380710659902
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Toby Nankervis,15,0.48404785643070786
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Toby Nankervis,20,0.16902404526166911
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Toby Nankervis,25,0.06224066390041486
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Toby Nankervis,1,0.16613032984714396
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Toby Nankervis,4,0.07707355242566509
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Toby Nankervis,3,0.5674676524953789
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Toby Nankervis,5,0.07429871114480661
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tyler Sonsie,15,0.5777414075286416
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tyler Sonsie,20,0.22874149659863946
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tyler Sonsie,25,0.07985028072364315
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Tyler Sonsie,1,0.39874902267396406
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Tyler Sonsie,2,0.10187667560321716
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Tyler Sonsie,4,0.5149136577708004
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Toby Nankervis,3,0.6247582205029011
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Toby Nankervis,5,0.08848146671980871
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tyler Sonsie,15,0.6296791443850265
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tyler Sonsie,20,0.2836943441636582
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Tyler Sonsie,25,0.09279279279279279
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Tyler Sonsie,1,0.38149350649350655
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Tyler Sonsie,2,0.09376126938333937
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Tyler Sonsie,4,0.5357757560855667
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Tyler Sonsie,6,0.1299821534800713
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Tyler Sonsie,3,0.07869481765834928
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Tyler Sonsie,3,0.07429871114480661
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Sam Lalor,15,0.49955869373345113
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Sam Lalor,20,0.1788218793828892
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Sam Lalor,20,0.19138755980861244
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Sam Lalor,25,0.06224066390041486
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Sam Lalor,1,0.7473684210526316
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Sam Lalor,2,0.39874902267396406
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Sam Lalor,4,0.4460431654676259
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Sam Lalor,6,0.11950790861159927
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Sam Lalor,3,0.26037817865681395
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Lachie Neale,20,0.9137466307277629
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Lachie Neale,25,0.76
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Lachie Neale,1,0.35275754422476585
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Lachie Neale,20,0.9305555555555556
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Lachie Neale,25,0.7915218902015289
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Lachie Neale,1,0.3315240083507306
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Lachie Neale,2,0.07676348547717844
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Lachie Neale,4,0.8366013071895425
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Lachie Neale,6,0.4760076775431862
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Lachie Neale,3,0.3627906976744186
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Will Ashcroft,15,0.9555125725338491
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Will Ashcroft,20,0.8013698630136986
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Will Ashcroft,25,0.5329512893982808
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Lachie Neale,6,0.5149136577708004
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Lachie Neale,3,0.3959798994974875
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Will Ashcroft,15,0.9694132334581773
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Will Ashcroft,20,0.8620689655172413
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Will Ashcroft,25,0.6296791443850265
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Will Ashcroft,1,0.46707040121120363
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Will Ashcroft,2,0.15780730897009967
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Will Ashcroft,4,0.6857142857142857
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Will Ashcroft,2,0.16613032984714396
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Will Ashcroft,4,0.7165775401069518
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Will Ashcroft,6,0.3049114933931688
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Will Ashcroft,3,0.6057142857142856
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Will Ashcroft,3,0.6247582205029011
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Will Ashcroft,5,0.08848146671980871
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dayne Zorko,15,0.8654761904761905
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dayne Zorko,20,0.6043587594300083
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dayne Zorko,25,0.3187710033605377
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Dayne Zorko,1,0.23608017817371937
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Dayne Zorko,4,0.8206896551724137
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Dayne Zorko,6,0.46674268339034586
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dayne Zorko,15,0.8986409966024915
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dayne Zorko,20,0.6495238095238095
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Dayne Zorko,25,0.3515358361774744
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Dayne Zorko,1,0.23328228688106176
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Dayne Zorko,4,0.8704663212435233
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Dayne Zorko,6,0.5357757560855667
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Dayne Zorko,3,0.12972972972973001
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Darcy Wilmot,15,0.9305555555555556
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Darcy Wilmot,20,0.7440068493150686
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Darcy Wilmot,25,0.48404785643070786
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Darcy Wilmot,15,0.9555125725338491
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Darcy Wilmot,20,0.7915218902015289
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Darcy Wilmot,25,0.49955869373345113
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Darcy Wilmot,1,0.11807958477508645
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Darcy Wilmot,6,0.8704663212435233
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Darcy Wilmot,3,0.12972972972973001
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Zac Bailey,15,0.9093959731543624
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Zac Bailey,20,0.6948798328108673
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Darcy Wilmot,6,0.9012658227848102
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Darcy Wilmot,3,0.14583333333333334
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Zac Bailey,15,0.9137466307277629
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Zac Bailey,20,0.7209876543209874
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Zac Bailey,25,0.3836553945249599
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Zac Bailey,1,0.7205882352941176
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Zac Bailey,2,0.35275754422476585
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Zac Bailey,4,0.8688524590163934
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Zac Bailey,6,0.5357757560855667
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Zac Bailey,1,0.7575757575757577
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Zac Bailey,2,0.39874902267396406
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Zac Bailey,4,0.8704663212435233
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Zac Bailey,6,0.560294117647059
 2026_r14_Richmond_v_Brisbane Lions,player_tackles,Zac Bailey,3,0.3627906976744186
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Levi Ashcroft,15,0.8986409966024915
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Levi Ashcroft,20,0.6495238095238095
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Levi Ashcroft,25,0.33532423208191137
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Levi Ashcroft,1,0.46444644464446444
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Levi Ashcroft,2,0.1288343558282208
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Levi Ashcroft,25,0.3515358361774744
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Levi Ashcroft,1,0.46707040121120363
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Levi Ashcroft,2,0.14995224450811845
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Levi Ashcroft,4,0.8704663212435233
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Levi Ashcroft,6,0.5357757560855667
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Levi Ashcroft,3,0.08848146671980871
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Josh Dunkley,15,0.8654761904761905
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Josh Dunkley,20,0.6043587594300083
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Josh Dunkley,25,0.28695652173913044
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Josh Dunkley,1,0.19227230910763562
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Levi Ashcroft,6,0.560294117647059
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Levi Ashcroft,3,0.06263345195729537
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Josh Dunkley,15,0.8986409966024915
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Josh Dunkley,20,0.6296791443850265
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Josh Dunkley,25,0.32581967213114754
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Josh Dunkley,1,0.16613032984714396
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Josh Dunkley,4,0.6857142857142857
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Josh Dunkley,6,0.3049114933931688
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Josh Dunkley,5,0.48881036513545345
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jarrod Berry,15,0.7440068493150686
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jarrod Berry,20,0.4064070351758794
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jarrod Berry,25,0.1788218793828892
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Josh Dunkley,5,0.6020025031289111
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jarrod Berry,15,0.768
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jarrod Berry,20,0.4414976599063963
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jarrod Berry,25,0.1987704918032787
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Jarrod Berry,1,0.3315240083507306
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Jarrod Berry,2,0.07676348547717844
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jarrod Berry,4,0.7722586691658857
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jarrod Berry,6,0.4060822898032201
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jarrod Berry,3,0.23974763406940067
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jaspa Fletcher,15,0.8440748440748441
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jaspa Fletcher,20,0.5329512893982808
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jarrod Berry,4,0.7943067033976124
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jarrod Berry,6,0.4460431654676259
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jarrod Berry,3,0.26037817865681395
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jaspa Fletcher,15,0.8620689655172413
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jaspa Fletcher,20,0.5397489539748956
 2026_r14_Richmond_v_Brisbane Lions,player_disposals,Jaspa Fletcher,25,0.2836943441636582
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Jaspa Fletcher,1,0.35275754422476585
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Jaspa Fletcher,1,0.3315240083507306
 2026_r14_Richmond_v_Brisbane Lions,player_goals,Jaspa Fletcher,2,0.07676348547717844
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jaspa Fletcher,4,0.7829670329670331
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Jaspa Fletcher,6,0.41887905604719766
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jaspa Fletcher,3,0.12972972972973001
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Hugh McCluggage,15,0.9215938303341902
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Hugh McCluggage,20,0.7396593673965937
-2026_r14_Richmond_v_Brisbane Lions,player_disposals,Hugh McCluggage,25,0.4525627044711014
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Hugh McCluggage,1,0.5213414634146343
-2026_r14_Richmond_v_Brisbane Lions,player_goals,Hugh McCluggage,2,0.18884758364312262
-2026_r14_Richmond_v_Brisbane Lions,player_marks,Hugh McCluggage,4,0.6857142857142857
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jaspa Fletcher,4,0.8206896551724137
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Jaspa Fletcher,6,0.46674268339034586
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Jaspa Fletcher,3,0.11906816220880069
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Hugh McCluggage,15,0.9555125725338491
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Hugh McCluggage,20,0.7915218902015289
+2026_r14_Richmond_v_Brisbane Lions,player_disposals,Hugh McCluggage,25,0.49955869373345113
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Hugh McCluggage,1,0.5570400822199383
+2026_r14_Richmond_v_Brisbane Lions,player_goals,Hugh McCluggage,2,0.19227230910763562
+2026_r14_Richmond_v_Brisbane Lions,player_marks,Hugh McCluggage,4,0.7165775401069518
 2026_r14_Richmond_v_Brisbane Lions,player_marks,Hugh McCluggage,6,0.3049114933931688
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Hugh McCluggage,3,0.5205327413984462
-2026_r14_Richmond_v_Brisbane Lions,player_tackles,Hugh McCluggage,5,0.06263345195729537
-2026_r14_St Kilda_v_Greater Western Sydney,h2h,St Kilda,,0.54656
-2026_r14_St Kilda_v_Greater Western Sydney,h2h,Greater Western Sydney,,0.44462
-2026_r14_St Kilda_v_Greater Western Sydney,total_points,total,190.5,0.46404
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Sinclair,15,0.9555125725338491
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Sinclair,20,0.7915218902015289
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Sinclair,25,0.49955869373345113
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Jack Sinclair,1,0.23328228688106176
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Jack Sinclair,4,0.8366013071895425
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Hugh McCluggage,3,0.6020025031289111
+2026_r14_Richmond_v_Brisbane Lions,player_tackles,Hugh McCluggage,5,0.07869481765834928
+2026_r14_St Kilda_v_Greater Western Sydney,h2h,St Kilda,,0.55378
+2026_r14_St Kilda_v_Greater Western Sydney,h2h,Greater Western Sydney,,0.43736
+2026_r14_St Kilda_v_Greater Western Sydney,total_points,total,190.5,0.46816
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Sinclair,15,0.9694132334581773
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Sinclair,20,0.8620689655172413
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Sinclair,25,0.6043587594300083
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Jack Sinclair,1,0.23608017817371937
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Jack Sinclair,4,0.8688524590163934
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Jack Sinclair,6,0.46674268339034586
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Jack Sinclair,3,0.11906816220880069
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Nasiah Wanganeen-Milera,15,0.9555125725338491
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Nasiah Wanganeen-Milera,20,0.7969348659003831
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Nasiah Wanganeen-Milera,25,0.5258620689655172
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Nasiah Wanganeen-Milera,1,0.46707040121120363
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Nasiah Wanganeen-Milera,2,0.16613032984714396
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Jack Sinclair,3,0.12384105960264893
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Nasiah Wanganeen-Milera,15,0.9694132334581773
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Nasiah Wanganeen-Milera,20,0.8654761904761905
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Nasiah Wanganeen-Milera,25,0.6296791443850265
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Nasiah Wanganeen-Milera,1,0.5213414634146343
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Nasiah Wanganeen-Milera,2,0.18884758364312262
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Nasiah Wanganeen-Milera,4,0.46674268339034586
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Nasiah Wanganeen-Milera,6,0.1299821534800713
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Nasiah Wanganeen-Milera,3,0.26037817865681395
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Callum Wilkie,15,0.8620689655172413
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Callum Wilkie,20,0.5329512893982808
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Callum Wilkie,25,0.26224328593996843
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Callum Wilkie,6,0.7829670329670331
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Callum Wilkie,15,0.8654761904761905
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Callum Wilkie,20,0.6043587594300083
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Callum Wilkie,25,0.2836943441636582
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Callum Wilkie,6,0.8366013071895425
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Callum Wilkie,3,0.14583333333333334
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Sam Flanders,15,0.6495238095238095
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Sam Flanders,20,0.2836943441636582
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Sam Flanders,25,0.10473556861389562
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Sam Flanders,1,0.29415904292751566
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Sam Flanders,2,0.06369426751592357
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Sam Flanders,4,0.6628621597892889
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Sam Flanders,6,0.24900398406374488
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Sam Flanders,3,0.4613997113997114
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Sam Flanders,5,0.056436271401395045
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Bradley Hill,15,0.8986409966024915
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Sam Flanders,15,0.7209876543209874
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Sam Flanders,20,0.3836553945249599
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Sam Flanders,25,0.15025380710659902
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Sam Flanders,1,0.2666666666666667
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Sam Flanders,4,0.6670862177470107
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Sam Flanders,6,0.26406649616368283
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Sam Flanders,3,0.48881036513545345
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Sam Flanders,5,0.06263345195729537
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Bradley Hill,15,0.9032258064516129
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Bradley Hill,20,0.6495238095238095
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Bradley Hill,25,0.33532423208191137
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Bradley Hill,1,0.40588235294117647
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Bradley Hill,1,0.4098555815632349
 2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Bradley Hill,2,0.11774461028192376
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Bradley Hill,4,0.8704663212435233
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Bradley Hill,6,0.5357757560855667
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Bradley Hill,3,0.12384105960264893
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Bradley Hill,4,0.9012658227848102
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Bradley Hill,6,0.560294117647059
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Bradley Hill,3,0.08848146671980871
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Marcus Windhager,15,0.8986409966024915
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Marcus Windhager,20,0.6296791443850265
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Marcus Windhager,25,0.3187710033605377
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Marcus Windhager,1,0.24601524601524596
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Marcus Windhager,4,0.44145454545454543
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Marcus Windhager,6,0.12396694214876033
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Marcus Windhager,1,0.23608017817371937
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Marcus Windhager,4,0.4460431654676259
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Marcus Windhager,6,0.1299821534800713
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Marcus Windhager,3,0.4613997113997114
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Marcus Windhager,5,0.056436271401395045
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Hugo Garcia,15,0.768
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Hugo Garcia,20,0.4363207547169811
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Hugo Garcia,25,0.1788218793828892
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Hugo Garcia,1,0.39874902267396406
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Hugo Garcia,2,0.09970674486803519
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Hugo Garcia,4,0.26406649616368283
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Hugo Garcia,3,0.8819188191881919
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Hugo Garcia,5,0.3282747603833866
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Darcy Wilson,15,0.7209876543209874
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Darcy Wilson,20,0.3836553945249599
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Darcy Wilson,25,0.15025380710659902
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Darcy Wilson,1,0.7316486161251504
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Darcy Wilson,2,0.38149350649350655
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Darcy Wilson,4,0.6266601082144612
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Darcy Wilson,6,0.20383693045563545
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Hugo Garcia,15,0.7915218902015289
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Hugo Garcia,20,0.48404785643070786
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Hugo Garcia,25,0.20488721804511278
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Hugo Garcia,1,0.35275754422476585
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Hugo Garcia,2,0.08743169398907102
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Hugo Garcia,4,0.22852233676975944
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Hugo Garcia,3,0.9481865284974094
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Hugo Garcia,5,0.4124775583482944
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Darcy Wilson,15,0.7731854838709677
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Darcy Wilson,20,0.4414976599063963
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Darcy Wilson,25,0.1788218793828892
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Darcy Wilson,1,0.7321428571428571
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Darcy Wilson,2,0.39874902267396406
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Darcy Wilson,4,0.6372759856630822
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Darcy Wilson,6,0.22852233676975944
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Darcy Wilson,3,0.29664045746962125
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Max Hall,15,0.9093959731543624
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Max Hall,20,0.6948798328108673
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Max Hall,25,0.35189075630252103
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Max Hall,1,0.5856929955290611
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Max Hall,2,0.24601524601524596
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Max Hall,1,0.6666666666666666
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Max Hall,2,0.28061224489795933
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Max Hall,4,0.6670862177470107
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Max Hall,6,0.24900398406374488
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Max Hall,3,0.519642857142857
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Max Hall,5,0.06263345195729537
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Macrae,15,0.8440748440748441
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Macrae,20,0.5258620689655172
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Macrae,25,0.26224328593996843
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Jack Macrae,1,0.11807958477508645
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Jack Macrae,4,0.26406649616368283
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Macrae,15,0.8654761904761905
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Macrae,20,0.5777414075286416
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Jack Macrae,25,0.2836943441636582
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Jack Macrae,1,0.09376126938333937
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Jack Macrae,4,0.24900398406374488
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Jack Macrae,3,0.8797595190380761
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Jack Macrae,5,0.26037817865681395
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Clayton Oliver,20,0.9137466307277629
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Clayton Oliver,25,0.7440068493150686
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Clayton Oliver,1,0.18884758364312262
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Clayton Oliver,4,0.4760076775431862
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Jack Macrae,5,0.27930763178599544
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Clayton Oliver,20,0.9305555555555556
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Clayton Oliver,25,0.7915218902015289
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Clayton Oliver,1,0.16613032984714396
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Clayton Oliver,4,0.46674268339034586
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Clayton Oliver,6,0.1299821534800713
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Clayton Oliver,3,0.8823529411764706
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Clayton Oliver,5,0.3592307692307693
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Ash,15,0.9694132334581773
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Ash,20,0.8654761904761905
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Ash,25,0.6296791443850265
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Lachie Ash,1,0.05064715813168259
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Lachie Ash,4,0.9012658227848102
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Lachie Ash,6,0.7500000000000001
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Lachie Ash,3,0.07429871114480661
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Clayton Oliver,3,0.9481865284974094
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Clayton Oliver,5,0.4124775583482944
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Ash,20,0.9093959731543624
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Ash,25,0.7209876543209874
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Lachie Ash,6,0.7943067033976124
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Lachie Ash,3,0.07869481765834928
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Whitfield,15,0.9694132334581773
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Whitfield,20,0.8620689655172413
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Whitfield,25,0.6139534883720931
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Whitfield,20,0.8986409966024915
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Lachie Whitfield,25,0.7209876543209874
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Lachie Whitfield,4,0.9012658227848102
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Lachie Whitfield,6,0.6266601082144612
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Lachie Whitfield,3,0.29664045746962125
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Finn Callaghan,15,0.9694132334581773
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Finn Callaghan,20,0.8986409966024915
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Finn Callaghan,25,0.7209876543209874
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Lachie Whitfield,6,0.6670862177470107
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Lachie Whitfield,3,0.3282747603833866
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Finn Callaghan,20,0.9137466307277629
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Finn Callaghan,25,0.7440068493150686
 2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Finn Callaghan,1,0.39874902267396406
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Finn Callaghan,2,0.09970674486803519
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Finn Callaghan,2,0.09376126938333937
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Finn Callaghan,4,0.560294117647059
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Finn Callaghan,6,0.18161094224924013
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Finn Callaghan,3,0.8484419263456091
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Finn Callaghan,5,0.26037817865681395
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Toby Greene,15,0.7044534412955465
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Toby Greene,20,0.3515358361774744
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Toby Greene,25,0.14007954043305354
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Toby Greene,1,0.7575757575757577
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Toby Greene,2,0.39874902267396406
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Toby Greene,4,0.571764705882353
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Toby Greene,6,0.18161094224924013
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Toby Greene,3,0.5674676524953789
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Toby Greene,5,0.07869481765834928
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Connor Idun,15,0.8620689655172413
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Connor Idun,20,0.5397489539748956
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Connor Idun,25,0.2836943441636582
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Finn Callaghan,3,0.8797595190380761
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Finn Callaghan,5,0.29664045746962125
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Toby Greene,15,0.7396593673965937
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Toby Greene,20,0.3836553945249599
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Toby Greene,25,0.16902404526166911
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Toby Greene,1,0.7842435094001792
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Toby Greene,2,0.4473567303420702
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Toby Greene,4,0.5973534971644613
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Toby Greene,6,0.20383693045563545
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Toby Greene,3,0.6020025031289111
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Toby Greene,5,0.08848146671980871
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Connor Idun,15,0.8986409966024915
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Connor Idun,20,0.6139534883720931
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Connor Idun,25,0.3187710033605377
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Connor Idun,4,0.9012658227848102
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Connor Idun,6,0.6372759856630822
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Connor Idun,3,0.12972972972973001
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Harvey Thomas,15,0.7396593673965937
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Harvey Thomas,20,0.4064070351758794
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Harvey Thomas,25,0.16902404526166911
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Harvey Thomas,1,0.48306045249457347
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Connor Idun,6,0.6857142857142857
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Connor Idun,3,0.12384105960264893
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Harvey Thomas,15,0.7440068493150686
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Harvey Thomas,20,0.4363207547169811
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Harvey Thomas,25,0.1788218793828892
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Harvey Thomas,1,0.46707040121120363
 2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Harvey Thomas,2,0.16613032984714396
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Harvey Thomas,4,0.46674268339034586
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Harvey Thomas,4,0.4460431654676259
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Harvey Thomas,6,0.1299821534800713
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Harvey Thomas,3,0.6341463414634146
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Harvey Thomas,5,0.11906816220880069
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Harvey Thomas,3,0.7171052631578948
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Harvey Thomas,5,0.12384105960264893
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Conor Stone,15,0.6948798328108673
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Conor Stone,20,0.33532423208191137
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Conor Stone,20,0.3187710033605377
 2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Conor Stone,25,0.14007954043305354
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Conor Stone,1,0.19856459330143542
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Conor Stone,1,0.19227230910763562
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Conor Stone,4,0.5149136577708004
-2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Conor Stone,6,0.1637426900584795
+2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Conor Stone,6,0.1299821534800713
 2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Conor Stone,3,0.26037817865681395
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Brent Daniels,15,0.7396593673965937
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Brent Daniels,20,0.4064070351758794
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Brent Daniels,25,0.16902404526166911
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Brent Daniels,15,0.7731854838709677
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Brent Daniels,20,0.4634146341463415
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Brent Daniels,25,0.21353509878100044
 2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Brent Daniels,1,0.6534954407294831
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Brent Daniels,2,0.25688073394495425
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Brent Daniels,2,0.24601524601524596
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Brent Daniels,4,0.38860598345003183
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Brent Daniels,6,0.07707355242566509
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Brent Daniels,3,0.6719524281466799
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Brent Daniels,5,0.11906816220880069
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Joe Fonti,15,0.7209876543209874
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Joe Fonti,20,0.35189075630252103
-2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Joe Fonti,25,0.15025380710659902
-2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Joe Fonti,1,0.1288343558282208
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Brent Daniels,3,0.7318007662835249
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Brent Daniels,5,0.14583333333333334
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Joe Fonti,15,0.6948798328108673
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Joe Fonti,20,0.33532423208191137
+2026_r14_St Kilda_v_Greater Western Sydney,player_disposals,Joe Fonti,25,0.14007954043305354
+2026_r14_St Kilda_v_Greater Western Sydney,player_goals,Joe Fonti,1,0.11807958477508645
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Joe Fonti,4,0.9012658227848102
 2026_r14_St Kilda_v_Greater Western Sydney,player_marks,Joe Fonti,6,0.560294117647059
-2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Joe Fonti,3,0.29664045746962125
+2026_r14_St Kilda_v_Greater Western Sydney,player_tackles,Joe Fonti,3,0.3282747603833866

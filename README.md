@@ -222,6 +222,75 @@ the fitted calibrators (compressed JSON) and they are applied in `run-round` /
 also staked at half Kelly (`PROP_KELLY_MULTIPLIER`) since they are noisier and
 compound across a multi.
 
+### Same-game-multi (SGM) walk-forward backtest (model-upgrade audit Phase 1)
+
+Props are calibrated as singles and H2H is calibrated, but the **3-leg joint
+probability** — the number actually bet — was never scored against history;
+`corr_gain` (`joint_prob_from_masks` vs the naive product) was asserted from
+the sim, never tested. `afl_bot/backtest/multis.py` closes that gap:
+`walk_forward_multi_predictions` replays, round by round, the exact
+match-construction + `search_match_sgms` ladder-selection logic
+`round_report` uses live, fed only `games`/`player_log` rows strictly before
+the round being predicted (no leakage — same anti-leakage contract as
+`EloRatings.fit` / `walk_forward_prop_predictions`), then grades the selected
+rungs' joint probability against what actually happened. Run it via:
+
+```
+python -m afl_bot.cli grade-multis --year 2025 --rounds 5,10,15,20
+```
+
+On 2025 rounds 5/10/15/20 (n=56 rungs): log loss 0.605, mean predicted 0.315
+vs actual hit rate 0.268 — directionally overconfident, and the reliability
+curve is **not flat**: the 0.4-0.6 predicted bucket lands at only 0.235 actual
+(n=17). The sample is still small (a handful of rounds), but it's evidence,
+not faith.
+
+Simplifications vs the live path (kept honest, not hidden): no lineup/odds
+book (every leg prices off the sim and is "confirmed"), no prop-probability
+calibration (this backtest tests the raw sim joint probability calibration
+would sit on top of), and no wet-weather flag (reliable historical
+per-fixture rainfall isn't available).
+
+### Fitting the correlation/dispersion constants from history (model-upgrade audit Phase 2)
+
+`SCORE_SHOT_CORRELATION` / `PACE_SIGMA` / `SHARE_CONCENTRATION` /
+`SHOT_DISPERSION` / `TEAM_STAT_DISPERSION` (`config.py`) drive `corr_gain` but
+were hand-set. `afl_bot/backtest/correlations.py` estimates each from history
+(closed-form method-of-moments for `SHOT_DISPERSION`; a closed-form joint
+solve of `PACE_SIGMA`/`TEAM_STAT_DISPERSION` from a team volume-stat's
+empirical mean/variance/home-away correlation; a closed-form
+`SHARE_CONCENTRATION` from a top-usage cohort's empirical disposal CoV; a
+root-find for `SCORE_SHOT_CORRELATION` since the Gaussian-copula-to-Pearson-
+correlation map is nonlinear). Each estimator is unit-tested against data
+simulated from the model's own functions at a known ground-truth value and
+recovers it. Run via:
+
+```
+python -m afl_bot.cli fit-correlations --through 2024
+```
+
+**Honest finding: fitting these from history (through 2024) and re-running
+the Phase-1 multi backtest (2025 rounds 3/6/9/12/15/18/21, n=106) makes
+calibration *worse*, not better** — log loss 0.697 vs 0.617 for the config
+defaults, Brier 0.248 vs 0.212. The standout mover is `PACE_SIGMA`: the
+fitted value (~0.008) is ~9x smaller than the config default (0.07) because
+the empirical home/away team-disposal correlation in the 2018-2024 sample is
+essentially zero (~0.005), not the meaningfully-positive "fast open game
+lifts both teams" effect the config constant assumes. `SHOT_DISPERSION`
+(41.3 vs 42.5) and `SHARE_CONCENTRATION` (220.6 vs 200) land close to the
+existing defaults; `SCORE_SHOT_CORRELATION` (-0.284 vs -0.32) is a modest
+refinement. Per this instruction's own acceptance rule ("if it regresses,
+the fit is wrong — keep the defaults"), **the fitted params are NOT wired
+into `round-report`/`run-round`** — `load_fitted_correlation_params()` exists
+and is opt-in (same contract as `load_fitted_elo_params`), but nothing calls
+it automatically. The estimators are verified correct (synthetic recovery);
+the open question is *why* the empirically-near-zero pace correlation
+doesn't help the actually-bet multi ladder — plausibly Phase 1's sample
+(n=106 graded rungs across 7 rounds) is still too small to distinguish
+parameter settings reliably, or correlation isn't actually the dominant
+source of the Phase 1 overconfidence (calibration fidelity, Phase 3, may
+matter more).
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

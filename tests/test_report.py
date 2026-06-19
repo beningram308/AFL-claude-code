@@ -4,11 +4,11 @@ import numpy as np
 
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import (
-    DEFAULT_ODDS_BANDS,
     projection_rows,
     render_markdown,
     search_match_sgms,
 )
+from afl_bot.config import MULTI_TARGET_ODDS
 
 LINES = {"disposals": [15, 20, 25], "goals": [1, 2], "marks": [4, 6], "tackles": [3, 5]}
 
@@ -48,26 +48,24 @@ def _ladder_legs(seed=1, odds_mult=1.0):
     return legs
 
 
-def test_search_match_sgms_ladder_is_3leg_one_per_band_and_above_floor():
-    out = search_match_sgms(_ladder_legs())            # all defaults: 3-leg, banded
+def test_search_match_sgms_ladder_is_3leg_one_per_target_and_above_floor():
+    out = search_match_sgms(_ladder_legs())            # all defaults: 3-leg, target-odds
     assert out, "should find 3-leg combos"
-    bands = DEFAULT_ODDS_BANDS
     for r in out:
         assert len(r["legs"]) == 3                     # minimum-3-leg ladder
-        assert r["odds"] >= bands[0][0]                # banding odds above the 1.75 floor
         assert {"joint_prob", "naive_product", "corr_gain", "fair_odds"} <= set(r)
-    # this spread populates every band, so we get exactly one rung per distinct band
-    assert len(out) == len(bands)
-    band_of = [next(i for i, (lo, hi) in enumerate(bands) if lo <= r["odds"] < hi) for r in out]
-    assert band_of == sorted(band_of)                  # ordered safest -> longest
-    assert len(band_of) == len(set(band_of))           # one per band, no overlap
+    assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target
+    # returned safest -> longest by fair_odds
+    assert [r["fair_odds"] for r in out] == sorted(r["fair_odds"] for r in out)
+    # no duplicate combos (each rung is a distinct combo)
+    all_legs = [tuple(sorted(r["legs"])) for r in out]
+    assert len(all_legs) == len(set(all_legs))
 
 
 def test_search_match_sgms_excludes_conflicts():
     legs = _ladder_legs()
     legs.append(_leg("A 20+ disp", 0.5, legs[0].mask, "A"))  # conflicts with "A 15+ disp"
-    # single wide band, many per band, so every surviving combo is returned
-    out = search_match_sgms(legs, odds_bands=((1.0, 50.0),), per_band=50)
+    out = search_match_sgms(legs)
     assert out
     for r in out:
         assert not ("A 15+ disp" in r["legs"] and "A 20+ disp" in r["legs"])
@@ -83,7 +81,7 @@ def test_search_match_sgms_top_band_value_pick_is_shrunk_and_capped():
     assert "book_odds" in vp
     assert 0.0 < vp["edge"] <= 0.15                    # positive but under the sanity cap
     assert vp["edge"] < vp["raw_edge"]                 # shrunk below the naive joint*book-1
-    assert vp["odds"] >= DEFAULT_ODDS_BANDS[-1][0]     # sits in the ~3.5-5.5 value band
+    assert vp["fair_odds"] >= MULTI_TARGET_ODDS[1]      # at least the mid target (~3.50)
 
 
 def test_search_match_sgms_implausible_edge_is_not_flagged_value():
@@ -96,16 +94,16 @@ def test_search_match_sgms_implausible_edge_is_not_flagged_value():
     assert not any(r.get("value_pick") for r in out)   # so none is flagged VALUE
 
 
-def test_search_match_sgms_fills_every_band_when_some_are_empty():
-    # All legs ~0.82 -> every 3-combo lands in band 1; bands 2 and 3 are empty and
-    # must be filled (B4) so the game still shows a full ladder.
+def test_search_match_sgms_fills_every_target_when_pool_is_thin():
+    # All legs ~0.82 -> every 3-combo has fair_odds ~1.82; targets 3.50 and 5.00
+    # have no natural match, so the fill picks the closest available distinct combos.
     rng = np.random.default_rng(7)
     legs = [_leg(f"{name} 15+ disp", (m := rng.random(40000) < 0.82).mean(), m, name)
             for name in "ABCDE"]
     out = search_match_sgms(legs)
-    assert len(out) == len(DEFAULT_ODDS_BANDS)         # no blank rung
+    assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target, no blank
     assert all(len(r["legs"]) == 3 for r in out)
-    assert [r["odds"] for r in out] == sorted(r["odds"] for r in out)
+    assert [r["fair_odds"] for r in out] == sorted(r["fair_odds"] for r in out)
 
 
 def test_render_markdown_smoke():

@@ -23,6 +23,7 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import requests
 
@@ -30,8 +31,20 @@ from afl_bot.config import CACHE_DIR
 from afl_bot.data.teams import CANONICAL_TEAMS, normalize_team_name
 
 ODDS_API_URL = "https://api.the-odds-api.com/v4/sports/aussierules_afl/odds"
+EVENTS_API_URL = "https://api.the-odds-api.com/v4/sports/aussierules_afl/events"
+EVENT_ODDS_URL = "https://api.the-odds-api.com/v4/sports/aussierules_afl/events/{event_id}/odds"
 USER_AGENT = "afl-multi-builder (https://github.com/; contact via repo issues; personal use)"
 CACHE_NAME = "live_odds"
+PROPS_CACHE_NAME = "live_props"
+
+# Player-prop market keys -> pipeline stat name
+_PROP_MARKET_TO_STAT: dict[str, str] = {
+    "player_disposals_over": "disposals",
+    "player_goals_scored_over": "goals",
+    "player_marks_over": "marks",
+    "player_tackles_over": "tackles",
+}
+_PROP_MARKETS = ",".join(_PROP_MARKET_TO_STAT)
 
 
 def _normalise_team(name: str) -> str | None:
@@ -114,3 +127,106 @@ def fetch_live_odds(round_no: int | None = None, *, api_key: str | None = None,
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(json.dumps(odds))
     return odds
+
+
+def parse_event_props(event_resp: dict) -> dict[str, float]:
+    """Reshape a single per-event Odds API props response into
+    ``{leg_name: best_decimal_odds}`` in the report's key format.
+
+    Leg names follow the pattern ``"{player_name} {line}+ {stat}"``, where
+    ``line`` is derived from the API's ``point`` (Over 24.5 → 25+)."""
+    import math
+
+    best: dict[str, float] = {}
+    for bm in event_resp.get("bookmakers", []):
+        for market in bm.get("markets", []):
+            stat = _PROP_MARKET_TO_STAT.get(market.get("key", ""))
+            if stat is None:
+                continue
+            for o in market.get("outcomes", []):
+                if str(o.get("name", "")).lower() != "over":
+                    continue
+                player = str(o.get("description", "")).strip()
+                point = o.get("point")
+                if not player or point is None:
+                    continue
+                try:
+                    point = float(point)
+                except (TypeError, ValueError):
+                    continue
+                # "Over 24.5" → 25+ (integer threshold matching the pipeline's format)
+                int_line = int(point) + 1 if point == int(point) else math.ceil(point)
+                leg = f"{player} {int_line}+ {stat}"
+                _take_best(best, leg, o.get("price"))
+    return best
+
+
+def fetch_live_props(round_no: int | None = None, *, api_key: str | None = None,
+                     regions: str = "au", cache_seconds: float = 300,
+                     cache_dir=CACHE_DIR) -> dict[str, float]:
+    """Live player-prop odds (disposals/goals/marks/tackles) as
+    ``{leg_name: decimal_odds}`` (best price across AU books).
+
+    Requires an Odds API key with the **player props tier** (paid add-on).
+    If the key is absent, the props tier is blocked (402/403), or the network
+    fails, returns ``{}`` silently — Fix B (bettable-window gate + wider
+    PROP_LINES) then handles the no-odds path.
+
+    Fetches the events list first (one call), then one per-event call per
+    upcoming AFL game.  Results are cached for ``cache_seconds`` (default 5 min)
+    to avoid burning quota on repeated calls in a session."""
+    api_key = api_key or os.environ.get("ODDS_API_KEY")
+    if not api_key:
+        return {}
+
+    cache_dir = Path(cache_dir)
+    cache_path = cache_dir / f"{PROPS_CACHE_NAME}.json"
+    if cache_path.exists() and (time.time() - cache_path.stat().st_mtime) < cache_seconds:
+        try:
+            return json.loads(cache_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Step 1: get event IDs for upcoming AFL games
+    try:
+        ev_resp = requests.get(
+            EVENTS_API_URL,
+            params={"apiKey": api_key, "sport": "aussierules_afl"},
+            headers={"User-Agent": USER_AGENT}, timeout=30,
+        )
+        ev_resp.raise_for_status()
+        events = ev_resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        print(f"Live props unavailable (events fetch: {exc}); using model prices.",
+              file=sys.stderr)
+        return {}
+
+    # Step 2: per-event prop markets
+    all_props: dict[str, float] = {}
+    for ev in events:
+        event_id = ev.get("id")
+        if not event_id:
+            continue
+        try:
+            pr = requests.get(
+                EVENT_ODDS_URL.format(event_id=event_id),
+                params={"apiKey": api_key, "regions": regions,
+                        "markets": _PROP_MARKETS, "oddsFormat": "decimal"},
+                headers={"User-Agent": USER_AGENT}, timeout=30,
+            )
+            if pr.status_code in (402, 403):
+                # Props tier not enabled — don't spam errors for every event
+                print("Live props require a paid Odds API props tier; "
+                      "falling back to model prices.", file=sys.stderr)
+                return {}
+            pr.raise_for_status()
+            props = parse_event_props(pr.json())
+            for leg, price in props.items():
+                _take_best(all_props, leg, price)
+        except (requests.RequestException, ValueError):
+            continue   # skip one failed event; keep the others
+
+    if all_props:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(all_props))
+    return all_props

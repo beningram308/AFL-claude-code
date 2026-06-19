@@ -56,9 +56,13 @@ POINTS_PER_GOAL = 6.8
 # ----------------------------------------------------------------------------- #
 # Player props — plan §3.3
 # ----------------------------------------------------------------------------- #
-PROP_FORM_GAMES = 20          # rolling window for EWMA rate
+PROP_FORM_GAMES = 20          # rolling window for EWMA rate (legacy; see PLAYER_FORM_WINDOW)
 PROP_EWMA_HALFLIFE = 6        # games; current-season weighted up
 PROP_MIN_DISPERSION = 4.0     # floor on NB dispersion to avoid degenerate fits
+
+# --- Player form window (last-N games, not all-history) ---
+PLAYER_FORM_WINDOW = 40          # project each player off their most recent 40 games
+TOG_RETURN_DEFAULT = 0.75        # expected TOG for a player flagged returning-from-injury / managed
 
 # ----------------------------------------------------------------------------- #
 # Boundary throw-ins / out-of-bounds market — plan §1.6c
@@ -183,6 +187,19 @@ MULTI_MARKET_SHRINK = 0.25
 # Target Monte Carlo standard error for an anchor's probability; n_sims is
 # auto-bumped so the tightest anchor clears it (round-2 §8.3).
 MC_SE_TARGET = 0.002
+
+# ----------------------------------------------------------------------------- #
+# Leg probability gate — bettable-window filter (REAL-MULTIS §2B)
+# ----------------------------------------------------------------------------- #
+# Lines outside this window are either too short to post (near-cert, prob > MAX)
+# or too long to appear on standard book menus (prob < MIN). Replaces the loose
+# 0.05/0.97 gate that admitted "15+ disposals" for ball-magnets (~99% prob).
+LEG_PROB_MIN = 0.30
+LEG_PROB_MAX = 0.78
+
+# Target combined odds for the three rungs of the same-game multi ladder
+# (REAL-MULTIS ADDENDUM 1). Selection uses closest fair-odds to each target.
+MULTI_TARGET_ODDS = (1.75, 3.50, 5.00)
 
 # ----------------------------------------------------------------------------- #
 # Simulation

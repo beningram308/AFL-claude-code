@@ -115,6 +115,7 @@ def simulate_match(
     rng: np.random.Generator,
     score_correlation: float = SCORE_SHOT_CORRELATION,
     is_wet: bool = False,
+    shot_dispersion: float = SHOT_DISPERSION,
 ) -> dict:
     """Vectorised Monte Carlo of n scorelines via the scoring-shots model
     (plan §2.1, §3.3).
@@ -161,8 +162,10 @@ def simulate_match(
         u_home = norm.cdf(z_home)
         u_away = norm.cdf(z_away)
 
-    home_score = simulate_team_score(mu_home_shots, home_accuracy, n, rng, shots_uniform=u_home)
-    away_score = simulate_team_score(mu_away_shots, away_accuracy, n, rng, shots_uniform=u_away)
+    home_score = simulate_team_score(mu_home_shots, home_accuracy, n, rng,
+                                     dispersion=shot_dispersion, shots_uniform=u_home)
+    away_score = simulate_team_score(mu_away_shots, away_accuracy, n, rng,
+                                     dispersion=shot_dispersion, shots_uniform=u_away)
 
     home_pts = home_score["points"].astype(float)
     away_pts = away_score["points"].astype(float)

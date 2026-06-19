@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
+import pytest
 
-from afl_bot.config import PROP_MIN_DISPERSION
+from afl_bot.config import PLAYER_FORM_WINDOW, PROP_MIN_DISPERSION
 from afl_bot.models.priors import (
+    _player_means_and_shares,
     cba_role_multiplier,
     classify_roles,
     estimate_dispersion_hierarchical,
@@ -12,6 +14,7 @@ from afl_bot.models.priors import (
     shrink,
     tog_multiplier,
 )
+from afl_bot.models.props import estimate_dispersion, player_rate_profile
 
 rng = np.random.default_rng(0)
 
@@ -175,3 +178,141 @@ def test_player_tog_and_cba_recent_baseline():
 def test_player_tog_missing_column_returns_nan():
     recent, baseline = player_tog(LOG.drop(columns=["time_on_ground_percentage"]), "Mid")
     assert np.isnan(recent) and np.isnan(baseline)
+
+
+# --------------------------------------------------------------------------- #
+# Form-window tests (FORM-WINDOW-INSTRUCTIONS Parts B, D, E)
+# --------------------------------------------------------------------------- #
+
+def _level_shift_log(old_val, new_val, n_old=20, n_new=40):
+    """Player log with a level shift: first n_old games at old_val, next n_new at new_val."""
+    rows = []
+    for g in range(n_old + n_new):
+        val = old_val if g < n_old else new_val
+        rows.append({
+            "year": 2024, "round": g + 1, "unixtime": g + 1,
+            "player": "P", "team": "A", "opponent": "B", "is_home": True,
+            "disposals": val, "goals": 0, "marks": 0, "tackles": 0,
+        })
+    return pd.DataFrame(rows)
+
+
+def test_player_rate_profile_uses_form_window():
+    """Last-40 projection reflects the new level, not the blended all-history mean (B1)."""
+    log = _level_shift_log(old_val=5, new_val=20, n_old=20, n_new=40)
+    profile = player_rate_profile(log, "P", "disposals")
+    assert profile["n_games"] == PLAYER_FORM_WINDOW  # windowed to 40
+    assert profile["mean"] > 15  # well above the old-era 5; EWMA of 40 x 20 = 20
+
+
+def test_player_rate_profile_thin_history_not_dropped():
+    """A player with only 5 games still gets a finite, non-NaN projection (Part D)."""
+    rows = [{"year": 2024, "round": r, "unixtime": r, "player": "Debut",
+             "team": "A", "opponent": "B", "is_home": True,
+             "disposals": 15, "goals": 0, "marks": 0, "tackles": 0}
+            for r in range(1, 6)]
+    log = pd.DataFrame(rows)
+    profile = player_rate_profile(log, "Debut", "disposals")
+    assert profile["n_games"] == 5
+    assert np.isfinite(profile["mean"])
+
+
+def test_player_rate_profile_sort_robustness_bad_unixtime():
+    """A corrupted unixtime on a recent game doesn't mis-order the window (Part E).
+    year/round are primary sort keys; unixtime is just a tiebreak."""
+    rows = []
+    for g in range(45):
+        ut = 1 if g == 40 else g + 1000   # game 41 has a near-1970 unixtime
+        rows.append({"year": 2024, "round": g + 1, "unixtime": ut,
+                     "player": "P", "team": "A", "opponent": "B", "is_home": True,
+                     "disposals": 20 if g >= 5 else 5})
+    log = pd.DataFrame(rows)
+    profile = player_rate_profile(log, "P", "disposals")
+    # Last 40 by year/round = games 5-44 → all 20. Bad unixtime for g=40
+    # doesn't change ordering (round 41 still sorts after round 40).
+    assert profile["mean"] > 15
+    assert profile["n_games"] == PLAYER_FORM_WINDOW
+
+
+def test_estimate_dispersion_uses_form_window():
+    """estimate_dispersion windows each player to their last 40 games (B2).
+    Old era (games 0-19): extreme alternation 1/39 → high variance ≈ 361.
+    Recent era (games 20-59): moderate alternation 15/25 → variance ≈ 25.
+    Both eras have var > mean, so NB method-of-moments is valid for each window.
+    Recent era is LESS overdispersed → higher r; all-history is pulled down by old era."""
+    rows = []
+    for g in range(60):
+        val = (1 if g % 2 == 0 else 39) if g < 20 else (15 if g % 2 == 0 else 25)
+        rows.append({"year": 2024, "round": g + 1, "unixtime": g + 1,
+                     "player": "P", "team": "A", "opponent": "B", "is_home": True,
+                     "disposals": val})
+    log = pd.DataFrame(rows)
+    disp_windowed = estimate_dispersion(log, "disposals")          # window=40: recent era
+    disp_all = estimate_dispersion(log, "disposals", window=60)   # all 60 games
+    # Windowed to recent era (var≈25): r ≈ 71; all-history (var≈139): r ≈ 3.4
+    assert disp_windowed["P"] > disp_all["P"]
+
+
+def test_player_means_and_shares_uses_form_window():
+    """_player_means_and_shares ignores games outside the 40-game window (B3)."""
+    rows = []
+    for g in range(50):
+        rows.append({
+            "year": 2024, "round": g + 1, "unixtime": g + 1,
+            "player": "P", "team": "A", "opponent": "B", "is_home": True,
+            "disposals": 5 if g < 10 else 20,  # last 40 all 20
+        })
+    log = pd.DataFrame(rows)
+    # team_disposals column so shares are defined
+    log["team_disposals"] = log["disposals"]
+    means, _ = _player_means_and_shares(log, "disposals")
+    # Windowed (last 40) mean should be 20; all-history mean would be ~17
+    assert means["P"] == pytest.approx(20.0, abs=0.1)
+
+
+def test_estimate_dispersion_hierarchical_uses_form_window():
+    """estimate_dispersion_hierarchical windows each player to last 40 games (B4).
+    Same alternating pattern as the estimate_dispersion test above."""
+    rows = []
+    for g in range(60):
+        val = (1 if g % 2 == 0 else 39) if g < 20 else (15 if g % 2 == 0 else 25)
+        rows.append({"year": 2024, "round": g + 1, "unixtime": g + 1,
+                     "player": "P", "team": "A", "opponent": "B", "is_home": True,
+                     "disposals": val})
+    log = pd.DataFrame(rows)
+    roles = {"P": "midfielder"}
+    disp_windowed = estimate_dispersion_hierarchical(log, "disposals", roles)
+    disp_all = estimate_dispersion_hierarchical(log, "disposals", roles, window=60)
+    # Recent era (var≈25) → higher r than all-history (var≈139)
+    assert disp_windowed["P"] > disp_all["P"]
+
+
+def test_player_tog_baseline_uses_form_window():
+    """player_tog baseline EWMA is computed over the last PLAYER_FORM_WINDOW games (B5)."""
+    rows = []
+    for g in range(50):
+        tog = 50.0 if g < 10 else 90.0   # last 40 games: TOG = 90
+        rows.append({"year": 2024, "round": g + 1, "unixtime": g + 1,
+                     "player": "P", "team": "A", "opponent": "B", "is_home": True,
+                     "disposals": 15, "time_on_ground_percentage": tog})
+    log = pd.DataFrame(rows)
+    _, baseline = player_tog(log, "P")
+    # Windowed to last 40 (all 90 TOG) → baseline near 90
+    assert baseline > 80
+
+
+def test_shrunk_projection_finite_for_thin_history():
+    """A 5-game player gets a finite, shrunk projection — not NaN (Part D)."""
+    from afl_bot.models.priors import role_rate_priors, shrink
+    thin_rows = [{"year": 2024, "round": r, "unixtime": r, "player": "New",
+                  "team": "A", "opponent": "B", "is_home": True, "disposals": 20,
+                  "goals": 1, "marks": 3, "tackles": 2}
+                 for r in range(1, 6)]
+    thin_log = pd.DataFrame(thin_rows)
+    for stat in ("disposals", "goals", "marks", "tackles"):
+        thin_log[f"team_{stat}"] = thin_log[stat]
+    priors_dict = role_rate_priors(thin_log, "disposals", {"New": "midfielder"})
+    profile = player_rate_profile(thin_log, "New", "disposals")
+    prior_mean = priors_dict.get("midfielder", priors_dict["_global"])["mean_prior"]
+    result = shrink(profile["mean"], profile["n_games"], prior_mean)
+    assert np.isfinite(result) and result > 0

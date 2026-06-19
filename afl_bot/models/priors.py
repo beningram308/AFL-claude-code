@@ -28,6 +28,7 @@ import pandas as pd
 from afl_bot.config import (
     CBA_MULT_BOUNDS,
     CBA_ROLE_SENSITIVITY,
+    PLAYER_FORM_WINDOW,
     PROP_DISPERSION_PRIOR_STRENGTH,
     PROP_EWMA_HALFLIFE,
     PROP_MIN_DISPERSION,
@@ -127,13 +128,18 @@ def _roles_from_positions(log: pd.DataFrame) -> dict[str, str]:
     return modal.to_dict()
 
 
-def _player_means_and_shares(log: pd.DataFrame, stat: str) -> tuple[pd.Series, pd.Series]:
-    """Per-player mean of ``stat`` and per-player mean usage share."""
+def _player_means_and_shares(log: pd.DataFrame, stat: str,
+                             window: int = PLAYER_FORM_WINDOW) -> tuple[pd.Series, pd.Series]:
+    """Per-player mean of ``stat`` and per-player mean usage share, windowed to
+    each player's last ``window`` games so old-era data doesn't bias role priors."""
     col = f"team_{stat}"
     work = log
     if col not in log.columns:
         work = log.copy()
         work[col] = work.groupby(["year", "round", "team"])[stat].transform("sum")
+    work = (work.sort_values(["year", "round", "unixtime"])
+                .groupby("player", group_keys=False)
+                .tail(window))
     player_mean = work.groupby("player")[stat].mean()
     share = (work[stat] / work[col].replace(0, np.nan))
     player_share = share.groupby(work["player"]).mean()
@@ -170,16 +176,23 @@ def role_rate_priors(log: pd.DataFrame, stat: str, roles: dict[str, str]) -> dic
 def estimate_dispersion_hierarchical(
     log: pd.DataFrame, stat: str, roles: dict[str, str],
     min_games: int = 6, strength: float = PROP_DISPERSION_PRIOR_STRENGTH,
+    window: int = PLAYER_FORM_WINDOW,
 ) -> dict[str, float]:
     """Per-player NB dispersion ``r`` (method of moments) partially pooled
-    toward a role prior (plan §3.1) instead of one league fallback.
+    toward a role prior (plan §3.1) instead of one league fallback. Windowed
+    to each player's last ``window`` games so old-era variance doesn't dominate.
 
     Each player's own ``r`` (where they have enough games and are overdispersed)
     is shrunk toward the mean ``r`` of their role; players without a usable own
     estimate take the role prior outright. Everything is floored at
     ``PROP_MIN_DISPERSION``.
     """
-    grouped = log.groupby("player")[stat].agg(["mean", "var", "count"])
+    recent = (
+        log.sort_values(["year", "round", "unixtime"])
+           .groupby("player", group_keys=False)
+           .tail(window)
+    )
+    grouped = recent.groupby("player")[stat].agg(["mean", "var", "count"])
 
     raw_r: dict[str, float] = {}
     for player, row in grouped.iterrows():
@@ -208,12 +221,17 @@ def estimate_dispersion_hierarchical(
 # --------------------------------------------------------------------------- #
 def _recent_baseline(
     log: pd.DataFrame, player: str, col: str, recent_games: int, halflife: float,
+    window: int | None = None,
 ) -> tuple[float, float]:
     """(recent mean over last ``recent_games``, EWMA baseline) of ``col`` for a
-    player. Returns (nan, nan) if the column is absent or has no values."""
+    player. If ``window`` is given, rows are first windowed to the last ``window``
+    games so the baseline EWMA matches the form window. Returns (nan, nan) if the
+    column is absent or has no values."""
     if col not in log.columns:
         return float("nan"), float("nan")
     rows = log[log["player"] == player].sort_values(["year", "round", "unixtime"])
+    if window is not None:
+        rows = rows.tail(window)
     vals = rows[col].dropna()
     if vals.empty:
         return float("nan"), float("nan")
@@ -223,16 +241,21 @@ def _recent_baseline(
 
 
 def player_tog(log: pd.DataFrame, player: str, recent_games: int = 4,
-               halflife: float = PROP_EWMA_HALFLIFE) -> tuple[float, float]:
-    """(recent TOG%, baseline TOG%) for a player. Recent form is the best
-    available proxy for projected minutes absent a confirmed lineup."""
-    return _recent_baseline(log, player, "time_on_ground_percentage", recent_games, halflife)
+               halflife: float = PROP_EWMA_HALFLIFE,
+               window: int = PLAYER_FORM_WINDOW) -> tuple[float, float]:
+    """(recent TOG%, baseline TOG%) for a player. The baseline EWMA uses the
+    last ``window`` games so it matches the form window denominator. Recent form
+    (last ``recent_games``) is used when no lineup TOG override is supplied."""
+    return _recent_baseline(log, player, "time_on_ground_percentage",
+                            recent_games, halflife, window)
 
 
 def player_cba(log: pd.DataFrame, player: str, recent_games: int = 4,
-               halflife: float = PROP_EWMA_HALFLIFE) -> tuple[float, float]:
+               halflife: float = PROP_EWMA_HALFLIFE,
+               window: int = PLAYER_FORM_WINDOW) -> tuple[float, float]:
     """(recent CBA/game, baseline CBA/game) for a player."""
-    return _recent_baseline(log, player, "centre_bounce_attendances", recent_games, halflife)
+    return _recent_baseline(log, player, "centre_bounce_attendances",
+                            recent_games, halflife, window)
 
 
 def tog_multiplier(projected_tog: float, historical_tog: float,

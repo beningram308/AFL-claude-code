@@ -49,18 +49,24 @@ from afl_bot.build.staking import (
 from afl_bot.config import (
     ANCHOR_MIN_PROB,
     DEFAULT_BANKROLL,
+    LEG_PROB_MAX,
+    LEG_PROB_MIN,
     MC_SE_TARGET,
     MULTI_MARKET_SHRINK,
+    PLAYER_FORM_WINDOW,
     PROP_CALIBRATION_LOOKBACK,
     PROP_KELLY_MULTIPLIER,
     PROP_RECENT_SEASONS,
     ROOT_DIR,
+    SHARE_CONCENTRATION,
     SIM_ITERATIONS,
+    TEAM_STAT_DISPERSION,
+    TOG_RETURN_DEFAULT,
     WET_THRESHOLD_MM,
 )
 from afl_bot.data.odds import fetch_historical_odds
-from afl_bot.data.lineups import load_lineup
-from afl_bot.data.live_odds import fetch_live_odds
+from afl_bot.data.lineups import fetch_lineup, load_lineup, load_lineup_tog
+from afl_bot.data.live_odds import fetch_live_odds, fetch_live_props
 from afl_bot.data.player_stats import load_player_log
 from afl_bot.data.squiggle import SquiggleClient
 from afl_bot.data.stoppages import load_boundary_throwins
@@ -113,10 +119,10 @@ from afl_bot.sim.engine import (
 )
 
 PROP_LINES = {
-    "disposals": [15, 20, 25],
-    "goals": [1, 2],
-    "marks": [4, 6],
-    "tackles": [3, 5],
+    "disposals": [15, 20, 25, 30, 35],
+    "goals": [1, 2, 3],
+    "marks": [4, 5, 6, 7, 8],
+    "tackles": [3, 4, 5, 6, 7],
 }
 # Top-usage players per team to price when there's no confirmed lineup. Raised
 # from 4 once the pool is gated to current-season/confirmed players so the VALUE
@@ -126,6 +132,13 @@ PLAYERS_PER_TEAM_SAMPLE = 10
 
 def _history_years(target_year: int, lookback: int = 6) -> list[int]:
     return list(range(target_year - lookback, target_year + 1))
+
+
+def _normalize_name(name: str) -> str:
+    """Canonical key for fuzzy player-name matching: lowercase, hyphens/apostrophes stripped.
+    Lets Footywire slug names (``"Luke Davies Uniacke"``) match log names
+    (``"Luke Davies-Uniacke"``) without an explicit player-ID table."""
+    return name.lower().replace("-", " ").replace("'", "").strip()
 
 
 def _min_sims_for_anchor_se(target_se: float = MC_SE_TARGET) -> int:
@@ -197,23 +210,50 @@ def _select_players(player_log: pd.DataFrame, team: str, current_year: int, n: i
 
     ranked = pool.groupby("player")["disposals"].mean().sort_values(ascending=False)
     if confirmed:
-        ranked = ranked[ranked.index.isin(confirmed)]
+        # Exact match first; fall back to normalized (handles hyphen/space variants
+        # from Footywire slug extraction, e.g. "Luke Davies Uniacke" → "Luke Davies-Uniacke")
+        exact = set(ranked.index) & confirmed
+        if len(exact) < len(confirmed):
+            norm_map = {_normalize_name(n): n for n in ranked.index}
+            matched = set(exact)
+            for c in confirmed:
+                if c not in ranked.index:
+                    actual = norm_map.get(_normalize_name(c))
+                    if actual:
+                        matched.add(actual)
+        else:
+            matched = exact
+        ranked = ranked[ranked.index.isin(matched)]
         return ranked.index.tolist()
     return ranked.head(n).index.tolist()
 
 
 def _team_player_samples(usage_players, team, opponent, is_home_team, match, pace,
                          player_log, roles, rate_priors, team_stat_profiles, league_totals,
-                         volume_stats, is_wet, roofed, n_sims, rng):
+                         volume_stats, is_wet, roofed, n_sims, rng,
+                         lineup_tog: dict[str, float] | None = None,
+                         team_stat_dispersion: float = TEAM_STAT_DISPERSION,
+                         share_concentration: float = SHARE_CONCENTRATION):
     """Per-iteration stat samples for each priced player on one team: volume
     stats via pace -> opponent/wet-adjusted team total -> role-shrunk Dirichlet
     shares (§2.5/§3.1-3.3), goals via Multinomial on goal shares (§3.3).
     Returns ``{player: {stat: samples}}``. Shared by run-round and round-report
-    so the two can't drift."""
+    so the two can't drift.
+
+    ``lineup_tog`` maps player names to their projected TOG for this match
+    (from ``load_lineup_tog``). When supplied, it overrides the recent-form TOG
+    used as the projected TOG for that player (the historical baseline stays the
+    same — it is always the 40-game EWMA)."""
     player_samples: dict[str, dict[str, np.ndarray]] = {p: {} for p in usage_players}
 
     # Role/minutes multipliers (plan §3.2).
-    tog_mult = {p: tog_multiplier(*player_tog(player_log, p)) for p in usage_players}
+    # projected_tog: lineup override if supplied, else recent form (last 4 games).
+    # baseline_tog: always the 40-game EWMA (denominator for the multiplier).
+    tog_mult = {}
+    for p in usage_players:
+        recent_tog, baseline_tog = player_tog(player_log, p)
+        projected_tog = lineup_tog.get(p, recent_tog) if lineup_tog else recent_tog
+        tog_mult[p] = tog_multiplier(projected_tog, baseline_tog)
     cba_mult = {p: cba_role_multiplier(*player_cba(player_log, p)) for p in usage_players}
 
     for stat in volume_stats:
@@ -224,7 +264,7 @@ def _team_player_samples(usage_players, team, opponent, is_home_team, match, pac
             continue
         mu_team *= opponent_matchup_multiplier(player_log, stat, opponent)
         mu_team *= rain_multiplier(stat, is_wet, roofed)
-        team_total = simulate_team_stat_total(mu_team, pace, rng)
+        team_total = simulate_team_stat_total(mu_team, pace, rng, dispersion=team_stat_dispersion)
 
         priced, shares = [], []
         for player_name in usage_players:
@@ -244,7 +284,7 @@ def _team_player_samples(usage_players, team, opponent, is_home_team, match, pac
         shares = np.asarray(shares, dtype=float)
         if shares.sum() > 0.95:
             shares = shares * (0.95 / shares.sum())
-        alloc = allocate_player_stats(team_total, shares, rng)
+        alloc = allocate_player_stats(team_total, shares, rng, concentration=share_concentration)
         for player_name, row in zip(priced, alloc):
             player_samples[player_name][stat] = row
 
@@ -332,6 +372,7 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
     # Confirmed lineups (round-2 §1.2): players not named are excluded from
     # multis. No file -> every player stays confirmed (unchanged behaviour).
     lineup = load_lineup(lineup_path)
+    lineup_tog = load_lineup_tog(lineup_path)   # per-player projected TOG overrides
 
     # Hierarchical priors (plan §3.1): infer coarse roles, then pool dispersion
     # and shrink player rates toward role priors.
@@ -500,7 +541,7 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
             player_samples = _team_player_samples(
                 usage_players, team, opponent, is_home_team, match, pace,
                 player_log, roles, rate_priors, team_stat_profiles, league_totals,
-                volume_stats, is_wet, roofed, n_sims, rng)
+                volume_stats, is_wet, roofed, n_sims, rng, lineup_tog=lineup_tog)
 
             # Price every line from the per-player sample arrays.
             for player_name in usage_players:
@@ -516,7 +557,7 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
                         prob = prob_event(leg_mask)
                         if cal is not None:
                             prob = float(cal.predict([prob])[0])   # per-market calibration (§2.3)
-                        if not (0.05 < prob < 0.97):
+                        if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
                         leg_name = f"{player_name} {line}+ {stat}"
                         odds = odds_book.get(leg_name)
@@ -640,7 +681,8 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
 
 def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
                  rain_mm: float | None = None, lineup_path: str | None = None,
-                 use_live: bool = False) -> None:
+                 use_live: bool = False, multis_only: bool = False,
+                 auto_lineup: bool = False) -> None:
     """The weekly deliverable (round-2 §10): per-match real-player projection
     tables + same-game multis ranked by joint sim probability, saved to
     reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log."""
@@ -689,12 +731,32 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     league_totals = league_stat_totals(player_log)
     volume_stats = [s for s in PROP_LINES if s in PACE_STATS]
     mu_oob = expected_oob(load_boundary_throwins())
-    lineup = load_lineup(lineup_path)
-    # Live h2h/totals (The Odds API) merged with any --odds file; manual overrides
-    # live for hand-fixes (MULTI-CHANGES PART A). Props come from the file.
+    # Lineup: manual file > auto-fetch > none (REAL-MULTIS Problem 1)
+    lineup_source: str | None = None
+    if lineup_path:
+        lineup = load_lineup(lineup_path)
+        lineup_tog = load_lineup_tog(lineup_path)
+        lineup_source = "manual file"
+    elif auto_lineup:
+        lineup = fetch_lineup(year, round_no)
+        lineup_tog = {}
+        if lineup:
+            n_teams = len(lineup)
+            lineup_source = f"Footywire team selections ({n_teams} team(s) confirmed)"
+            print(f"Auto-lineup: {n_teams} team(s) fetched from Footywire.", file=sys.stderr)
+        else:
+            lineup_source = "Footywire (sheets not yet posted — no filter applied)"
+            print("Auto-lineup: Footywire sheets not yet posted; pricing top-usage players.",
+                  file=sys.stderr)
+    else:
+        lineup = {}
+        lineup_tog = {}
+    # Live h2h/totals + player props (The Odds API) merged with any --odds file;
+    # manual overrides live for hand-fixes (MULTI-CHANGES PART A).
     live = fetch_live_odds(round_no) if use_live else {}
+    live_props = fetch_live_props(round_no) if use_live else {}
     manual = json.loads(Path(odds_path).read_text()) if odds_path else {}
-    odds_book = {**live, **manual}
+    odds_book = {**live, **live_props, **manual}
     odds_note = ""
     if use_live:
         prop_keys = [k for k in manual if not k.startswith("_")
@@ -709,6 +771,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
 
     rng = make_rng()
     matches, odds_legs, predictions = [], [], []
+    n_tog_overrides = 0
+    n_auto_excluded = 0
 
     for _, fx in fixtures.iterrows():
         home_name, away_name = fx["hteam"], fx["ateam"]
@@ -757,12 +821,18 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         projections = []
         for team, is_home_team in ((home_name, True), (away_name, False)):
             opponent = away_name if is_home_team else home_name
+            team_confirmed = lineup.get(team)
             usage = _select_players(player_log, team, current_season,
-                                    PLAYERS_PER_TEAM_SAMPLE, confirmed=lineup.get(team))
+                                    PLAYERS_PER_TEAM_SAMPLE, confirmed=team_confirmed)
+            if auto_lineup and team_confirmed:
+                unrestricted = _select_players(player_log, team, current_season,
+                                               PLAYERS_PER_TEAM_SAMPLE)
+                n_auto_excluded += sum(1 for p in unrestricted if p not in team_confirmed)
+            n_tog_overrides += sum(1 for p in usage if p in lineup_tog)
             samples = _team_player_samples(
                 usage, team, opponent, is_home_team, match, pace, player_log, roles,
                 rate_priors, team_stat_profiles, league_totals, volume_stats, is_wet, roofed,
-                n_sims, rng)
+                n_sims, rng, lineup_tog=lineup_tog)
             projections.append((team, projection_rows(samples, PROP_LINES, prop_calibrators)))
 
             for player_name, stats in samples.items():
@@ -777,7 +847,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                         prob = prob_event(mask)
                         if cal is not None:
                             prob = float(cal.predict([prob])[0])
-                        if not (0.05 < prob < 0.97):
+                        if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
                         name = f"{player_name} {line}+ {stat}"
                         leg = LegCandidate(name, match_id, f"player_{stat}", player_name, prob,
@@ -812,8 +882,18 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                          f"-> {mm.combined_fair_prob:.3f}")
         multis_section = "\n".join(lines) + "\n"
 
+    _lineup_note = (
+        f" Lineup: {lineup_source} — {n_auto_excluded} player(s) excluded as not named to play."
+        if lineup_source else ""
+    )
+    proj_note = (
+        f"_Projections = last {PLAYER_FORM_WINDOW} games (EWMA) × expected TOG. "
+        f"Players flagged returning from injury capped at {int(TOG_RETURN_DEFAULT * 100)}% TOG; "
+        f"{n_tog_overrides} player(s) had a lineup TOG override this run.{_lineup_note}_"
+    )
     md = render_markdown(year, round_no, matches, has_odds=bool(odds_book),
-                         multis_section=multis_section, odds_note=odds_note)
+                         multis_section=multis_section, odds_note=odds_note,
+                         proj_note=proj_note, multis_only=multis_only)
     out_dir = ROOT_DIR / "reports"
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / f"{year}_r{round_no}_report.md"
@@ -927,6 +1007,68 @@ def grade_round(year: int, round_no: int) -> None:
     print(f"  [appended to {log_path}]")
 
 
+def grade_multis(year: int, rounds: list[int] | None, n_sims: int) -> None:
+    """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
+    (model-upgrade audit Phase 1.1): for each completed round, reconstruct the
+    ladder `round-report` would have built from data strictly before that
+    round, and grade the selected rungs' joint probability against what
+    actually happened. Until this reliability curve is flat, treat multi
+    prices as unproven, not evidence (see MODEL-UPGRADE-INSTRUCTIONS.md)."""
+    from afl_bot.backtest.multis import (
+        multi_calibration_report,
+        multi_reliability_curve,
+        walk_forward_multi_predictions,
+    )
+
+    client = SquiggleClient()
+    games = pd.concat([client.get_completed_games(y) for y in _history_years(year, lookback=7)],
+                      ignore_index=True)
+    games = games[games["year"] <= year]
+    if games.empty:
+        print("No historical data available.", file=sys.stderr)
+        return
+    player_log = load_player_log(games, prefer_real=True)
+
+    preds = walk_forward_multi_predictions(games, player_log, eval_year=year,
+                                           rounds=rounds, n_sims=n_sims)
+    if preds.empty:
+        print("No graded multi predictions — rounds not completed yet, or every match had "
+              "fewer than 3 candidate legs.", file=sys.stderr)
+        return
+
+    report = multi_calibration_report(preds)
+    print(f"=== Multi (SGM) walk-forward backtest: {year} round(s) "
+          f"{sorted(preds['round'].unique().tolist())} ===")
+    print(f"  n={report['n']} | log loss {report['log_loss']:.4f} | brier {report['brier']:.4f} "
+          f"| mean pred {report['mean_pred']:.3f} | actual hit rate {report['hit_rate']:.3f}")
+    print("  reliability (mean predicted vs actual hit rate per bucket):")
+    for _, row in multi_reliability_curve(preds).iterrows():
+        print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
+              f"| n={int(row['n'])}")
+
+
+def fit_correlations_command(through: int) -> None:
+    """Fit `SCORE_SHOT_CORRELATION` / `PACE_SIGMA` / `SHARE_CONCENTRATION` /
+    `SHOT_DISPERSION` / `TEAM_STAT_DISPERSION` from history up to and
+    including `through` (model-upgrade audit Phase 2.1) and write a versioned
+    `correlation_params.json` artifact that `round-report`/`run-round` can
+    opt into (mirrors `fit`/`elo_params.json`)."""
+    from afl_bot.backtest.correlations import fit_correlation_params
+
+    client = SquiggleClient()
+    games = pd.concat([client.get_completed_games(y) for y in _history_years(through, lookback=7)],
+                      ignore_index=True)
+    games = games[games["year"] <= through]
+    if games.empty:
+        print("No completed games to fit on.", file=sys.stderr)
+        return
+    player_log = load_player_log(games, prefer_real=True)
+    artifact = fit_correlation_params(games, player_log, train_end_year=through)
+    print(json.dumps(artifact, indent=2))
+    print("\n[wrote correlation_params.json -> opt into it with "
+          "afl_bot.backtest.correlations.load_fitted_correlation_params()]", file=sys.stderr)
+
+
 def fit_command(through: int, use_optuna: bool, n_trials: int) -> None:
     """Re-tune Elo hyperparameters on completed seasons through ``through`` and
     write a versioned ``elo_params.json`` artifact (round-2 §6.2) that run-round /
@@ -988,11 +1130,26 @@ def main(argv: list[str] | None = None) -> None:
     rep_p.add_argument("--live-odds", action="store_true", dest="use_live",
                        help="Fetch live market odds (The Odds API; needs ODDS_API_KEY). "
                             "Merged with --odds (which overrides, e.g. for prop prices).")
+    rep_p.add_argument("--multis-only", action="store_true", dest="multis_only",
+                       help="Print only the same-game multi ladder for each match; "
+                            "skip player-projection tables and match-summary stats.")
+    rep_p.add_argument("--auto-lineup", action="store_true", dest="auto_lineup",
+                       help="Fetch team selections from Footywire and exclude players "
+                            "not named to play. Overridden by --lineup if both are given.")
 
     grade_p = sub.add_parser("grade-round",
                              help="Score a completed round's saved predictions vs actuals.")
     grade_p.add_argument("--year", type=int, required=True)
     grade_p.add_argument("--round", type=int, required=True, dest="round_no")
+
+    multis_p = sub.add_parser("grade-multis",
+                              help="Walk-forward backtest of the 3-leg SGM ladder's joint "
+                                   "probability vs actual hit rate.")
+    multis_p.add_argument("--year", type=int, required=True)
+    multis_p.add_argument("--rounds", type=str, default=None,
+                          help="Comma-separated round numbers (default: every completed "
+                               "round of --year).")
+    multis_p.add_argument("--n-sims", type=int, default=SIM_ITERATIONS, dest="n_sims")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1001,6 +1158,12 @@ def main(argv: list[str] | None = None) -> None:
                        help="Use Optuna (optional dep) instead of the dependency-free grid.")
     fit_p.add_argument("--n-trials", type=int, default=150, dest="n_trials")
 
+    fit_corr_p = sub.add_parser("fit-correlations",
+                                help="Fit the SGM correlation/dispersion constants from "
+                                     "history and write a versioned params artifact.")
+    fit_corr_p.add_argument("--through", type=int, required=True,
+                            help="Fit on completed seasons up to and including this year.")
+
     args = parser.parse_args(argv)
     if args.command == "run-round":
         run_round(args.year, args.round_no, args.odds, args.n_sims,
@@ -1008,11 +1171,17 @@ def main(argv: list[str] | None = None) -> None:
                   args.lineup_path, args.allow_synthetic_props)
     elif args.command == "round-report":
         round_report(args.year, args.round_no, args.odds, args.n_sims,
-                     args.rain_mm, args.lineup_path, args.use_live)
+                     args.rain_mm, args.lineup_path, args.use_live, args.multis_only,
+                     args.auto_lineup)
     elif args.command == "grade-round":
         grade_round(args.year, args.round_no)
+    elif args.command == "grade-multis":
+        rounds = [int(r) for r in args.rounds.split(",")] if args.rounds else None
+        grade_multis(args.year, rounds, args.n_sims)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
+    elif args.command == "fit-correlations":
+        fit_correlations_command(args.through)
 
 
 if __name__ == "__main__":

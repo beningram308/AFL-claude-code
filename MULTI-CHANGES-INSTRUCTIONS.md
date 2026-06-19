@@ -35,20 +35,56 @@ Key-format requirement (must match how legs are named in cli.py so they join):
   `afl_bot.data.teams.normalize_team_name` and the same player-id path the report
   uses, BEFORE returning — otherwise legs won't match and edges won't compute.
 
-### Recommended source (with the honest caveat)
-* The Odds API (https://the-odds-api.com), sport key `aussierules_afl`, gives
-  **h2h / totals / spreads** live on the free tier. Wire those first — read the
-  API key from an env var (e.g. `ODDS_API_KEY`), never hard-code it. Cache the
-  response briefly (odds move; a 2–5 min cache is plenty) like odds.py caches.
-* PLAYER PROP odds (disposals/marks/tackles/goals) are NOT on the free tier and
-  are sparse generally. Options, in order of preference:
-    1. The Odds API "player props" add-on markets (paid) if the user has a key.
-    2. A polite scrape of a book that lists AFL props (Sportsbet/TAB) — fragile,
-       check each book's terms.
-    3. Fall back to the existing `--odds` JSON for any props the live feed can't
-       supply.
-  ** Do not pretend props are live if the source can't supply them. ** Merge:
-  live h2h/totals  ⊕  whatever prop odds are available  ⊕  `--odds` file override.
+### Source: The Odds API — AND IT DOES HAVE AFL PLAYER PROPS (corrected)
+Earlier note was WRONG. The Odds API (https://the-odds-api.com), sport key
+`aussierules_afl`, DOES provide AFL player props from AU books (Sportsbet,
+Ladbrokes, TAB, Pointsbet, Betr). Props are the whole point of this — wire them.
+Read the API key from env `ODDS_API_KEY`, never hard-code. Cache responses ~2 min.
+
+** Player props are on the per-EVENT endpoint, not the bulk endpoint, and are a
+PAID-tier / additional-markets feature (the free tier is featured markets only —
+h2h/totals). Confirm the user's plan includes additional markets, else props 402/
+return empty and you fall back to the --odds file. **
+
+Two-step fetch:
+  1. List events to get eventIds:
+       GET https://api.the-odds-api.com/v4/sports/aussierules_afl/events?apiKey=KEY
+     (also fetch h2h/totals in bulk here: .../odds?regions=au&markets=h2h,totals
+      &oddsFormat=decimal — these ARE on every plan.)
+  2. Per event, fetch prop markets (one request per event — costs credits =
+     #markets × #regions per event, so request only the markets you use):
+       GET https://api.the-odds-api.com/v4/sports/aussierules_afl/events/{eventId}/odds
+           ?regions=au&oddsFormat=decimal&apiKey=KEY
+           &markets=player_disposals_over,player_goals_scored_over,player_marks_over,player_tackles_over
+
+AFL prop market keys this bot needs (use the "_over" milestone variants — they
+list X+ lines as separate priced outcomes, which match the bot's "15+ / 20+ / 4+"
+leg format directly):
+    player_disposals_over        -> "<player> N+ disposals"
+    player_goals_scored_over     -> "<player> N+ goals"
+    player_marks_over            -> "<player> N+ marks"
+    player_tackles_over          -> "<player> N+ tackles"
+  (also available if the bot ever prices them: player_kicks_over,
+   player_handballs_over, player_clearances_over, player_afl_fantasy_points.)
+  NOTE: `player_disposals` (no _over) is an Over/Under market with a .5 line and
+  two outcomes; if you use that instead, "N+" = the OVER outcome at point N-0.5.
+
+Parsing each event response:
+    data["bookmakers"][i]["markets"][j]["outcomes"][k] has:
+        description = player name      (normalise to the bot's player names)
+        name        = "Over" / player  (or the milestone label)
+        point       = the line (e.g. 15, 20, 4, or 14.5 for O/U markets)
+        price       = decimal odds
+  Build the leg name as "<normalised player> <int(point or point+0.5)>+ <stat>"
+  EXACTLY matching cli.py's `f"{player_name} {line}+ {stat}"`. Take the BEST
+  (highest) price across the AU books for that exact player+line, or pin one book
+  — your call, but be consistent. Drop any leg whose name can't be matched to a
+  bot player (log how many were dropped).
+
+Fallbacks / merge (do this so the run never silently loses props):
+    live_h2h_totals  ⊕  live_props  ⊕  --odds file (file overrides live).
+  If props come back empty (free plan / off-season / 402), fall back to the
+  --odds JSON for props and SAY which source supplied them in the report note.
 
 ### Wiring into the report
 In `cli.py` `round_report()`, replace the single static load with a merge:
@@ -62,18 +98,17 @@ Add a CLI flag next to `--odds` (around cli.py:962):
                        help="Fetch live market odds (The Odds API; needs ODDS_API_KEY).")
 and thread `use_live` through `round_report(...)` and the `main()` dispatch (cli.py:989).
 
-### Reality check to surface in the report  (IMPORTANT — be accurate)
-The multi rungs are almost all PLAYER PROPS, and the standard/free live feed does
-NOT carry prop odds — only H2H, totals and lines. So `--live-odds` alone will leave
-the Book/Edge columns on the prop multis BLANK. Do not print "edges populate across
-the board" when live odds are on — that's false for props.
-
-The report's note must say plainly:
-  "Live odds cover H2H/totals only. Player-prop legs are priced off <prop source>;
-   rungs with no prop price show '-' for Book/Edge and cannot be flagged VALUE."
-So the value-pick rung only gets a Book/Edge (and the VALUE PICK label) when prop
-odds were supplied — via the `--odds` JSON or a paid props feed — NOT from
-`--live-odds` by itself.
+### Report note — state the actual prop source per run
+Props ARE fetched live when the plan supports them. The note must reflect what
+actually happened on THIS run, not a blanket disclaimer:
+  * props fetched live  -> "Player-prop odds: live from The Odds API (AU books)."
+  * props from file     -> "Player-prop odds: from --odds file (live props
+                            unavailable on this plan / no key)."
+  * no prop odds at all  -> "No prop odds this run; prop rungs show '-' and are
+                            not flagged VALUE."
+A rung only gets a Book/Edge and the VALUE PICK label when its legs actually have
+book odds (live or file). Count and report how many prop legs got a live price vs
+how many were dropped for name-matching, so a low hit-rate is visible.
 
 ================================================================================
 ## PART B — Multi ladder 1.75 → 5.0, minimum 3 legs, top rung = VALUE PICK

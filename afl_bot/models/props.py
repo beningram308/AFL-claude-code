@@ -22,7 +22,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from afl_bot.config import PROP_EWMA_HALFLIFE, PROP_MIN_DISPERSION, PROP_RECENT_SEASONS
+from afl_bot.config import PLAYER_FORM_WINDOW, PROP_EWMA_HALFLIFE, PROP_MIN_DISPERSION, PROP_RECENT_SEASONS
 
 
 def _ewma_last(series: pd.Series, halflife: float) -> float:
@@ -44,7 +44,7 @@ def _ensure_team_totals(log: pd.DataFrame, stat: str) -> pd.DataFrame:
 def player_rate_profile(
     log: pd.DataFrame, player: str, stat: str,
     as_of_year: int | None = None, as_of_round: int | None = None,
-    halflife: float = PROP_EWMA_HALFLIFE, lookback_games: int = 20,
+    halflife: float = PROP_EWMA_HALFLIFE, lookback_games: int = PLAYER_FORM_WINDOW,
 ) -> dict[str, float]:
     """EWMA baseline rate + usage share for one player/stat, using only games
     strictly before (as_of_year, as_of_round) — anti-leakage (plan §2)."""
@@ -69,18 +69,24 @@ def player_rate_profile(
     return {"mean": mean, "share": share, "n_games": len(rows)}
 
 
-def estimate_dispersion(log: pd.DataFrame, stat: str, min_games: int = 6) -> dict[str, float]:
+def estimate_dispersion(log: pd.DataFrame, stat: str, min_games: int = 6,
+                        window: int = PLAYER_FORM_WINDOW) -> dict[str, float]:
     """Per-player Negative Binomial dispersion ``r`` via method of moments:
 
         variance = mean + mean^2 / r   =>   r = mean^2 / (variance - mean)
 
-    Falls back to a league-wide pooled estimate (or ``PROP_MIN_DISPERSION``) for
-    players without enough games, and floors all estimates at
-    ``PROP_MIN_DISPERSION`` to avoid degenerate (near-zero) dispersion fits.
+    Windowed to each player's last ``window`` games so old-era variance doesn't
+    pollute recent estimates. Falls back to a pooled estimate (or
+    ``PROP_MIN_DISPERSION``) for players without enough games.
     """
-    grouped = log.groupby("player")[stat].agg(["mean", "var", "count"])
-    pooled_mean = log[stat].mean()
-    pooled_var = log[stat].var()
+    recent = (
+        log.sort_values(["year", "round", "unixtime"])
+           .groupby("player", group_keys=False)
+           .tail(window)
+    )
+    grouped = recent.groupby("player")[stat].agg(["mean", "var", "count"])
+    pooled_mean = recent[stat].mean()
+    pooled_var = recent[stat].var()
     pooled_r = max(
         PROP_MIN_DISPERSION,
         pooled_mean ** 2 / (pooled_var - pooled_mean) if pooled_var > pooled_mean else PROP_MIN_DISPERSION,
