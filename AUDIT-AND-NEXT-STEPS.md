@@ -135,3 +135,22 @@ hazard, formal Bayesian networks, formal causal inference, news sentiment. (See 
 probabilities and their correlation parameters are not.* Fixing that (PART 3 items 1–2) matters more than
 adding any new model. The single best *new* method is gradient boosting — but only after the multis are
 validated and prop market odds are flowing.
+
+---
+
+## PART 5 — Phase 2.5 decision gate (2026-06-19)
+
+Per `PHASE-3-CODE-PLAN.md` STEP 0.3, the expanded `grade-multis --year 2024,2025` run (n=835 graded
+rungs, 48 rounds — `with_calibration=True`, the default) decides how hard Phase 3 has to work. Result:
+calibration gives a small real improvement (log loss 0.5757 → 0.5680, Brier 0.1948 → 0.1913) but the
+high-probability bucket (0.4-0.6 predicted) is **still bent** after calibration — predicted 0.458 vs
+actual 0.362, almost the same gap as the raw 0.476 vs 0.366. The low/mid buckets are already close to
+flat both ways, so the log-loss gain is mostly redistribution (calibration moves rungs out of the high
+bucket into the mid bucket, n=246→235 and n=291→484) rather than fixing the high bucket's miscalibration.
+
+**This is the "calibrated curve still bent" case** in STEP 0.3's gate, not the "roughly flat" case — so
+the decision is: do the **whole** of Phase 3 (1.1 line source of truth, 1.2 per-(stat,line) calibration,
+1.3 calibrate against the real sim output), not just the cheap 1.1 polish. Leg calibration is a real but
+partial lever; the persistent high-bucket gap points at calibration *fidelity* (the proxy-marginal
+calibrators don't see the same multiplier stack the live sim prices), which is exactly what Phase 3.1
+targets.

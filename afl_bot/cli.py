@@ -48,6 +48,7 @@ from afl_bot.build.staking import (
 )
 from afl_bot.config import (
     ANCHOR_MIN_PROB,
+    CACHE_DIR,
     DEFAULT_BANKROLL,
     LEG_PROB_MAX,
     LEG_PROB_MIN,
@@ -1007,44 +1008,77 @@ def grade_round(year: int, round_no: int) -> None:
     print(f"  [appended to {log_path}]")
 
 
-def grade_multis(year: int, rounds: list[int] | None, n_sims: int) -> None:
+def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
+                 with_calibration: bool = True) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
-    (model-upgrade audit Phase 1.1): for each completed round, reconstruct the
+    (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3): for
+    each completed round across every year in `years`, reconstruct the
     ladder `round-report` would have built from data strictly before that
     round, and grade the selected rungs' joint probability against what
     actually happened. Until this reliability curve is flat, treat multi
-    prices as unproven, not evidence (see MODEL-UPGRADE-INSTRUCTIONS.md)."""
+    prices as unproven, not evidence (see MODEL-UPGRADE-INSTRUCTIONS.md).
+
+    `with_calibration=True` (default) additionally fits the per-stat prop
+    calibrators once per year (on seasons strictly before it, written to a
+    backtest-only cache dir so this never touches the live
+    `prop_calibrators.json` `round-report` uses) and reports a second,
+    calibration-ON reliability curve alongside the raw one -- Phase 2.5's
+    "is the overconfidence in the legs, not the correlation?" check."""
     from afl_bot.backtest.multis import (
         multi_calibration_report,
         multi_reliability_curve,
         walk_forward_multi_predictions,
     )
+    from afl_bot.backtest.props import load_or_fit_prop_calibrators
 
     client = SquiggleClient()
-    games = pd.concat([client.get_completed_games(y) for y in _history_years(year, lookback=7)],
-                      ignore_index=True)
-    games = games[games["year"] <= year]
+    fetch_years = sorted(set(_history_years(min(years), lookback=7)) | set(years))
+    games = pd.concat([client.get_completed_games(y) for y in fetch_years], ignore_index=True)
+    games = games[games["year"] <= max(years)]
     if games.empty:
         print("No historical data available.", file=sys.stderr)
         return
     player_log = load_player_log(games, prefer_real=True)
+    backtest_cal_cache = CACHE_DIR / "grade_multis_backtest"
 
-    preds = walk_forward_multi_predictions(games, player_log, eval_year=year,
-                                           rounds=rounds, n_sims=n_sims)
+    all_preds = []
+    for year in years:
+        prop_calibrators = None
+        if with_calibration:
+            prior_log = player_log[player_log["year"] < year]
+            prop_calibrators = load_or_fit_prop_calibrators(
+                prior_log, eval_start_year=year - PROP_CALIBRATION_LOOKBACK,
+                cache_dir=backtest_cal_cache, force_refresh=True) or None
+        preds = walk_forward_multi_predictions(
+            games, player_log, eval_year=year, rounds=rounds, n_sims=n_sims,
+            prop_calibrators=prop_calibrators)
+        all_preds.append(preds)
+    preds = pd.concat(all_preds, ignore_index=True) if all_preds else pd.DataFrame()
     if preds.empty:
         print("No graded multi predictions — rounds not completed yet, or every match had "
               "fewer than 3 candidate legs.", file=sys.stderr)
         return
 
     report = multi_calibration_report(preds)
-    print(f"=== Multi (SGM) walk-forward backtest: {year} round(s) "
-          f"{sorted(preds['round'].unique().tolist())} ===")
-    print(f"  n={report['n']} | log loss {report['log_loss']:.4f} | brier {report['brier']:.4f} "
-          f"| mean pred {report['mean_pred']:.3f} | actual hit rate {report['hit_rate']:.3f}")
-    print("  reliability (mean predicted vs actual hit rate per bucket):")
+    print(f"=== Multi (SGM) walk-forward backtest: years {years}, "
+          f"{preds.groupby('year')['round'].nunique().to_dict()} rounds/year ===")
+    print(f"  RAW        n={report['n']} | log loss {report['log_loss']:.4f} | "
+          f"brier {report['brier']:.4f} | mean pred {report['mean_pred']:.3f} | "
+          f"actual hit rate {report['hit_rate']:.3f}")
+    print("  RAW reliability (mean predicted vs actual hit rate per bucket):")
     for _, row in multi_reliability_curve(preds).iterrows():
         print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
               f"| n={int(row['n'])}")
+
+    if with_calibration and "calibrated_joint_prob" in preds.columns:
+        cal_report = multi_calibration_report(preds, column="calibrated_joint_prob")
+        print(f"  CALIBRATED n={cal_report['n']} | log loss {cal_report['log_loss']:.4f} | "
+              f"brier {cal_report['brier']:.4f} | mean pred {cal_report['mean_pred']:.3f} | "
+              f"actual hit rate {cal_report['hit_rate']:.3f}")
+        print("  CALIBRATED reliability (mean predicted vs actual hit rate per bucket):")
+        for _, row in multi_reliability_curve(preds, column="calibrated_joint_prob").iterrows():
+            print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
+                  f"| n={int(row['n'])}")
 
 
 def fit_correlations_command(through: int) -> None:
@@ -1145,11 +1179,14 @@ def main(argv: list[str] | None = None) -> None:
     multis_p = sub.add_parser("grade-multis",
                               help="Walk-forward backtest of the 3-leg SGM ladder's joint "
                                    "probability vs actual hit rate.")
-    multis_p.add_argument("--year", type=int, required=True)
+    multis_p.add_argument("--year", type=str, required=True,
+                          help="Year, or comma-separated years (e.g. 2024,2025).")
     multis_p.add_argument("--rounds", type=str, default=None,
                           help="Comma-separated round numbers (default: every completed "
-                               "round of --year).")
+                               "round of each --year).")
     multis_p.add_argument("--n-sims", type=int, default=SIM_ITERATIONS, dest="n_sims")
+    multis_p.add_argument("--no-calibration", action="store_true", dest="no_calibration",
+                          help="Skip the calibration-ON comparison (raw reliability curve only).")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1177,7 +1214,8 @@ def main(argv: list[str] | None = None) -> None:
         grade_round(args.year, args.round_no)
     elif args.command == "grade-multis":
         rounds = [int(r) for r in args.rounds.split(",")] if args.rounds else None
-        grade_multis(args.year, rounds, args.n_sims)
+        years = [int(y) for y in args.year.split(",")]
+        grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":

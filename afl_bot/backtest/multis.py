@@ -24,11 +24,22 @@ Simplifications vs the live path (kept honest, not hidden -- see
 MODEL-UPGRADE-INSTRUCTIONS.md Phase 1 acceptance):
   * No lineup / odds book -- mirrors the no-confirmed-lineup, no-market-odds
     default (every candidate leg prices off the sim and is "confirmed").
-  * No prop-probability calibration -- Phase 1 is testing the RAW sim joint
-    probability that calibration (Phase 3) would sit on top of; calibrating
-    here would hide the exact question being asked.
   * No wet-weather flag -- reliable per-fixture historical rainfall isn't
     available, so every match sims dry.
+
+Phase 2.5 added an optional calibration-ON mode: pass `prop_calibrators`
+(e.g. from `afl_bot.backtest.props.load_or_fit_prop_calibrators`) and every
+prediction also gets a `calibrated_joint_prob` column, so a raw vs
+calibrated reliability curve can be compared side by side. Note what
+calibration *can't* touch here: `search_match_sgms`'s `joint_prob` (the rung
+actually picked, and what `round_report` displays) is computed from the
+per-iteration sim MASKS, not from `fair_prob` -- calibration rescales a
+probability estimate, it can't rewrite which simulated iterations "hit". So
+`calibrated_joint_prob` is built by keeping the sim's correlation lift
+(`corr_gain = joint_prob - naive_product`, a function of the copula/pace/
+Dirichlet structure that calibration doesn't touch) and rebasing the
+marginal naive product onto calibrated per-leg probabilities:
+`calibrated_joint_prob = clip(calibrated_naive_product + corr_gain, 0, 1)`.
 """
 
 from __future__ import annotations
@@ -65,20 +76,27 @@ from afl_bot.sim.engine import Team, draw_pace, make_rng, simulate_match
 
 def _build_match_legs(history: pd.DataFrame, player_log: pd.DataFrame, fixtures: pd.DataFrame,
                       year: int, round_no: int, n_sims: int, rng,
-                      correlation_params: dict | None = None) -> tuple[dict, dict]:
+                      correlation_params: dict | None = None,
+                      prop_calibrators: dict | None = None) -> tuple[dict, dict]:
     """Per-match `LegCandidate`s (h2h + player props) for this round's
     fixtures, built from `history`/`player_log` the caller has already
     truncated to strictly-before-this-round. Mirrors `round_report`'s
     no-odds/no-lineup default path. Returns ``(legs_by_match, leg_info_by_match)``
     where `leg_info_by_match[match_id][leg_name]` carries the `(market,
-    subject, line)` needed to grade that leg against the actual result later
-    (`LegCandidate` itself doesn't store the line).
+    subject, line, calibrated_prob)` needed to grade that leg against the
+    actual result later (`LegCandidate` itself doesn't store the line).
 
     ``correlation_params`` optionally overrides any of `SCORE_SHOT_CORRELATION`
     / `SHOT_DISPERSION` / `PACE_SIGMA` / `TEAM_STAT_DISPERSION` /
     `SHARE_CONCENTRATION` (e.g. from `afl_bot.backtest.correlations
     .load_fitted_correlation_params`) -- model-upgrade audit Phase 2's
-    re-run-the-Phase-1-backtest acceptance check."""
+    re-run-the-Phase-1-backtest acceptance check.
+
+    ``prop_calibrators`` (per-stat `IsotonicCalibrator`, e.g. from
+    `afl_bot.backtest.props.load_or_fit_prop_calibrators`) optionally
+    calibrates each player-prop leg's stored probability (h2h legs pass
+    through uncalibrated -- the prop calibrators are per-stat, not H2H) --
+    Phase 2.5's calibration-ON mode."""
     from afl_bot.cli import PLAYERS_PER_TEAM_SAMPLE, PROP_LINES, _fixture_hga, _select_players, _team_player_samples
 
     cp = correlation_params or {}
@@ -131,8 +149,10 @@ def _build_match_legs(history: pd.DataFrame, player_log: pd.DataFrame, fixtures:
                         fair_odds(p_away), mask=(match["away_win"] > 0)),
         ]
         leg_info = {
-            f"{home_name} to win": {"market": "h2h", "subject": home_name, "line": ""},
-            f"{away_name} to win": {"market": "h2h", "subject": away_name, "line": ""},
+            f"{home_name} to win": {"market": "h2h", "subject": home_name, "line": "",
+                                    "calibrated_prob": p_home},
+            f"{away_name} to win": {"market": "h2h", "subject": away_name, "line": "",
+                                    "calibrated_prob": p_away},
         }
 
         pace = draw_pace(n_sims, rng, pace_sigma=pace_sigma)
@@ -150,16 +170,19 @@ def _build_match_legs(history: pd.DataFrame, player_log: pd.DataFrame, fixtures:
                     arr = stats.get(stat)
                     if arr is None:
                         continue
+                    cal = (prop_calibrators or {}).get(stat)
                     for line in lines:
                         mask = arr >= line
                         prob = prob_event(mask)
                         if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
+                        calibrated_prob = float(cal.predict([prob])[0]) if cal is not None else prob
                         name = f"{player_name} {line}+ {stat}"
                         match_legs.append(LegCandidate(
                             name, match_id, f"player_{stat}", player_name, prob,
                             fair_odds(prob), mask=mask))
-                        leg_info[name] = {"market": f"player_{stat}", "subject": player_name, "line": line}
+                        leg_info[name] = {"market": f"player_{stat}", "subject": player_name, "line": line,
+                                          "calibrated_prob": calibrated_prob}
 
         legs_by_match[match_id] = match_legs
         leg_info_by_match[match_id] = leg_info
@@ -224,7 +247,7 @@ def _fetch_actual_player_log(year: int, games_year: pd.DataFrame) -> pd.DataFram
 def walk_forward_multi_predictions(
     games: pd.DataFrame, player_log: pd.DataFrame, *, eval_year: int,
     rounds: list[int] | None = None, n_sims: int = SIM_ITERATIONS, seed: int | None = None,
-    correlation_params: dict | None = None,
+    correlation_params: dict | None = None, prop_calibrators: dict | None = None,
 ) -> pd.DataFrame:
     """One row per (year, round, match_id, rung) the model would have placed
     on its 3-leg ladder for every round in `rounds` (default: every round of
@@ -242,6 +265,13 @@ def walk_forward_multi_predictions(
     -- pass `afl_bot.backtest.correlations.load_fitted_correlation_params()`
     output to re-run this backtest with fitted-from-history values instead
     of the config defaults (model-upgrade audit Phase 2.2 acceptance check).
+
+    ``prop_calibrators`` optionally adds a `calibrated_joint_prob` column
+    alongside the raw `joint_prob` (Phase 2.5's calibration-ON mode -- see
+    module docstring for how it's built from the raw `corr_gain`). Fit these
+    ONCE on data strictly before `eval_year` and reuse across every round in
+    this call -- per-round refitting isn't done here (expensive, and not
+    what `round_report`'s own calibrator loading does either).
     """
     games = games.sort_values(["year", "round", "unixtime"]).reset_index(drop=True)
     year_games = games[games["year"] == eval_year]
@@ -269,7 +299,7 @@ def walk_forward_multi_predictions(
 
         legs_by_match, leg_info_by_match = _build_match_legs(
             history, log, fixtures, eval_year, round_no, n_sims, rng,
-            correlation_params=correlation_params)
+            correlation_params=correlation_params, prop_calibrators=prop_calibrators)
         player_round = actual_log[actual_log["round"] == str(round_no)] if not actual_log.empty else actual_log
         h2h_actual, player_stat = _actual_results(fixtures, player_round)
 
@@ -287,24 +317,34 @@ def walk_forward_multi_predictions(
                     hits.append(hit)
                 if hits is None:
                     continue
-                rows.append({
+                row = {
                     "year": eval_year, "round": round_no, "match_id": match_id,
                     "legs": " + ".join(rung["legs"]), "joint_prob": rung["joint_prob"],
                     "naive_product": rung["naive_product"], "corr_gain": rung["corr_gain"],
                     "fair_odds": rung["fair_odds"], "all_hit": int(all(hits)),
-                })
+                }
+                if prop_calibrators is not None:
+                    calibrated_naive = 1.0
+                    for leg_name in rung["legs"]:
+                        calibrated_naive *= leg_info[leg_name]["calibrated_prob"]
+                    row["calibrated_naive_product"] = calibrated_naive
+                    row["calibrated_joint_prob"] = float(
+                        min(max(calibrated_naive + rung["corr_gain"], 0.0), 1.0))
+                rows.append(row)
 
     return pd.DataFrame(rows)
 
 
-def multi_calibration_report(preds: pd.DataFrame) -> dict:
+def multi_calibration_report(preds: pd.DataFrame, column: str = "joint_prob") -> dict:
     """Log loss / Brier / mean predicted vs actual hit rate for the multi
     ladder's joint probabilities -- the headline number for Phase 1's
-    acceptance check (is the $5.00 rung's ~20% actually landing near 20%?)."""
-    if preds.empty:
+    acceptance check (is the $5.00 rung's ~20% actually landing near 20%?).
+    Pass ``column="calibrated_joint_prob"`` for Phase 2.5's calibration-ON
+    comparison (requires `walk_forward_multi_predictions(prop_calibrators=...)`)."""
+    if preds.empty or column not in preds:
         return {"n": 0, "log_loss": float("nan"), "brier": float("nan"),
                 "mean_pred": float("nan"), "hit_rate": float("nan")}
-    p = preds["joint_prob"].to_numpy()
+    p = preds[column].to_numpy()
     a = preds["all_hit"].to_numpy(dtype=float)
     return {
         "n": len(preds), "log_loss": log_loss(p, a), "brier": brier_score(p, a),
@@ -312,12 +352,13 @@ def multi_calibration_report(preds: pd.DataFrame) -> dict:
     }
 
 
-def multi_reliability_curve(preds: pd.DataFrame, n_bins: int = 5) -> pd.DataFrame:
-    """Reliability table for the multi ladder (bucket predicted joint prob vs
+def multi_reliability_curve(preds: pd.DataFrame, n_bins: int = 5, column: str = "joint_prob") -> pd.DataFrame:
+    """Reliability table for the multi ladder (bucket predicted multi prob vs
     actual hit rate). Default `n_bins=5`, coarser than the H2H/prop curves'
     default 10, since a few rounds of 3-rung-per-match ladders is a much
-    smaller sample than per-game or per-player-prop predictions."""
-    if preds.empty:
+    smaller sample than per-game or per-player-prop predictions. Pass
+    ``column="calibrated_joint_prob"`` for the calibration-ON curve."""
+    if preds.empty or column not in preds:
         return pd.DataFrame(columns=["bucket", "mean_pred", "actual_rate", "n"])
-    return calibration_curve(preds["joint_prob"].to_numpy(), preds["all_hit"].to_numpy(dtype=float),
+    return calibration_curve(preds[column].to_numpy(), preds["all_hit"].to_numpy(dtype=float),
                              n_bins=n_bins)

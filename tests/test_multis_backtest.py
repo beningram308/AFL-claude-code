@@ -1,11 +1,13 @@
-"""Walk-forward SGM-ladder backtest (model-upgrade audit Phase 1.1) — both run
-on deterministic, seeded data with the real player-stat fetchers monkeypatched
-out, so no network is needed."""
+"""Walk-forward SGM-ladder backtest (model-upgrade audit Phase 1.1, plus
+Phase 2.5's calibration-ON mode) — both run on deterministic, seeded data
+with the real player-stat fetchers monkeypatched out, so no network is
+needed."""
 
 import numpy as np
 import pandas as pd
 import pytest
 
+from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.multis import (
     multi_calibration_report,
     multi_reliability_curve,
@@ -140,3 +142,60 @@ def test_walk_forward_multi_predictions_empty_when_round_not_in_games(synth_worl
         games, player_log, eval_year=2024, rounds=[999], n_sims=2000,
     )
     assert preds.empty
+
+
+def test_walk_forward_multi_predictions_no_calibration_column_by_default(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8], n_sims=3000, seed=1,
+    )
+    assert "calibrated_joint_prob" not in preds.columns
+
+
+def test_walk_forward_multi_predictions_calibration_on_adds_bounded_column(synth_world):
+    games, player_log = synth_world
+    # Halves every probability: predict(p) = p * 0.5 (linear interp from (0,0) to (1,0.5)).
+    halving = IsotonicCalibrator(x_=np.array([0.0, 1.0]), y_=np.array([0.0, 0.5]))
+    calibrators = {stat: halving for stat in ("disposals", "goals", "marks", "tackles")}
+
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+        prop_calibrators=calibrators,
+    )
+    assert not preds.empty
+    assert {"calibrated_joint_prob", "calibrated_naive_product"} <= set(preds.columns)
+    assert preds["calibrated_joint_prob"].between(0.0, 1.0).all()
+
+    # calibrated_joint_prob = clip(calibrated_naive_product + corr_gain, 0, 1) exactly.
+    expected = (preds["calibrated_naive_product"] + preds["corr_gain"]).clip(0.0, 1.0)
+    pd.testing.assert_series_equal(preds["calibrated_joint_prob"], expected, check_names=False)
+
+    # Halving every leg's prob roughly halves the naive product per leg (3 legs ->
+    # ~1/8th), so the calibrated naive product should be far below the raw one.
+    assert (preds["calibrated_naive_product"] < preds["naive_product"]).all()
+
+
+def test_multi_calibration_report_and_curve_support_column_param(synth_world):
+    games, player_log = synth_world
+    halving = IsotonicCalibrator(x_=np.array([0.0, 1.0]), y_=np.array([0.0, 0.5]))
+    calibrators = {stat: halving for stat in ("disposals", "goals", "marks", "tackles")}
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9, 10], n_sims=3000, seed=1,
+        prop_calibrators=calibrators,
+    )
+
+    raw_report = multi_calibration_report(preds)
+    cal_report = multi_calibration_report(preds, column="calibrated_joint_prob")
+    assert raw_report["n"] == cal_report["n"] == len(preds)
+    assert raw_report["mean_pred"] != cal_report["mean_pred"]
+
+    raw_curve = multi_reliability_curve(preds)
+    cal_curve = multi_reliability_curve(preds, column="calibrated_joint_prob")
+    assert raw_curve["n"].sum() == cal_curve["n"].sum() == len(preds)
+
+
+def test_multi_calibration_report_missing_column_returns_empty():
+    preds = pd.DataFrame({"joint_prob": [0.5], "all_hit": [1]})
+    report = multi_calibration_report(preds, column="calibrated_joint_prob")
+    assert report["n"] == 0
+    assert np.isnan(report["log_loss"])

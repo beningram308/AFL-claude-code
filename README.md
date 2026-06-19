@@ -291,6 +291,46 @@ parameter settings reliably, or correlation isn't actually the dominant
 source of the Phase 1 overconfidence (calibration fidelity, Phase 3, may
 matter more).
 
+### Acting on the overconfidence finding (model-upgrade audit Phase 2.5)
+
+Phase 1's multi backtest grades the **raw** sim joint probability with leg
+calibration off by design; live `round-report` applies per-stat isotonic
+calibrators. So the question was whether the overconfidence found in Phase 1
+lives in the uncalibrated legs (which calibration should fix) or in the
+correlation structure (which Phase 2's fit already showed doesn't help).
+`grade-multis` gained a calibration-ON mode: it additionally fits per-stat
+prop calibrators on seasons strictly before each eval year (a separate cache
+dir, never touching the live `prop_calibrators.json`), applies them to each
+leg before rebuilding the joint (`calibrated_joint_prob = clip(calibrated_naive_product
++ corr_gain, 0, 1)` — calibration can't touch `corr_gain` itself, since that
+comes from the sim's correlated masks, not `fair_prob`), and reports raw vs
+calibrated reliability curves side by side:
+
+```
+python -m afl_bot.cli grade-multis --year 2024,2025 --n-sims 3000
+```
+
+**Honest finding, full 2024-2025 sample (n=835 rungs, 48 rounds — an order of
+magnitude bigger than Phase 1's n=56/n=106):** calibration gives a small,
+real improvement (log loss 0.5757 → 0.5680, Brier 0.1948 → 0.1913) but does
+**not** flatten the curve. The top bucket (0.4-0.6 predicted) stays
+substantially overconfident either way — raw 0.476 predicted vs 0.366 actual,
+calibrated 0.458 vs 0.362 — almost the same gap. The low/mid buckets are
+already close to flat both raw and calibrated (e.g. mid bucket: raw 0.286 vs
+0.275, calibrated 0.264 vs 0.246), so the overall log-loss gain mostly comes
+from calibration nudging more rungs out of the high bucket (n=246 raw →
+n=235 calibrated) into the mid bucket (n=291 → n=484), not from fixing the
+high bucket's miscalibration itself.
+
+**Conclusion: leg calibration is *a* lever, not *the* lever.** It doesn't
+fully explain Phase 1's overconfidence — the persistent high-bucket gap
+points at calibration *fidelity*, not just calibration's presence: Phase 3's
+plan (calibrate against the real sim output per (stat, line), not the
+current pooled proxy-marginal calibrators used here) is the next thing worth
+trying, not a new correlation re-fit (Phase 2 already ruled that out on a
+smaller sample, and this larger run doesn't change that verdict — `corr_gain`
+is untouched by either raw or calibrated columns here, by construction).
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:
