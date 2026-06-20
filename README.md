@@ -686,6 +686,62 @@ is not guaranteed to fare better than Phase 3.6 did against the same sample-size
 Worth trying before further calibration/selection-layer attempts, given this is the first diagnostic to
 actually localise *where* in the pipeline the persistent high-bucket overconfidence is coming from.
 
+### corr_gain haircut (the proposed follow-up, implemented) — partial win, OOS-validated
+
+Implemented exactly as proposed: `search_match_sgms`/`walk_forward_multi_predictions` gained an opt-in
+`corr_gain_haircut` param (default 1.0 = unhaircut) that reprices a SELECTED rung as `naive_product +
+corr_gain_haircut * corr_gain` instead of the raw sim `joint_prob`, clipped to `[0, 1]`
+(`naive_product`/`corr_gain` themselves stay at their pre-haircut, informational values — same
+convention as `price_shrink`). New `CORR_GAIN_HAIRCUT` config tunable (1.0, opt-in everywhere). New
+`afl_bot.backtest.multis.haircut_joint_prob`/`fit_corr_gain_haircut` compute and grid-search-fit
+candidate haircut values **directly off an already-backtested DataFrame's `naive_product`/`corr_gain`
+columns** — no second walk-forward sim pass needed per candidate value, since those columns are always
+the raw (pre-haircut) sim decomposition regardless of what `corr_gain_haircut` the run itself used.
+`grade-multis --corr-gain-diagnostic` also prints the in-sample fitted value; `--corr-gain-haircut F`
+re-prices the run with a chosen value, both wired through to `round-report` too.
+
+**Out-of-sample test (the actual acceptance check — fit on one year, evaluate on the other, in both
+directions, on the same 2024-2025 sample):**
+
+| | fitted haircut | OOS log loss | vs baseline (1.0) | vs zero-lift (0.0) |
+|---|--:|--:|--:|--:|
+| Train 2024 (n=459) → test 2025 (n=376) | **+0.200** | fitted: 0.5407 | 0.5454 | **0.5396 (wins)** |
+| Train 2025 (n=376) → test 2024 (n=459) | **−0.500** | fitted: 0.6003 | 0.6004 | **0.6000 (wins)** |
+
+**The fitted coefficient does not generalize — and that instability is itself the headline finding.**
+Fitting on 2024 gives a modest positive shrink (+0.200); fitting on 2025 gives a *sign-flipped*
+overcorrection (−0.500) — the same non-stationarity that sank Phase 3.6's selection-level calibrator
+shows up again here. Worse, each fitted value *underperforms the simple zero-lift candidate when
+evaluated on the other year* — the in-sample combined-sample fit (−0.500, log loss 0.5719, the
+best-looking number in isolation) is the overfit one, exactly the trap flagged as a risk before running
+this. **The simple zero-lift variant (`corr_gain_haircut=0.0`, no fitting at all) wins out-of-sample in
+*both* directions**, beating both the baseline and the fitted coefficient every time it's evaluated on
+a year it wasn't tuned on.
+
+**Combined 2024+2025 sample (n=835) under the winning zero-lift candidate, vs baseline:**
+
+| | log loss | brier | mean pred | hit rate | high bucket (0.4-0.6) pred / actual / gap |
+|---|--:|--:|--:|--:|--:|
+| baseline (1.0, unhaircut) | 0.5757 | 0.1948 | 0.311 | 0.268 | 0.476 / 0.366 / **+0.110** |
+| **zero-lift (0.0)** | **0.5728** | 0.1934 | 0.300 | 0.268 | 0.455 / 0.365 / **+0.090** |
+
+**Acceptance: log loss criterion PASSED, high-bucket-gap criterion PARTIALLY met.** Log loss beats the
+0.5757 baseline (0.5728, a real if modest improvement) and the high-bucket gap narrows by ~18% (+0.110
+→ +0.090) — but it does not *close* (a meaningful gap remains; pricing purely off the naive/independent
+product still isn't enough to fully explain this bucket's actual hit rate). This is, honestly, the
+**first attempt across Phase 3/3.5/3.6/this one that shows a genuine, two-directional out-of-sample
+improvement** rather than a flat failure — but it's a partial, not complete, fix.
+
+**Per the project's "if it doesn't help, keep the default" rule — `CORR_GAIN_HAIRCUT` stays 1.0
+(unhaircut) everywhere, not wired into `round-report`/`run-round`'s default path**, since the user's own
+acceptance bar (gap *closes*, not just narrows) wasn't fully cleared. `corr_gain_haircut=0.0` ships as a
+validated, recommended **opt-in** value (`--corr-gain-haircut 0.0` on `round-report`/`grade-multis`) —
+the best-evidenced lever found so far, just not a complete fix. Given the remaining +0.090 gap, the
+overconfidence in this bucket isn't *purely* a corr_gain problem; some of it is something else this
+diagnostic doesn't isolate (e.g. the per-leg marginals feeding `naive_product` itself, which the sim's
+own `sim_naive` consistently overstates relative to the empirical pooled-leg rate in this bucket too —
+see the corr_gain diagnostic's numbers above).
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

@@ -685,7 +685,8 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
 def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
                  rain_mm: float | None = None, lineup_path: str | None = None,
                  use_live: bool = False, multis_only: bool = False,
-                 auto_lineup: bool = False, multi_calibration: bool = False) -> None:
+                 auto_lineup: bool = False, multi_calibration: bool = False,
+                 corr_gain_haircut: float = 1.0) -> None:
     """The weekly deliverable (round-2 §10): per-match real-player projection
     tables + same-game multis ranked by joint sim probability, saved to
     reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log.
@@ -723,7 +724,12 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     probabilities (from the correlated sim masks) are untouched by this
     blend, so this mitigates per-leg overconfidence on priced legs only, not
     the joint overconfidence Phase 1-3.6 found. Odds-file keys that never
-    matched a priceable leg warn (same as ``run-round``)."""
+    matched a priceable leg warn (same as ``run-round``).
+
+    ``corr_gain_haircut`` (corr_gain-diagnostic follow-up, opt-in, default
+    1.0 = unhaircut) passes through to `search_match_sgms`'s same param --
+    see its docstring and the README's "corr_gain haircut" section for the
+    real-data fit/acceptance result before changing this default."""
     client = SquiggleClient()
     history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
                         ignore_index=True)
@@ -958,7 +964,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             if leg.name in odds_book:
                 odds_legs.append(leg)
 
-        sgms = search_match_sgms(match_legs, odds_book=odds_book)
+        sgms = search_match_sgms(match_legs, odds_book=odds_book,
+                                 corr_gain_haircut=corr_gain_haircut)
         if multi_cal is not None:
             sgms = apply_multi_calibration(sgms, multi_cal)
         matches.append({
@@ -1130,7 +1137,8 @@ def grade_round(year: int, round_no: int) -> None:
 def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                  with_calibration: bool = True, calibration_source: str = "proxy",
                  all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0,
-                 multi_calibration: bool = False, corr_gain_diag: bool = False) -> None:
+                 multi_calibration: bool = False, corr_gain_diag: bool = False,
+                 corr_gain_haircut: float = 1.0) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
     (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
     3.1's calibration-source choice): for each completed round across every
@@ -1187,9 +1195,22 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     (`joint_prob - naive_product`, both from the correlated sim) to the
     EMPIRICAL corr_gain (actual joint hit-rate minus the product of pooled
     actual per-leg hit-rates), bucketed by predicted `joint_prob`, on the
-    SELECTED rungs. Diagnostic only -- reports the gap, applies no fix."""
+    SELECTED rungs. Diagnostic only -- reports the gap, applies no fix. Also
+    prints the in-sample log-loss-minimizing `corr_gain_haircut` value
+    (`fit_corr_gain_haircut`) fit directly on the run's own
+    `naive_product`/`corr_gain` columns -- no second sim pass needed.
+
+    `corr_gain_haircut` (default 1.0 = unhaircut) passes straight through to
+    `walk_forward_multi_predictions`/`search_match_sgms`'s same param --
+    reprices every SELECTED rung as `naive_product + corr_gain_haircut *
+    corr_gain` instead of the raw sim `joint_prob`, so SELECTED's own
+    log-loss/reliability-curve numbers reflect the haircut. Pass a value
+    found by a separate out-of-sample check (e.g. fit on one year, apply to
+    another) to see whether it actually beats the unhaircut baseline --
+    see README's "corr_gain haircut" section for the real-data result."""
     from afl_bot.backtest.multis import (
         corr_gain_diagnostic,
+        fit_corr_gain_haircut,
         load_or_fit_multi_calibrator,
         multi_calibration_report,
         multi_reliability_curve,
@@ -1239,7 +1260,8 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                     cache_dir=backtest_cal_cache, force_refresh=True) or None
         preds = walk_forward_multi_predictions(
             games, player_log, eval_year=year, rounds=rounds, n_sims=n_sims,
-            prop_calibrators=prop_calibrators, lcb_z=lcb_z, price_shrink=price_shrink)
+            prop_calibrators=prop_calibrators, lcb_z=lcb_z, price_shrink=price_shrink,
+            corr_gain_haircut=corr_gain_haircut)
         if multi_calibration and not preds.empty:
             multi_cal = load_or_fit_multi_calibrator(
                 games, player_log, eval_start_year=year - MULTI_CALIBRATION_LOOKBACK,
@@ -1275,6 +1297,10 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                   f"empirical corr_gain {row['empirical_corr_gain']:+.3f} "
                   f"(actual {row['actual_joint']:.3f} - naive {row['empirical_naive']:.3f}) | "
                   f"gap {row['gap']:+.3f} | n={int(row['n'])}")
+        fitted = fit_corr_gain_haircut(preds)
+        print(f"  Fitted corr_gain_haircut (in-sample, log-loss-minimizing on THIS run's own "
+              f"sample): {fitted:.2f} -- re-run with --corr-gain-haircut for an "
+              f"out-of-sample/repriced check.")
 
     if with_calibration and "calibrated_joint_prob" in preds.columns:
         cal_report = multi_calibration_report(preds, column="calibrated_joint_prob")
@@ -1409,6 +1435,11 @@ def main(argv: list[str] | None = None) -> None:
                             "audit Phase 3.6) to every selected rung's joint probability -- "
                             "corrects search_match_sgms's own selection bias (the "
                             "optimizer's curse, confirmed in Phase 3.5). Opt-in.")
+    rep_p.add_argument("--corr-gain-haircut", type=float, default=1.0, dest="corr_gain_haircut",
+                       help="corr_gain-diagnostic follow-up: reprice a selected rung as "
+                            "naive_product + haircut*corr_gain instead of the raw sim "
+                            "joint_prob (1.0 = unhaircut, the default; 0.0 = naive product "
+                            "only). See README's 'corr_gain haircut' section.")
 
     grade_p = sub.add_parser("grade-round",
                              help="Score a completed round's saved predictions vs actuals.")
@@ -1455,6 +1486,11 @@ def main(argv: list[str] | None = None) -> None:
                                "compare the sim's corr_gain to the EMPIRICAL corr_gain (actual "
                                "joint hit-rate minus pooled actual per-leg hit-rates), bucketed "
                                "by predicted joint_prob. Diagnostic only, no fix applied.")
+    multis_p.add_argument("--corr-gain-haircut", type=float, default=1.0, dest="corr_gain_haircut",
+                          help="corr_gain-diagnostic follow-up: reprice selected rungs as "
+                               "naive_product + haircut*corr_gain instead of the raw sim "
+                               "joint_prob (1.0 = unhaircut, the default; 0.0 = naive product "
+                               "only).")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1477,7 +1513,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "round-report":
         round_report(args.year, args.round_no, args.odds, args.n_sims,
                      args.rain_mm, args.lineup_path, args.use_live, args.multis_only,
-                     args.auto_lineup, args.multi_calibration)
+                     args.auto_lineup, args.multi_calibration, args.corr_gain_haircut)
     elif args.command == "grade-round":
         grade_round(args.year, args.round_no)
     elif args.command == "grade-multis":
@@ -1486,7 +1522,8 @@ def main(argv: list[str] | None = None) -> None:
         grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration,
                     calibration_source=args.calibration_source, all_candidates=args.all_candidates,
                     lcb_z=args.lcb_z, price_shrink=args.price_shrink,
-                    multi_calibration=args.multi_calibration, corr_gain_diag=args.corr_gain_diag)
+                    multi_calibration=args.multi_calibration, corr_gain_diag=args.corr_gain_diag,
+                    corr_gain_haircut=args.corr_gain_haircut)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":

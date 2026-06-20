@@ -114,7 +114,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                       odds_book: dict | None = None, target_odds: tuple | None = None,
                       min_joint_prob: float = 0.05,
                       max_plausible_edge: float = 0.15,
-                      lcb_z: float = 0.0, price_shrink: float = 0.0) -> list[dict]:
+                      lcb_z: float = 0.0, price_shrink: float = 0.0,
+                      corr_gain_haircut: float = 1.0) -> list[dict]:
     """Build a *ladder* of same-game multis with one rung per target odds
     (REAL-MULTIS ADDENDUM 1), selected from ``build_sgm_candidates``'s full
     candidate pool. For each combo: the JOINT sim prob (from masks), naive
@@ -159,6 +160,21 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     left at their pre-shrink values (informational: what the sim's
     correlation structure contributed before any haircut).
 
+    ``corr_gain_haircut`` (model-upgrade audit Phase 4 corr_gain-diagnostic
+    follow-up, opt-in, default 1.0 = unhaircut/current behaviour): after
+    selection, reprices the WINNING combo as ``naive_product +
+    corr_gain_haircut * corr_gain`` instead of the raw sim ``joint_prob``,
+    clipped to ``[0, 1]`` -- 0.0 prices purely off the naive/independent
+    product. The diagnostic (README "corr_gain diagnostic" section) found
+    the sim's correlation lift is systematically larger than the empirical
+    one, so this shrinks that specific term rather than the final
+    probability (`apply_multi_calibration`'s approach, which failed) or the
+    selection mechanism (`lcb_z`/`price_shrink`, which also failed).
+    ``corr_gain``/``naive_product`` themselves are left at their pre-haircut
+    (raw sim) values -- informational, same convention as ``price_shrink``.
+    Applied before ``price_shrink`` if both are set (fix the model's own
+    estimate first, then any book-anchoring shrink on top).
+
     Returned safest -> longest (by fair odds)."""
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
     combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
@@ -200,6 +216,19 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             pick = min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
         chosen.add(id(pick))
         selected.append(pick)
+
+    if corr_gain_haircut != 1.0:
+        for pick in selected:
+            haircut_joint = min(max(
+                pick["naive_product"] + corr_gain_haircut * pick["corr_gain"], 0.0), 1.0)
+            pick["joint_prob"] = haircut_joint
+            pick["fair_odds"] = fair_odds(haircut_joint)
+            if "book_odds" in pick:
+                book = pick["book_odds"]
+                pick["raw_edge"] = haircut_joint * book - 1.0
+                pick["edge"] = (market_anchored_prob(haircut_joint, book, MULTI_MARKET_SHRINK) * book
+                                - 1.0)
+                pick["odds"] = book
 
     if price_shrink > 0.0:
         for pick, target in zip(selected, target_odds):

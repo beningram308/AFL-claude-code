@@ -274,7 +274,7 @@ def walk_forward_multi_predictions(
     games: pd.DataFrame, player_log: pd.DataFrame, *, eval_year: int,
     rounds: list[int] | None = None, n_sims: int = SIM_ITERATIONS, seed: int | None = None,
     correlation_params: dict | None = None, prop_calibrators: dict | None = None,
-    lcb_z: float = 0.0, price_shrink: float = 0.0,
+    lcb_z: float = 0.0, price_shrink: float = 0.0, corr_gain_haircut: float = 1.0,
 ) -> pd.DataFrame:
     """One row per (year, round, match_id, rung) the model would have placed
     on its 3-leg ladder for every round in `rounds` (default: every round of
@@ -309,6 +309,15 @@ def walk_forward_multi_predictions(
     sim's own calibration) is the source of the multi-ladder overconfidence
     found in Phase 1 (the optimizer's curse: argmax/closest-match over many
     noisy joint-prob estimates over-selects upward noise).
+
+    ``corr_gain_haircut`` (corr_gain-diagnostic follow-up, opt-in, default
+    1.0 = unhaircut) passes straight through to `search_match_sgms`'s same
+    param -- see its docstring. Note `fit_corr_gain_haircut` below can fit
+    and evaluate candidate haircut values directly off an UNHAIRCUT
+    DataFrame's existing `naive_product`/`corr_gain` columns (no re-run of
+    this -- much more expensive -- walk-forward backtest needed per
+    candidate value); this parameter exists so the chosen value can also be
+    applied live, the same way `lcb_z`/`price_shrink` are.
     """
     games = games.sort_values(["year", "round", "unixtime"]).reset_index(drop=True)
     year_games = games[games["year"] == eval_year]
@@ -337,7 +346,8 @@ def walk_forward_multi_predictions(
             if len(match_legs) < 3:
                 continue
             leg_info = leg_info_by_match[match_id]
-            for rung in search_match_sgms(match_legs, lcb_z=lcb_z, price_shrink=price_shrink):
+            for rung in search_match_sgms(match_legs, lcb_z=lcb_z, price_shrink=price_shrink,
+                                          corr_gain_haircut=corr_gain_haircut):
                 hits = []
                 for leg_name in rung["legs"]:
                     hit = _leg_actual_hit(leg_info[leg_name], h2h_actual, player_stat)
@@ -594,6 +604,35 @@ def corr_gain_diagnostic(preds: pd.DataFrame, n_bins: int = 5) -> pd.DataFrame:
             "gap": (sim_joint - sim_naive) - (actual_joint - empirical_naive),
         })
     return pd.DataFrame(rows, columns=cols)
+
+
+def haircut_joint_prob(preds: pd.DataFrame, haircut: float) -> np.ndarray:
+    """``naive_product + haircut * corr_gain``, clipped to ``[0, 1]`` -- the
+    same pricing `search_match_sgms`'s ``corr_gain_haircut`` param applies
+    live, computed directly off an already-backtested (unhaircut)
+    predictions frame's ``naive_product``/``corr_gain`` columns so candidate
+    haircut values can be compared without re-running the (much more
+    expensive) walk-forward sim per value."""
+    return np.clip(
+        preds["naive_product"].to_numpy() + haircut * preds["corr_gain"].to_numpy(), 0.0, 1.0)
+
+
+def fit_corr_gain_haircut(preds: pd.DataFrame, grid: np.ndarray | None = None) -> float:
+    """Grid-search the ``corr_gain_haircut`` value minimizing log loss on
+    ``preds`` (a closed-form grid, not a gradient search -- the same style
+    as the project's other from-history fits, e.g.
+    `afl_bot.backtest.correlations`). Default grid spans ``[-0.5, 1.5]`` in
+    steps of 0.05 -- wide enough to find a negative or >1 optimum if the
+    data called for one, though the corr_gain diagnostic's finding (the sim
+    systematically overstates the lift) suggests it should land below 1.0.
+    Returns 1.0 (unhaircut) for an empty frame."""
+    if preds.empty:
+        return 1.0
+    if grid is None:
+        grid = np.linspace(-0.5, 1.5, 41)
+    actual = preds["all_hit"].to_numpy(dtype=float)
+    losses = [log_loss(haircut_joint_prob(preds, float(h)), actual) for h in grid]
+    return float(grid[int(np.argmin(losses))])
 
 
 MULTI_CALIBRATOR_CACHE = "multi_calibrator"

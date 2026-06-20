@@ -152,6 +152,50 @@ def test_search_match_sgms_price_shrink_pulls_toward_target_implied_prob():
     assert full["fair_odds"] == pytest.approx(target)
 
 
+def test_search_match_sgms_corr_gain_haircut_zero_lift_equals_naive_product():
+    legs = _ladder_legs()
+    target = MULTI_TARGET_ODDS[-1]
+    raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
+    zero = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0,
+                             corr_gain_haircut=0.0)[0]
+    assert zero["joint_prob"] == pytest.approx(zero["naive_product"])
+    assert zero["fair_odds"] == pytest.approx(1.0 / zero["naive_product"])
+    # naive_product/corr_gain stay at their pre-haircut (informational) values.
+    assert zero["naive_product"] == pytest.approx(raw["naive_product"])
+    assert zero["corr_gain"] == pytest.approx(raw["corr_gain"])
+    assert zero["joint_prob"] != pytest.approx(raw["joint_prob"])
+
+
+def test_search_match_sgms_corr_gain_haircut_default_is_unhaircut():
+    legs = _ladder_legs()
+    raw = search_match_sgms(legs)
+    unhaircut = search_match_sgms(legs, corr_gain_haircut=1.0)
+    for r, u in zip(raw, unhaircut):
+        assert r["joint_prob"] == pytest.approx(u["joint_prob"])
+        assert r["fair_odds"] == pytest.approx(u["fair_odds"])
+
+
+def test_search_match_sgms_corr_gain_haircut_half_is_midpoint():
+    legs = _ladder_legs()
+    target = MULTI_TARGET_ODDS[-1]
+    raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
+    half = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0,
+                             corr_gain_haircut=0.5)[0]
+    expected = raw["naive_product"] + 0.5 * raw["corr_gain"]
+    assert half["joint_prob"] == pytest.approx(expected)
+
+
+def test_search_match_sgms_corr_gain_haircut_recomputes_edge_when_priced():
+    legs = _ladder_legs(odds_mult=1.05)
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    target = MULTI_TARGET_ODDS[-1]
+    haircut = search_match_sgms(legs, odds_book=odds_book, target_odds=(target,),
+                                min_joint_prob=0.0, corr_gain_haircut=0.0)[0]
+    assert "book_odds" in haircut
+    expected_raw_edge = haircut["joint_prob"] * haircut["book_odds"] - 1.0
+    assert haircut["raw_edge"] == pytest.approx(expected_raw_edge)
+
+
 def test_search_match_sgms_lcb_z_can_change_the_selected_combo():
     """Two pure 3-leg pools with exact joint_prob 0.30 and 0.31 (n=200 masks,
     no extra leg-level noise), target implied prob 0.29 (both pools sit

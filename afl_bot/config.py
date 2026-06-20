@@ -236,6 +236,20 @@ MULTI_TARGET_ODDS = (1.75, 3.50, 5.00)
 # per-leg prop sample, so it needs more seasons for a comparably stable fit.
 MULTI_CALIBRATION_LOOKBACK = 5
 
+# corr_gain haircut (model-upgrade audit Phase 4 corr_gain diagnostic
+# follow-up): shrinks a SELECTED rung's correlation lift
+# (corr_gain = joint_prob - naive_product, from the copula/pace/Dirichlet
+# structure in simulate_match) toward zero by pricing it as
+# naive_product + CORR_GAIN_HAIRCUT * corr_gain instead of the raw sim
+# joint_prob. The diagnostic (README "corr_gain diagnostic" section) found
+# the sim systematically overstates this lift -- in the persistently
+# overconfident 0.4-0.6 bucket the sim adds +0.022 of lift the data doesn't
+# back up (empirical corr_gain there is ~0). 1.0 = unhaircut (current
+# behaviour, the default); 0.0 = price purely off the naive/independent
+# product. Opt-in -- see README's "corr_gain haircut" section for the
+# real-data fit/acceptance result before changing this default.
+CORR_GAIN_HAIRCUT = 1.0
+
 # Player-prop lines priced live (round-report/run-round) -- single source of
 # truth (model-upgrade audit Phase 3.1). `afl_bot.backtest.props` and
 # `afl_bot.backtest.multis` import this too, so the prop backtest/calibrators

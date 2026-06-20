@@ -10,7 +10,9 @@ import pytest
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.multis import (
     corr_gain_diagnostic,
+    fit_corr_gain_haircut,
     fit_multi_calibrator,
+    haircut_joint_prob,
     load_or_fit_multi_calibrator,
     multi_calibration_report,
     multi_reliability_curve,
@@ -196,6 +198,61 @@ def test_corr_gain_diagnostic_real_backtest_runs_end_to_end(synth_world):
     out = corr_gain_diagnostic(preds, n_bins=5)
     assert {"sim_corr_gain", "empirical_corr_gain", "gap"} <= set(out.columns)
     assert out["n"].sum() == len(preds)
+
+
+def test_haircut_joint_prob_matches_naive_plus_haircut_times_corr_gain():
+    preds = pd.DataFrame({"naive_product": [0.3, 0.5], "corr_gain": [0.2, -0.1]})
+    out = haircut_joint_prob(preds, 0.5)
+    np.testing.assert_allclose(out, [0.3 + 0.5 * 0.2, 0.5 + 0.5 * -0.1])
+
+
+def test_haircut_joint_prob_clips_to_unit_interval():
+    preds = pd.DataFrame({"naive_product": [0.9], "corr_gain": [0.5]})
+    assert haircut_joint_prob(preds, 1.0)[0] == 1.0
+    preds_low = pd.DataFrame({"naive_product": [0.05], "corr_gain": [-0.5]})
+    assert haircut_joint_prob(preds_low, 1.0)[0] == 0.0
+
+
+def test_fit_corr_gain_haircut_zero_lift_wins_when_data_is_independent():
+    # all_hit always matches naive_product's implied independence (corr_gain
+    # is irrelevant noise added on top of an already-correct naive estimate)
+    # -> the log-loss-minimizing haircut should land near 0.0, not 1.0.
+    rng = np.random.default_rng(3)
+    n = 4000
+    naive = rng.uniform(0.2, 0.6, n)
+    corr_gain = rng.normal(0.05, 0.02, n)   # sim systematically adds lift...
+    all_hit = (rng.random(n) < naive).astype(float)   # ...that the outcomes never show
+    preds = pd.DataFrame({"naive_product": naive, "corr_gain": corr_gain, "all_hit": all_hit})
+    fitted = fit_corr_gain_haircut(preds)
+    assert fitted < 0.5   # should shrink well below the unhaircut 1.0
+
+
+def test_fit_corr_gain_haircut_improves_in_sample_log_loss():
+    rng = np.random.default_rng(4)
+    n = 4000
+    naive = rng.uniform(0.2, 0.6, n)
+    corr_gain = rng.normal(0.05, 0.02, n)
+    all_hit = (rng.random(n) < naive).astype(float)
+    preds = pd.DataFrame({"naive_product": naive, "corr_gain": corr_gain, "all_hit": all_hit})
+    fitted = fit_corr_gain_haircut(preds)
+    baseline_loss = log_loss(haircut_joint_prob(preds, 1.0), all_hit)
+    fitted_loss = log_loss(haircut_joint_prob(preds, fitted), all_hit)
+    assert fitted_loss <= baseline_loss
+
+
+def test_fit_corr_gain_haircut_empty_input_returns_unhaircut():
+    assert fit_corr_gain_haircut(pd.DataFrame()) == 1.0
+
+
+def test_walk_forward_multi_predictions_corr_gain_haircut_zero_matches_naive_product(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[7, 8, 9, 10], n_sims=3000, seed=2,
+        corr_gain_haircut=0.0,
+    )
+    assert not preds.empty
+    np.testing.assert_allclose(preds["joint_prob"].to_numpy(),
+                               preds["naive_product"].to_numpy(), atol=1e-9)
 
 
 def test_walk_forward_multi_predictions_empty_when_round_not_in_games(synth_world):
