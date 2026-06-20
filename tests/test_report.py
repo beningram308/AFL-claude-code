@@ -5,6 +5,7 @@ import pytest
 
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import (
+    build_odds_template,
     build_sgm_candidates,
     projection_rows,
     render_markdown,
@@ -183,6 +184,53 @@ def test_render_markdown_labels_value_pick_and_odds_note():
     md = render_markdown(2026, 14, matches, has_odds=True, odds_note="_Live odds: 4 H2H legs._")
     assert "VALUE PICK" in md
     assert "Live odds: 4 H2H legs" in md
+
+
+def test_build_odds_template_every_name_maps_to_null_plus_rules_stub():
+    template = build_odds_template(["A to win", "B to win", "X 20+ disposals"])
+    assert template["A to win"] is None
+    assert template["B to win"] is None
+    assert template["X 20+ disposals"] is None
+    assert template["_rules"] == {"h2h_draw": None}
+
+
+def test_build_odds_template_dedupes_and_sorts():
+    template = build_odds_template(["Z leg", "A leg", "A leg"])
+    keys = [k for k in template if not k.startswith("_")]
+    assert keys == ["A leg", "Z leg"]
+
+
+def test_render_markdown_priced_props_table_shows_devig_and_class():
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": [],
+        "priced_legs": [
+            {"name": "X 20+ disposals", "model_prob": 0.55, "book_odds": 1.85,
+             "devig_prob": 0.52, "devig_label": "two-way devig",
+             "edge_pct": 0.017, "classification": "SKIP"},
+            {"name": "Y 15+ disposals", "model_prob": 0.65, "book_odds": None,
+             "devig_prob": 0.60, "devig_label": "single-sided (approx)",
+             "edge_pct": 0.0, "classification": "SKIP"},
+        ],
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=True)
+    assert "Priced props (from --odds)" in md
+    assert "X 20+ disposals" in md and "two-way devig" in md
+    assert "Y 15+ disposals" in md and "single-sided (approx)" in md
+    assert "| - |" in md   # Y's missing book_odds renders as a dash
+
+
+def test_render_markdown_no_priced_legs_section_when_empty():
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": [],
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=False)
+    assert "Priced props (from --odds)" not in md
 
 
 def test_render_markdown_explains_empty_ladder_with_leg_count():

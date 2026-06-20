@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from afl_bot.config import ANCHOR_MIN_PROB, VALUE_MIN_EDGE, VALUE_PROB_RANGE
+from afl_bot.config import ANCHOR_MIN_PROB, PROP_ASSUMED_OVERROUND, VALUE_MIN_EDGE, VALUE_PROB_RANGE
 
 
 # ----------------------------------------------------------------------------- #
@@ -64,6 +64,28 @@ def market_anchored_prob(prob: float, odds: float, weight: float) -> float:
     if odds <= 1.0 or not (0.0 <= weight <= 1.0):
         return prob
     return (1.0 - weight) * prob + weight * implied_prob(odds)
+
+
+def devig_prop_leg(
+    over_odds: float | None, under_odds: float | None,
+    assumed_overround: float = PROP_ASSUMED_OVERROUND,
+) -> tuple[float, str] | None:
+    """Devigged P(over the line) for a prop priced on one or both sides
+    (model-upgrade audit Phase 4 STEP 1.3). With both sides entered, the
+    devig is exact (``devig_proportional`` -- no assumption needed). With
+    only one side, ``assumed_overround`` approximates removing the vig
+    assuming it is split evenly across both sides; the returned label says
+    which happened so a single-sided approximation is never displayed as if
+    it were a clean two-way devig. Returns ``None`` if neither side priced.
+    """
+    if over_odds and under_odds:
+        p_over, _ = devig_proportional([over_odds, under_odds])
+        return p_over, "two-way devig"
+    if over_odds:
+        return implied_prob(over_odds) / assumed_overround, "single-sided (approx)"
+    if under_odds:
+        return 1.0 - implied_prob(under_odds) / assumed_overround, "single-sided (approx)"
+    return None
 
 
 def mc_standard_error(prob: float, n_sims: int) -> float:

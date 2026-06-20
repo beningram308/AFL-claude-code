@@ -41,6 +41,7 @@ from afl_bot.build.multi import (
 )
 from afl_bot.build.report import (
     apply_multi_calibration,
+    build_odds_template,
     projection_rows,
     render_markdown,
     search_match_sgms,
@@ -105,6 +106,7 @@ from afl_bot.models.scoring import (
     venue_scoring_factors,
 )
 from afl_bot.pricing.edge import (
+    devig_prop_leg,
     devig_proportional,
     fair_odds,
     market_anchored_prob,
@@ -695,7 +697,23 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     optimizer's curse: closest-to-target selection over many noisy
     candidates over-selects upward noise); Phase 3.6 corrects that bias
     directly on the population actually bet, since two attempts to fix the
-    selection mechanism itself didn't work."""
+    selection mechanism itself didn't work.
+
+    **Manual prop market-blend, STEP 1 (model-upgrade audit Phase 4 --
+    PHASE-4-CODE-PLAN.md, replaces the paid-API version of Phase 4).** Every
+    run also writes ``reports/<year>_r<N>_odds_template.json`` -- every
+    priceable leg's exact name (h2h, totals, every gated prop line) mapped to
+    ``null`` -- so filling in book prices from the bookie and passing the
+    file back via ``--odds`` is copy-paste, not retyping leg names by hand
+    (kills the typo class of bug at the source). A "Total points {line}+"
+    leg now exists too (previously round-report priced no totals leg at
+    all), but ONLY once it has a real price in ``--odds`` -- with no
+    ``--odds`` the leg set, and therefore the SGM ladder, is unchanged. Any
+    prop with a book price (single-sided, or both "+"/"-" sides for an exact
+    two-way devig) is surfaced in a new "Priced props" table per match so the
+    market price's effect on classification/edge is visible at the
+    single-leg level, not just inside the SGM ladder. Odds-file keys that
+    never matched a priceable leg warn (same as ``run-round``)."""
     client = SquiggleClient()
     history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
                         ignore_index=True)
@@ -789,6 +807,14 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     matches, odds_legs, predictions = [], [], []
     n_tog_overrides = 0
     n_auto_excluded = 0
+    # Every leg name this round COULD be priced for (model-upgrade audit Phase
+    # 4 STEP 1.2) -- written to an odds template so hand-entry is copy-paste,
+    # not guesswork. `known_input_keys` is the wider set used for the
+    # unmatched-key warning below: it also covers the "-" (under) side of
+    # each prop, which a user can optionally type for a two-way devig (STEP
+    # 1.3) even though the template itself only prompts for the "+" side.
+    priceable_names: list[str] = []
+    known_input_keys: set[str] = set()
 
     for _, fx in fixtures.iterrows():
         home_name, away_name = fx["hteam"], fx["ateam"]
@@ -809,13 +835,14 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                                ha, aa, n_sims, rng, is_wet=is_wet)
         total_pts = match["home_pts"] + match["away_pts"]
         total_line = round(mu_total / 5) * 5 + 0.5
+        total_mask = total_pts >= total_line
 
         header = {
             "home": home_name, "away": away_name, "venue": venue,
             "roofed": roofed, "is_wet": is_wet, "mu_margin": mu_margin, "mu_total": mu_total,
             "p_home": prob_event(match["home_win"] > 0), "p_away": prob_event(match["away_win"] > 0),
             "p_draw": prob_event(match["draw"] > 0),
-            "total_line_name": f"Total {total_line}+", "p_total": prob_event(total_pts >= total_line),
+            "total_line_name": f"Total {total_line}+", "p_total": prob_event(total_mask),
         }
         predictions.append({"match_id": match_id, "market": "h2h", "subject": home_name,
                             "line": "", "prob": header["p_home"]})
@@ -824,15 +851,33 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         predictions.append({"match_id": match_id, "market": "total_points", "subject": "total",
                             "line": total_line, "prob": header["p_total"]})
 
+        home_win_name = f"{home_name} to win"
+        away_win_name = f"{away_name} to win"
+        # Bookable name matches run-round's convention exactly (`Total points
+        # {line}+`) so one --odds file works for either CLI. Display text in
+        # the header bullet stays the shorter "Total {line}+" (cosmetic only).
+        total_leg_name = f"Total points {total_line}+"
+        priceable_names.extend([home_win_name, away_win_name, total_leg_name])
+        known_input_keys.update([home_win_name, away_win_name, total_leg_name])
+
         match_legs = [
-            LegCandidate(f"{home_name} to win", match_id, "h2h", home_name, header["p_home"],
-                         odds_book.get(f"{home_name} to win", fair_odds(header["p_home"])),
+            LegCandidate(home_win_name, match_id, "h2h", home_name, header["p_home"],
+                         odds_book.get(home_win_name, fair_odds(header["p_home"])),
                          mask=(match["home_win"] > 0)),
-            LegCandidate(f"{away_name} to win", match_id, "h2h", away_name, header["p_away"],
-                         odds_book.get(f"{away_name} to win", fair_odds(header["p_away"])),
+            LegCandidate(away_win_name, match_id, "h2h", away_name, header["p_away"],
+                         odds_book.get(away_win_name, fair_odds(header["p_away"])),
                          mask=(match["away_win"] > 0)),
         ]
+        # Totals only become a real SGM-eligible leg once priced (model-upgrade
+        # audit Phase 4 STEP 1.2) -- unlike h2h/props it has no model-derived
+        # fallback price here, so a no-odds run stays byte-for-byte unchanged.
+        if total_leg_name in odds_book:
+            total_leg = LegCandidate(total_leg_name, match_id, "total_points", "total",
+                                     header["p_total"], odds_book[total_leg_name], mask=total_mask)
+            match_legs.append(total_leg)
+            odds_legs.append(total_leg)
 
+        priced_legs: list[dict] = []   # this match's priced props, for the report table
         pace = draw_pace(n_sims, rng)
         projections = []
         for team, is_home_team in ((home_name, True), (away_name, False)):
@@ -864,14 +909,30 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                         if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
                         name = f"{player_name} {line}+ {stat}"
+                        # "-" (under) side is optional, manual-entry only --
+                        # not in the template, but recognised so typing one
+                        # in for a two-way devig (STEP 1.3) doesn't trigger
+                        # an unmatched-key warning.
+                        under_name = f"{player_name} {line}- {stat}"
+                        over_odds = odds_book.get(name)
+                        under_odds = odds_book.get(under_name)
                         leg = LegCandidate(name, match_id, f"player_{stat}", player_name, prob,
-                                           odds_book.get(name, fair_odds(prob)),
+                                           over_odds if over_odds else fair_odds(prob),
                                            confirmed=confirmed, mask=mask)
                         match_legs.append(leg)
                         predictions.append({"match_id": match_id, "market": f"player_{stat}",
                                             "subject": player_name, "line": line, "prob": prob})
                         if name in odds_book:
                             odds_legs.append(leg)
+                        priceable_names.append(name)
+                        known_input_keys.update([name, under_name])
+                        if over_odds or under_odds:
+                            devig_prob, devig_label = devig_prop_leg(over_odds, under_odds)
+                            priced_legs.append({
+                                "name": name, "model_prob": prob, "book_odds": over_odds,
+                                "devig_prob": devig_prob, "devig_label": devig_label,
+                                "edge_pct": leg.edge_pct, "classification": leg.classification,
+                            })
 
         for leg in match_legs[:2]:           # H2H legs with book odds feed cross-game multis
             if leg.name in odds_book:
@@ -882,9 +943,16 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             sgms = apply_multi_calibration(sgms, multi_cal)
         matches.append({
             "header": header, "projections": projections,
-            "sgms": sgms,
+            "sgms": sgms, "priced_legs": priced_legs,
             "n_legs": len(match_legs),     # so the report can explain an empty ladder
         })
+
+    # Warn on odds-file keys that never matched a priceable leg (a typo = a
+    # leg silently dropped, round-2 §7.4 / model-upgrade audit Phase 4 STEP 1.1).
+    unmatched = [k for k in odds_book if not k.startswith("_") and k not in known_input_keys]
+    if unmatched:
+        print(f"\nWARNING: {len(unmatched)} odds key(s) matched no priceable leg "
+              f"(typo? player not in pool/lineup?): {', '.join(unmatched)}", file=sys.stderr)
 
     multis_section = ""
     if odds_legs:
@@ -918,8 +986,13 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     # Machine-readable predictions sidecar so the round can be graded later (§10.5).
     pred_path = out_dir / f"{year}_r{round_no}_predictions.csv"
     pd.DataFrame(predictions).to_csv(pred_path, index=False)
+    # Odds template (model-upgrade audit Phase 4 STEP 1.2): every priceable
+    # leg's exact name -> null, copy-paste-able into a fresh --odds file.
+    template_path = out_dir / f"{year}_r{round_no}_odds_template.json"
+    template_path.write_text(
+        json.dumps(build_odds_template(priceable_names), indent=2), encoding="utf-8")
     print(md)
-    print(f"\n[saved to {out_path} | predictions: {pred_path}]")
+    print(f"\n[saved to {out_path} | predictions: {pred_path} | odds template: {template_path}]")
 
 
 def grade_round(year: int, round_no: int) -> None:

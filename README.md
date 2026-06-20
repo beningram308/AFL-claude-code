@@ -508,6 +508,48 @@ all — it may be non-stationary across seasons (a fit on 2019-2023 doesn't tran
 the true bias may live further upstream, e.g. in the correlation/dispersion model (`corr_gain`)
 itself rather than in calibration or selection.
 
+### Manual prop market-blend, STEP 1 (model-upgrade audit Phase 4)
+
+`PHASE-4-CODE-PLAN.md` supersedes the API-dependent Phase 4 sketched earlier: there is no free,
+stable feed for AFL player-prop odds (The Odds API only carries them on its paid Business tier),
+so Phase 4's value — anchoring prop legs to the market — is built on the **manual `--odds` file**
+a weekly bettor already fills in by hand, not an automated feed (which stays parked, STEP 4). STEP
+1 makes that path clean and first-class; STEP 2 (the actual blend) and STEP 3 (acceptance) follow
+in later commits.
+
+- **Odds template.** Every `round-report` run now also writes
+  `reports/<year>_r<N>_odds_template.json`: every priceable leg's exact name (both H2H sides, the
+  totals leg, every prop line that cleared the `LEG_PROB_MIN`/`LEG_PROB_MAX` gate) mapped to
+  `null`, plus a `_rules` stub (`h2h_draw`, the same key `run-round` already consumes, so one
+  filled-in file works for either CLI). Fill in the bookie's numbers and pass the file straight
+  back via `--odds` — copy-paste, not retyping leg names from scratch, which kills the typo class
+  of bug at the source (`build_odds_template` in `build/report.py`).
+- **Totals are now a real leg.** `round-report` priced no totals market at all before this step —
+  only H2H + props had `LegCandidate`s. There's now a `"Total points {line}+"` leg (same name
+  `run-round` already uses), but **only once it has a real price in `--odds`** — unlike H2H/props
+  it has no model-derived fallback price, specifically so a no-`--odds` run's leg set (and
+  therefore its SGM ladder) stays byte-for-byte unchanged.
+- **Single-leg visibility for priced props.** A prop's market price previously only showed up
+  inside the SGM ladder table or the cross-game multi section — there was no single-leg view of
+  what a book price does to a prop's classification/edge. A new "Priced props (from --odds)" table
+  renders per match for any prop with at least one side priced, showing model prob, book price,
+  devig prob (see below), edge, and ANCHOR/VALUE/SKIP classification.
+- **Devig.** `devig_prop_leg` (`pricing/edge.py`) devigs a prop's price: if **both** "+" (over) and
+  the new "-" (under, e.g. `"Tom Mitchell 25- disposals"`) sides are entered, the devig is exact
+  (`devig_proportional`, no assumption needed). If only one side is entered (the common case — the
+  template only prompts for the "+" side; "-" is optional manual-entry for a cleaner devig), it
+  falls back to `implied_prob(odds) / PROP_ASSUMED_OVERROUND` (default 1.06) and is labelled
+  **"single-sided (approx)"** everywhere it's shown, so it's never mistaken for a clean two-way
+  devig. `PROP_ASSUMED_OVERROUND` is a documented prior (typical AFL prop overround), not fitted —
+  there is no historical prop-odds archive to fit it against (the same honesty constraint that
+  applies to the market-blend weight in STEP 2).
+- **Unmatched-key warning.** `round-report` now warns (same as `run-round`) on any `--odds` key
+  that matched no priceable leg — covers the typo case for H2H/totals/prop "+" names and the
+  optional prop "-" (under) names.
+
+This step is mechanical plumbing, not a fix — it doesn't yet change any probability or edge
+(STEP 2 does the actual blend). Acceptance for the full Phase 4 plan is STEP 3.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

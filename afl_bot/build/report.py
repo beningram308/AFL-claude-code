@@ -48,6 +48,19 @@ def projection_rows(player_samples: dict[str, dict], lines: dict[str, list],
 DEFAULT_ODDS_BANDS = ((1.75, 2.50), (2.50, 3.50), (3.50, 5.50))
 
 
+def build_odds_template(leg_names: list[str]) -> dict:
+    """Template for the manual ``--odds`` JSON (model-upgrade audit Phase 4
+    STEP 1.2): every priceable leg's exact name -> ``null``, plus the
+    ``_rules`` stub (``h2h_draw``, consumed by ``run-round``'s draw-refund
+    handling, so the same filled-in file works for both CLIs). Write it,
+    fill in the numbers off the bookie, pass the file back via ``--odds`` --
+    this kills the leg-name-typo problem at the source since the keys are
+    copy-pasted, not retyped from scratch."""
+    template: dict = {name: None for name in sorted(set(leg_names))}
+    template["_rules"] = {"h2h_draw": None}
+    return template
+
+
 def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: int = 3,
                          odds_book: dict | None = None,
                          min_joint_prob: float = 0.05) -> list[dict]:
@@ -281,6 +294,21 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                         f"| {_fmt_pct(row.get('goals_2+', 0))} "
                         f"| {row.get('marks_mean', 0):.1f} | {_fmt_pct(row.get('marks_4+', 0))} "
                         f"| {row.get('tackles_mean', 0):.1f} | {_fmt_pct(row.get('tackles_3+', 0))} |"
+                    )
+                out.append("")
+
+            priced = m.get("priced_legs") or []
+            if priced:
+                out.append("### Priced props (from --odds)")
+                out.append("| Leg | Model | Book | Devig | Edge | Class |")
+                out.append("|---|--:|--:|--:|--:|---|")
+                for p in priced:
+                    book_str = f"{p['book_odds']:.2f}" if p["book_odds"] else "-"
+                    devig_str = (f"{_fmt_pct(p['devig_prob'])} ({p['devig_label']})"
+                                 if p["devig_prob"] is not None else "-")
+                    out.append(
+                        f"| {p['name']} | {_fmt_pct(p['model_prob'])} | {book_str} "
+                        f"| {devig_str} | {p['edge_pct'] * 100:+.1f}% | {p['classification']} |"
                     )
                 out.append("")
 

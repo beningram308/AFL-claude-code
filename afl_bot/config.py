@@ -170,6 +170,16 @@ ANCHOR_MIN_PROB = 0.85
 VALUE_MIN_EDGE = 0.08
 VALUE_PROB_RANGE = (0.40, 0.72)
 
+# Devig assumption for a prop leg priced on only ONE side (no two-way over+
+# under market entered) -- model-upgrade audit Phase 4 STEP 1.3. With both
+# sides entered, devig_proportional is exact (no assumption needed); with
+# only one side, this divides out an assumed even vig split. There is no
+# historical prop-odds archive to fit this against (PHASE-4-CODE-PLAN.md),
+# so it is a documented prior (typical AFL prop overround), not a backtested
+# number -- legs priced this way are labelled "single-sided (approx)"
+# wherever shown so they're never mistaken for a clean two-way devig.
+PROP_ASSUMED_OVERROUND = 1.06
+
 # ----------------------------------------------------------------------------- #
 # Promo-aware EV — plan §4.4
 # ----------------------------------------------------------------------------- #
