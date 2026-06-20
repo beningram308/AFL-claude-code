@@ -17,7 +17,7 @@ from itertools import combinations
 from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.build.multi import LegCandidate, _no_conflicts, combined_odds, joint_prob_from_masks
 from afl_bot.config import MULTI_MARKET_SHRINK, MULTI_TARGET_ODDS
-from afl_bot.pricing.edge import fair_odds, market_anchored_prob
+from afl_bot.pricing.edge import fair_odds, market_anchored_prob, mc_standard_error
 
 
 def projection_rows(player_samples: dict[str, dict], lines: dict[str, list],
@@ -48,30 +48,21 @@ def projection_rows(player_samples: dict[str, dict], lines: dict[str, list],
 DEFAULT_ODDS_BANDS = ((1.75, 2.50), (2.50, 3.50), (3.50, 5.50))
 
 
-def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: int = 3,
-                      odds_book: dict | None = None, target_odds: tuple | None = None,
-                      min_joint_prob: float = 0.05,
-                      max_plausible_edge: float = 0.15) -> list[dict]:
-    """Build a *ladder* of same-game multis with one rung per target odds
-    (REAL-MULTIS ADDENDUM 1). For each ``min_legs``..``max_legs``-leg combo it
-    computes the JOINT sim prob (from masks), naive product, correlation gain,
-    fair odds, and — when every leg has a book price — book odds + a SHRUNK edge.
-
-    Edge is *not* the raw ``joint*book-1``: per-leg model overestimates compound
-    multiplicatively across a multi, so the joint is first pulled toward the
-    book's implied multi prob via ``market_anchored_prob`` (``MULTI_MARKET_SHRINK``,
-    round-2 §8.2) before the edge. A shrunk edge above ``max_plausible_edge``
-    (default 15%) is treated as "model is wrong, not the book".
-
-    Rung selection: for each target in ``target_odds`` (default ``MULTI_TARGET_ODDS``
-    = 1.75 / 3.50 / 5.00), the combo whose **fair odds** is closest to the target
-    is chosen; highest joint prob breaks ties. The top rung (highest target) is
-    promoted to ``value_pick=True`` when a qualifying shrunk edge (0, max_plausible_edge]
-    exists among the available combos. De-duplication: each combo can fill only one
-    rung; if the pool is exhausted, remaining rungs are filled from the full pool.
-
-    Returned safest -> longest (by fair odds)."""
-    target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
+def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: int = 3,
+                         odds_book: dict | None = None,
+                         min_joint_prob: float = 0.05) -> list[dict]:
+    """Every non-conflicting ``min_legs``..``max_legs``-leg combo from ``legs``
+    clearing ``min_joint_prob``, each with its joint sim probability (from
+    masks), naive product, correlation gain, fair odds, MC sample size
+    (``n_sims``, from a leg's mask length — ``None`` if masks aren't
+    available), and — when every leg has a book price — book odds + a
+    market-shrunk edge. This is the full candidate population
+    ``search_match_sgms`` selects ladder rungs from, split out so a backtest
+    can grade calibration over EVERY candidate, not just the selected ones
+    (model-upgrade audit Phase 3.5 — optimizer's-curse / selection-bias
+    check: does picking "closest fair odds to a target" out of many noisy
+    estimates systematically pick the one that got there via upward noise,
+    not genuine accuracy?)."""
     odds_book = odds_book or {}
     combos: list[dict] = []
     for r in range(min_legs, max_legs + 1):
@@ -92,6 +83,7 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 "naive_product": naive,
                 "corr_gain": joint - naive,
                 "fair_odds": fair_odds(joint),
+                "n_sims": len(legs_list[0].mask) if legs_list[0].mask is not None else None,
                 "value_pick": False,
             }
             if all(odds_book.get(leg.name) is not None for leg in legs_list):
@@ -102,9 +94,80 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 entry["edge"] = shrunk * book - 1.0
             entry["odds"] = entry.get("book_odds", entry["fair_odds"])
             combos.append(entry)
+    return combos
 
+
+def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: int = 3,
+                      odds_book: dict | None = None, target_odds: tuple | None = None,
+                      min_joint_prob: float = 0.05,
+                      max_plausible_edge: float = 0.15,
+                      lcb_z: float = 0.0, price_shrink: float = 0.0) -> list[dict]:
+    """Build a *ladder* of same-game multis with one rung per target odds
+    (REAL-MULTIS ADDENDUM 1), selected from ``build_sgm_candidates``'s full
+    candidate pool. For each combo: the JOINT sim prob (from masks), naive
+    product, correlation gain, fair odds, and — when every leg has a book
+    price — book odds + a SHRUNK edge.
+
+    Edge is *not* the raw ``joint*book-1``: per-leg model overestimates compound
+    multiplicatively across a multi, so the joint is first pulled toward the
+    book's implied multi prob via ``market_anchored_prob`` (``MULTI_MARKET_SHRINK``,
+    round-2 §8.2) before the edge. A shrunk edge above ``max_plausible_edge``
+    (default 15%) is treated as "model is wrong, not the book".
+
+    Rung selection: for each target in ``target_odds`` (default ``MULTI_TARGET_ODDS``
+    = 1.75 / 3.50 / 5.00), the combo whose **fair odds** is closest to the target
+    is chosen; highest joint prob breaks ties. The top rung (highest target) is
+    promoted to ``value_pick=True`` when a qualifying shrunk edge (0, max_plausible_edge]
+    exists among the available combos. De-duplication: each combo can fill only one
+    rung; if the pool is exhausted, remaining rungs are filled from the full pool.
+
+    ``lcb_z`` (model-upgrade audit Phase 3.5, opt-in, default 0.0 = off, the
+    existing behaviour): rank combos for selection by a lower-confidence-bound
+    estimate, ``max(0, joint_prob - lcb_z * mc_standard_error(joint_prob,
+    n_sims))``, instead of the raw point estimate -- the standard fix for
+    "argmax/closest-match over many noisy estimates over-selects upward
+    noise" (the optimizer's curse). The closest-to-target comparison is done
+    in PROBABILITY space (``|lcb_value - 1/target|``) rather than odds space
+    when ``lcb_z>0``: odds are ``1/p``, so the same absolute probability
+    haircut swings a long-shot combo's odds far more than a near-even
+    combo's, which would swamp any genuine precision difference between
+    combos if compared in odds space. Combos with no ``n_sims`` (no mask)
+    rank on the raw point estimate regardless. Only *which* combo wins
+    changes; the winner's reported ``joint_prob``/``fair_odds`` stay its own
+    raw point estimate unless ``price_shrink`` is also set.
+
+    ``price_shrink`` (opt-in, default 0.0 = off): after selection, shrinks
+    the WINNING combo's reported ``joint_prob`` toward *that rung's target's*
+    implied probability (``1 / target``) by this factor (0 = no shrink, 1 =
+    fully at the target), recomputing ``fair_odds``/``edge`` from the shrunk
+    value — the same `market_anchored_prob` mechanic the live book-odds path
+    already uses for market anchoring, anchored to the TARGET odds instead
+    since this backtest has no book. ``corr_gain``/``naive_product`` are
+    left at their pre-shrink values (informational: what the sim's
+    correlation structure contributed before any haircut).
+
+    Returned safest -> longest (by fair odds)."""
+    target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
+    combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
+                                  odds_book=odds_book, min_joint_prob=min_joint_prob)
     if not combos:
         return []
+
+    def _lcb_value(c: dict) -> float:
+        if lcb_z <= 0.0 or c["n_sims"] is None:
+            return c["joint_prob"]
+        return max(0.0, c["joint_prob"] - lcb_z * mc_standard_error(c["joint_prob"], c["n_sims"]))
+
+    def _lcb_active(c: dict) -> bool:
+        return lcb_z > 0.0 and c["n_sims"] is not None
+
+    def _distance(c: dict, target: float) -> float:
+        # Probability-space distance under the haircut (see docstring: odds
+        # space's 1/p nonlinearity would swamp genuine precision differences);
+        # odds-space distance (the original behaviour) otherwise.
+        if _lcb_active(c):
+            return abs(_lcb_value(c) - 1.0 / target)
+        return abs(c["fair_odds"] - target)
 
     selected: list[dict] = []
     chosen: set[int] = set()
@@ -119,11 +182,23 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 pick = valued[0]
                 pick["value_pick"] = True
             else:
-                pick = min(available, key=lambda c: (abs(c["fair_odds"] - target), -c["joint_prob"]))
+                pick = min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
         else:
-            pick = min(available, key=lambda c: (abs(c["fair_odds"] - target), -c["joint_prob"]))
+            pick = min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
         chosen.add(id(pick))
         selected.append(pick)
+
+    if price_shrink > 0.0:
+        for pick, target in zip(selected, target_odds):
+            anchor_prob = 1.0 / target
+            shrunk = pick["joint_prob"] - price_shrink * (pick["joint_prob"] - anchor_prob)
+            pick["joint_prob"] = shrunk
+            pick["fair_odds"] = fair_odds(shrunk)
+            if "book_odds" in pick:
+                book = pick["book_odds"]
+                pick["raw_edge"] = shrunk * book - 1.0
+                pick["edge"] = market_anchored_prob(shrunk, book, MULTI_MARKET_SHRINK) * book - 1.0
+                pick["odds"] = book
 
     selected.sort(key=lambda c: c["fair_odds"])
     return selected

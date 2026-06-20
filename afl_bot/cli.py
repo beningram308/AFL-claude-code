@@ -1000,7 +1000,8 @@ def grade_round(year: int, round_no: int) -> None:
 
 
 def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
-                 with_calibration: bool = True, calibration_source: str = "proxy") -> None:
+                 with_calibration: bool = True, calibration_source: str = "proxy",
+                 all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
     (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
     3.1's calibration-source choice): for each completed round across every
@@ -1026,11 +1027,25 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     season, not a closed-form NB marginal), but the acceptance test for
     Phase 3's whole premise: if `"sim"`'s calibrated curve is flatter than
     `"proxy"`'s, calibration fidelity (not just calibration's presence) was
-    the missing lever."""
+    the missing lever.
+
+    `all_candidates=True` (model-upgrade audit Phase 3.5, default False)
+    additionally grades the FULL un-selected SGM candidate population
+    (`walk_forward_sgm_candidate_predictions`) and prints its reliability
+    curve alongside the selected-rungs one -- the optimizer's-curse check:
+    is `search_match_sgms`'s selection (not the sim's calibration) the
+    source of the multi-ladder overconfidence? Re-runs the sim a second time
+    (its own walk-forward loop), so roughly doubles runtime when set.
+
+    `lcb_z`/`price_shrink` (Phase 3.5, default 0.0 = off) pass through to
+    `search_match_sgms`'s selection-haircut params (see its docstring) --
+    prototype fixes for the optimizer's curse, opt-in so the unhaircut
+    default behaviour is unchanged."""
     from afl_bot.backtest.multis import (
         multi_calibration_report,
         multi_reliability_curve,
         walk_forward_multi_predictions,
+        walk_forward_sgm_candidate_predictions,
         walk_forward_sim_prop_predictions,
     )
     from afl_bot.backtest.props import fit_prop_calibrators, load_or_fit_prop_calibrators
@@ -1074,7 +1089,7 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                     cache_dir=backtest_cal_cache, force_refresh=True) or None
         preds = walk_forward_multi_predictions(
             games, player_log, eval_year=year, rounds=rounds, n_sims=n_sims,
-            prop_calibrators=prop_calibrators)
+            prop_calibrators=prop_calibrators, lcb_z=lcb_z, price_shrink=price_shrink)
         all_preds.append(preds)
     preds = pd.concat(all_preds, ignore_index=True) if all_preds else pd.DataFrame()
     if preds.empty:
@@ -1082,13 +1097,14 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
               "fewer than 3 candidate legs.", file=sys.stderr)
         return
 
+    haircut_note = f" (lcb_z={lcb_z}, price_shrink={price_shrink})" if (lcb_z or price_shrink) else ""
     report = multi_calibration_report(preds)
     print(f"=== Multi (SGM) walk-forward backtest: years {years}, "
           f"{preds.groupby('year')['round'].nunique().to_dict()} rounds/year ===")
-    print(f"  RAW        n={report['n']} | log loss {report['log_loss']:.4f} | "
+    print(f"  SELECTED{haircut_note}   n={report['n']} | log loss {report['log_loss']:.4f} | "
           f"brier {report['brier']:.4f} | mean pred {report['mean_pred']:.3f} | "
           f"actual hit rate {report['hit_rate']:.3f}")
-    print("  RAW reliability (mean predicted vs actual hit rate per bucket):")
+    print("  SELECTED reliability (mean predicted vs actual hit rate per bucket):")
     for _, row in multi_reliability_curve(preds).iterrows():
         print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
               f"| n={int(row['n'])}")
@@ -1102,6 +1118,24 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
         for _, row in multi_reliability_curve(preds, column="calibrated_joint_prob").iterrows():
             print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
                   f"| n={int(row['n'])}")
+
+    if all_candidates:
+        cand_preds = pd.concat(
+            [walk_forward_sgm_candidate_predictions(games, player_log, eval_year=year, rounds=rounds,
+                                                     n_sims=n_sims)
+             for year in years],
+            ignore_index=True)
+        if cand_preds.empty:
+            print("\nALL-CANDIDATES: no graded candidate combos.", file=sys.stderr)
+        else:
+            cand_report = multi_calibration_report(cand_preds)
+            print(f"\n  ALL-CANDIDATES n={cand_report['n']} | log loss {cand_report['log_loss']:.4f} | "
+                  f"brier {cand_report['brier']:.4f} | mean pred {cand_report['mean_pred']:.3f} | "
+                  f"actual hit rate {cand_report['hit_rate']:.3f}")
+            print("  ALL-CANDIDATES reliability (mean predicted vs actual hit rate per bucket):")
+            for _, row in multi_reliability_curve(cand_preds).iterrows():
+                print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
+                      f"| n={int(row['n'])}")
 
 
 def fit_correlations_command(through: int) -> None:
@@ -1217,6 +1251,18 @@ def main(argv: list[str] | None = None) -> None:
                                "probabilities instead (Phase 3.1) -- much slower, but the "
                                "acceptance test for whether calibration fidelity flattens the "
                                "curve further than 'proxy' did.")
+    multis_p.add_argument("--all-candidates", action="store_true", dest="all_candidates",
+                          help="Also grade the FULL un-selected SGM candidate population "
+                               "(Phase 3.5) alongside the selected rungs -- the "
+                               "optimizer's-curse check. Roughly doubles runtime.")
+    multis_p.add_argument("--lcb-z", type=float, default=0.0, dest="lcb_z",
+                          help="Phase 3.5 selection haircut: rank candidates by "
+                               "joint_prob - lcb_z * MC-standard-error instead of the raw "
+                               "point estimate (0 = off, the default).")
+    multis_p.add_argument("--price-shrink", type=float, default=0.0, dest="price_shrink",
+                          help="Phase 3.5 selection haircut: shrink the selected rung's "
+                               "joint_prob toward its target odds' implied probability by "
+                               "this factor, 0-1 (0 = off, the default).")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1246,7 +1292,8 @@ def main(argv: list[str] | None = None) -> None:
         rounds = [int(r) for r in args.rounds.split(",")] if args.rounds else None
         years = [int(y) for y in args.year.split(",")]
         grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration,
-                    calibration_source=args.calibration_source)
+                    calibration_source=args.calibration_source, all_candidates=args.all_candidates,
+                    lcb_z=args.lcb_z, price_shrink=args.price_shrink)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":

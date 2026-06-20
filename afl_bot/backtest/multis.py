@@ -49,7 +49,7 @@ import pandas as pd
 from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.backtest.walkforward import brier_score, calibration_curve, log_loss
 from afl_bot.build.multi import LegCandidate
-from afl_bot.build.report import search_match_sgms
+from afl_bot.build.report import build_sgm_candidates, search_match_sgms
 from afl_bot.config import (
     LEG_PROB_MAX,
     LEG_PROB_MIN,
@@ -269,6 +269,7 @@ def walk_forward_multi_predictions(
     games: pd.DataFrame, player_log: pd.DataFrame, *, eval_year: int,
     rounds: list[int] | None = None, n_sims: int = SIM_ITERATIONS, seed: int | None = None,
     correlation_params: dict | None = None, prop_calibrators: dict | None = None,
+    lcb_z: float = 0.0, price_shrink: float = 0.0,
 ) -> pd.DataFrame:
     """One row per (year, round, match_id, rung) the model would have placed
     on its 3-leg ladder for every round in `rounds` (default: every round of
@@ -293,6 +294,16 @@ def walk_forward_multi_predictions(
     ONCE on data strictly before `eval_year` and reuse across every round in
     this call -- per-round refitting isn't done here (expensive, and not
     what `round_report`'s own calibrator loading does either).
+
+    ``lcb_z``/``price_shrink`` (model-upgrade audit Phase 3.5, opt-in,
+    default 0.0 = off, unchanged behaviour) pass straight through to
+    `afl_bot.build.report.search_match_sgms`'s selection-haircut params --
+    see its docstring. Compare against
+    `walk_forward_sgm_candidate_predictions`'s un-selected candidate
+    population to check whether `search_match_sgms`'s selection (not the
+    sim's own calibration) is the source of the multi-ladder overconfidence
+    found in Phase 1 (the optimizer's curse: argmax/closest-match over many
+    noisy joint-prob estimates over-selects upward noise).
     """
     games = games.sort_values(["year", "round", "unixtime"]).reset_index(drop=True)
     year_games = games[games["year"] == eval_year]
@@ -321,7 +332,7 @@ def walk_forward_multi_predictions(
             if len(match_legs) < 3:
                 continue
             leg_info = leg_info_by_match[match_id]
-            for rung in search_match_sgms(match_legs):
+            for rung in search_match_sgms(match_legs, lcb_z=lcb_z, price_shrink=price_shrink):
                 hits = []
                 for leg_name in rung["legs"]:
                     hit = _leg_actual_hit(leg_info[leg_name], h2h_actual, player_stat)
@@ -345,6 +356,85 @@ def walk_forward_multi_predictions(
                     row["calibrated_joint_prob"] = float(
                         min(max(calibrated_naive + rung["corr_gain"], 0.0), 1.0))
                 rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def walk_forward_sgm_candidate_predictions(
+    games: pd.DataFrame, player_log: pd.DataFrame, *, eval_year: int,
+    rounds: list[int] | None = None, n_sims: int = SIM_ITERATIONS, seed: int | None = None,
+    correlation_params: dict | None = None, min_joint_prob: float = 0.05,
+) -> pd.DataFrame:
+    """Model-upgrade audit Phase 3.5: grades the FULL candidate same-game-multi
+    population for every match -- every non-conflicting >=3-leg combo
+    `build_sgm_candidates` builds, not just the 3 rungs `search_match_sgms`
+    selects (`walk_forward_multi_predictions`'s population) -- against what
+    actually happened.
+
+    Rationale: `search_match_sgms` selects each rung as "closest fair odds to
+    a target, tie-broken on highest joint prob" out of potentially hundreds
+    of candidate combos per match. If that argmax/closest-match systematically
+    favours combos whose joint-prob ESTIMATE deviated upward from its true
+    value (the optimizer's curse / winner's curse — picking the most extreme
+    of many noisy estimates is itself a biased estimator, even if every
+    individual estimate were unbiased on average), the SELECTED rungs'
+    reliability curve will show more overconfidence than the full candidate
+    population's, even though the sim/calibration that produced each
+    individual estimate is identical. Compare this function's
+    `multi_calibration_report`/`multi_reliability_curve` against
+    `walk_forward_multi_predictions`'s to check.
+
+    Same per-round leg construction and anti-leakage truncation as
+    `walk_forward_multi_predictions` (reuses `_build_match_legs`) -- same
+    sim cost per round, since `search_match_sgms` already builds this same
+    full candidate pool internally before selecting from it; this function
+    just grades all of it instead of discarding everything but 3 picks. `n`
+    here is much larger than the selected-only population and not directly
+    comparable in absolute scale -- compare the two curves' SHAPE (mean
+    predicted vs actual per bucket), not raw `n`."""
+    games = games.sort_values(["year", "round", "unixtime"]).reset_index(drop=True)
+    year_games = games[games["year"] == eval_year]
+    if rounds is None:
+        rounds = sorted(year_games["round"].unique())
+
+    rng = make_rng(seed) if seed is not None else make_rng()
+    actual_log = _fetch_actual_player_log(eval_year, year_games)
+
+    rows = []
+    for round_no in rounds:
+        fixtures = year_games[year_games["round"] == round_no]
+        if fixtures.empty:
+            continue
+        history, log = _truncate_before_round(games, player_log, eval_year, round_no)
+        if history is None:
+            continue
+
+        legs_by_match, leg_info_by_match = _build_match_legs(
+            history, log, fixtures, eval_year, round_no, n_sims, rng,
+            correlation_params=correlation_params)
+        player_round = actual_log[actual_log["round"] == str(round_no)] if not actual_log.empty else actual_log
+        h2h_actual, player_stat = _actual_results(fixtures, player_round)
+
+        for match_id, match_legs in legs_by_match.items():
+            if len(match_legs) < 3:
+                continue
+            leg_info = leg_info_by_match[match_id]
+            for combo in build_sgm_candidates(match_legs, min_joint_prob=min_joint_prob):
+                hits = []
+                for leg_name in combo["legs"]:
+                    hit = _leg_actual_hit(leg_info[leg_name], h2h_actual, player_stat)
+                    if hit is None:
+                        hits = None
+                        break
+                    hits.append(hit)
+                if hits is None:
+                    continue
+                rows.append({
+                    "year": eval_year, "round": round_no, "match_id": match_id,
+                    "legs": " + ".join(combo["legs"]), "joint_prob": combo["joint_prob"],
+                    "naive_product": combo["naive_product"], "corr_gain": combo["corr_gain"],
+                    "fair_odds": combo["fair_odds"], "all_hit": int(all(hits)),
+                })
 
     return pd.DataFrame(rows)
 

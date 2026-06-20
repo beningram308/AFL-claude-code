@@ -1,9 +1,11 @@
 """Round-report helpers (round-2 §10): projection tables + SGM joint search."""
 
 import numpy as np
+import pytest
 
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import (
+    build_sgm_candidates,
     projection_rows,
     render_markdown,
     search_match_sgms,
@@ -104,6 +106,52 @@ def test_search_match_sgms_fills_every_target_when_pool_is_thin():
     assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target, no blank
     assert all(len(r["legs"]) == 3 for r in out)
     assert [r["fair_odds"] for r in out] == sorted(r["fair_odds"] for r in out)
+
+
+def test_build_sgm_candidates_is_the_full_pool_search_selects_from():
+    legs = _ladder_legs()
+    candidates = build_sgm_candidates(legs)
+    selected = search_match_sgms(legs)
+    cand_keys = {tuple(sorted(c["legs"])) for c in candidates}
+    for r in selected:
+        assert tuple(sorted(r["legs"])) in cand_keys
+    # C(6,3) = 20 non-conflicting 3-leg combos, all clearing the default floor.
+    assert len(candidates) == 20
+    assert all(c["n_sims"] == len(legs[0].mask) for c in candidates)
+
+
+def test_search_match_sgms_price_shrink_pulls_toward_target_implied_prob():
+    legs = _ladder_legs()
+    target = MULTI_TARGET_ODDS[-1]
+    anchor_prob = 1.0 / target
+    raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
+    full = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, price_shrink=1.0)[0]
+    half = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, price_shrink=0.5)[0]
+    assert full["joint_prob"] == pytest.approx(anchor_prob)              # fully shrunk -> exactly at target
+    assert half["joint_prob"] == pytest.approx((raw["joint_prob"] + anchor_prob) / 2)
+    assert full["fair_odds"] == pytest.approx(target)
+
+
+def test_search_match_sgms_lcb_z_can_change_the_selected_combo():
+    """Two pure 3-leg pools with exact joint_prob 0.30 and 0.31 (n=200 masks,
+    no extra leg-level noise), target implied prob 0.29 (both pools sit
+    above it, 0.30 closer): lcb_z=0 (default) picks the closer 0.30 pool,
+    but the haircut's effect on each pool's distance-to-target is enough to
+    flip the pick to the 0.31 pool at lcb_z=0.5 -- model-upgrade audit
+    Phase 3.5's selection-haircut prototype actually changes the selected
+    rung, not just its reported probability."""
+    n = 200
+    mask_30 = np.zeros(n, dtype=bool); mask_30[:60] = True   # joint_prob exactly 0.30
+    mask_31 = np.zeros(n, dtype=bool); mask_31[:62] = True   # joint_prob exactly 0.31
+    pool_30 = [_leg(f"A{i} 15+", 1.0, mask_30, f"A{i}") for i in range(3)]
+    pool_31 = [_leg(f"B{i} 15+", 1.0, mask_31, f"B{i}") for i in range(3)]
+    legs = pool_30 + pool_31
+    target = 1.0 / 0.29
+
+    default = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)
+    haircut = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, lcb_z=0.5)
+    assert default[0]["joint_prob"] == pytest.approx(0.30)
+    assert haircut[0]["joint_prob"] == pytest.approx(0.31)
 
 
 def test_render_markdown_smoke():

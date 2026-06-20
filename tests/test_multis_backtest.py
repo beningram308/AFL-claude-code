@@ -12,11 +12,12 @@ from afl_bot.backtest.multis import (
     multi_calibration_report,
     multi_reliability_curve,
     walk_forward_multi_predictions,
+    walk_forward_sgm_candidate_predictions,
     walk_forward_sim_prop_predictions,
 )
 from afl_bot.backtest.props import apply_prop_calibration, fit_prop_calibrators
 from afl_bot.backtest.walkforward import log_loss
-from afl_bot.config import LEG_PROB_MAX, LEG_PROB_MIN
+from afl_bot.config import LEG_PROB_MAX, LEG_PROB_MIN, MULTI_TARGET_ODDS
 from afl_bot.data.player_stats import synthetic_player_log
 
 TEAMS = [f"Team{i}" for i in range(8)]
@@ -154,6 +155,94 @@ def test_walk_forward_multi_predictions_no_calibration_column_by_default(synth_w
         games, player_log, eval_year=2024, rounds=[8], n_sims=3000, seed=1,
     )
     assert "calibrated_joint_prob" not in preds.columns
+
+
+def test_walk_forward_sgm_candidate_predictions_shape_and_bounds(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_sgm_candidate_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+    )
+    assert not preds.empty
+    assert {"year", "round", "match_id", "legs", "joint_prob", "all_hit", "fair_odds"} <= set(preds.columns)
+    assert set(preds["round"]) <= {8, 9}
+    assert preds["joint_prob"].between(0.0, 1.0).all()
+    assert set(preds["all_hit"].unique()) <= {0, 1}
+    # Every match can have many qualifying combos, not at most 3 -- the whole point.
+    assert preds.groupby("match_id").size().max() > 3
+
+
+def test_walk_forward_sgm_candidate_predictions_includes_every_selected_rung(synth_world):
+    """Phase 3.5's optimizer's-curse check is only meaningful if the selected
+    population is genuinely a subset of the candidate population graded from
+    the SAME sim draws -- same seed means `_build_match_legs` consumes the
+    rng identically in both walk-forward loops, so every selected rung's
+    (match_id, legs) pair must appear in the candidate population with the
+    exact same joint_prob."""
+    games, player_log = synth_world
+    selected = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+    )
+    candidates = walk_forward_sgm_candidate_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+    )
+    cand_lookup = candidates.set_index(["match_id", "legs"])["joint_prob"]
+    for _, row in selected.iterrows():
+        assert (row["match_id"], row["legs"]) in cand_lookup.index
+        assert cand_lookup.loc[(row["match_id"], row["legs"])] == pytest.approx(row["joint_prob"])
+
+
+def test_walk_forward_sgm_candidate_predictions_no_leakage_across_rounds(synth_world):
+    games, player_log = synth_world
+    full_preds = walk_forward_sgm_candidate_predictions(
+        games, player_log, eval_year=2024, rounds=[8], n_sims=3000, seed=1,
+    )
+    truncated_games = games[~((games["year"] == 2024) & (games["round"] > 8))]
+    truncated_log = player_log[~((player_log["year"] == 2024) & (player_log["round"] > 8))]
+    truncated_preds = walk_forward_sgm_candidate_predictions(
+        truncated_games, truncated_log, eval_year=2024, rounds=[8], n_sims=3000, seed=1,
+    )
+    pd.testing.assert_frame_equal(
+        full_preds.sort_values(["match_id", "legs"]).reset_index(drop=True),
+        truncated_preds.sort_values(["match_id", "legs"]).reset_index(drop=True),
+    )
+
+
+def test_walk_forward_sgm_candidate_predictions_empty_when_round_not_in_games(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_sgm_candidate_predictions(
+        games, player_log, eval_year=2024, rounds=[999], n_sims=2000,
+    )
+    assert preds.empty
+
+
+def test_walk_forward_multi_predictions_lcb_z_and_price_shrink_default_off(synth_world):
+    """lcb_z=0, price_shrink=0 (the defaults) must reproduce the unhaircut
+    selected population exactly -- both knobs are opt-in."""
+    games, player_log = synth_world
+    baseline = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+    )
+    explicit_off = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+        lcb_z=0.0, price_shrink=0.0,
+    )
+    pd.testing.assert_frame_equal(baseline, explicit_off)
+
+
+def test_walk_forward_multi_predictions_price_shrink_lands_exactly_on_target_odds(synth_world):
+    """Fully shrunk (price_shrink=1.0): every selected rung's joint_prob is
+    set to exactly 1/target for its rung's target -- so its fair_odds lands
+    exactly on one of MULTI_TARGET_ODDS (no odds_book is passed anywhere in
+    this backtest, so every rung goes through the target-distance selection,
+    none through the book-edge value-pick branch)."""
+    games, player_log = synth_world
+    shrunk = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[8, 9], n_sims=3000, seed=1,
+        price_shrink=1.0,
+    )
+    assert not shrunk.empty
+    for fo in shrunk["fair_odds"]:
+        assert any(fo == pytest.approx(t) for t in MULTI_TARGET_ODDS)
 
 
 def test_walk_forward_sim_prop_predictions_shape_and_bounds(synth_world):

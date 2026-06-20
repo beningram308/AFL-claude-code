@@ -402,6 +402,75 @@ Open question for whoever picks this up next: is the sim-source sample
 overconfidence structural — e.g. in `corr_gain` itself, which no calibration
 source touches?
 
+### Selection bias / optimizer's curse check (model-upgrade audit Phase 3.5)
+
+Neither Phase 2 (correlation params) nor Phase 3 (calibration fidelity) explained Phase 1's
+multi-ladder overconfidence. A third candidate explanation: `search_match_sgms` doesn't grade a
+fixed prediction — for every match it builds potentially hundreds of non-conflicting >=3-leg
+combos and picks, per target odds, whichever one's **fair odds happens to land closest to the
+target** (tie-broken on highest joint prob). Argmax/closest-match selection over many noisy
+estimates is a textbook biased estimator (the *optimizer's curse* / winner's curse) even when
+every individual estimate is itself unbiased — picking the one that *looks* best (or closest) out
+of many is more likely to have gotten there via favourable noise than genuine signal.
+
+**Tooling.** `build/report.py`'s combo-construction loop is now its own function,
+`build_sgm_candidates` (returns the full candidate pool, each entry's `n_sims` included for the
+haircuts below); `search_match_sgms` calls it and selects from the pool unchanged. New
+`afl_bot.backtest.multis.walk_forward_sgm_candidate_predictions` reuses the same per-round,
+anti-leakage leg construction as the multi backtest to grade **every** candidate combo per match,
+not just the 3 selected ones. `grade-multis` gained `--all-candidates` (prints both reliability
+curves side by side) plus two opt-in selection-haircut prototypes: `--price-shrink F` (shrink the
+selected rung's joint prob toward its target odds' implied probability by factor `F`) and
+`--lcb-z Z` (rank candidates by a lower-confidence-bound estimate, `joint_prob - Z * MC standard
+error`, computed in probability space, instead of the raw point estimate).
+
+```
+python -m afl_bot.cli grade-multis --year 2024,2025 --n-sims 3000 --no-calibration --all-candidates
+```
+
+**Finding 1 (the hypothesis): confirmed.** On the full 2024-2025 sample, the candidate population
+is enormous (n=29,593,140 candidate combos vs 835 selected rungs) and its overall calibration looks
+very different from the selected population's — but raw `n`/mean-pred aren't comparable (the
+ladder deliberately targets specific high-ish probabilities; the candidate pool is dominated by
+long-shot combos near the 0.05 floor). The valid comparison is the **matched probability bucket**
+present in both (0.4-0.6 predicted):
+
+| | predicted | actual | gap |
+|---|---|---|---|
+| Selected rungs (n=246) | 0.476 | 0.366 | **+0.110** |
+| All candidates (n=87,432) | 0.423 | 0.358 | **+0.065** |
+
+The selected rungs are ~70% more overconfident than the general candidate population at the same
+nominal probability level. `search_match_sgms`'s selection mechanism is itself inflating the
+joint-probability estimates of the rungs it picks — the optimizer's curse is real here, not just a
+theoretical concern.
+
+**Finding 2 (the prototyped fixes): both fail real-data acceptance.**
+
+- `--price-shrink 0.3`: log loss got **worse** (0.5796 vs the unhaircut baseline's 0.5757); the
+  0.4-0.6 bucket's gap *widened* to +0.139. Cause: the anchor (`1/target_odds`) isn't a calibrated
+  probability estimate, it's a pricing decision — for the bucket that's dominated by the safest
+  ($1.75, ~57% implied) rung, the truth (36.6%) sits *below* both the raw estimate (47.6%) and the
+  anchor (57.1%), so shrinking toward the anchor pushes the estimate further from truth, not closer.
+  The `MULTI_MARKET_SHRINK` mechanic this was modelled on works because it shrinks toward the
+  book's own *probability estimate* (devigged market price); a fixed target odds has no such
+  guarantee of being closer to truth than the model's own estimate.
+- `--lcb-z 1.0`: log loss also got worse (0.5949 vs 0.5757) — but more tellingly, the problematic
+  0.4-0.6 bucket was **completely unchanged** (still 0.476 pred / 0.366 actual, n=246 exactly) —
+  the haircut didn't even alter which combo got selected there. It changed selection only at the
+  lower rungs, and that change made things worse on net. (Unit-tested in isolation the mechanism
+  does change selection in a constructed scenario — see `test_search_match_sgms_lcb_z_can_change_the_selected_combo`
+  — it's just not doing anything useful at the specific target/candidate-pool geometry that matters here.)
+
+**Conclusion: the diagnosis (selection bias contributes to the overconfidence) is correct, but
+neither prototyped haircut fixes it, so per the project's "if it doesn't help, keep the default"
+rule, `--price-shrink`/`--lcb-z` stay at 0.0 (off) everywhere, not wired into `round-report`/
+`run-round`.** Both ship as opt-in CLI knobs for further experimentation, not as a shipped fix. A
+more promising next idea, not implemented here: fit an isotonic recalibration map *on the
+all-candidates population* (which is large and much closer to flat) and apply it to the selected
+rungs' joint probabilities — a "selection-level" calibrator analogous to Phase 2.5/3's leg-level
+calibrators, rather than a hand-picked shrink target or ranking tweak.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:
