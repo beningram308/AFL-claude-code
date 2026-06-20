@@ -65,6 +65,7 @@ from afl_bot.config import (
     PROP_CALIBRATION_LOOKBACK,
     PROP_KELLY_MULTIPLIER,
     PROP_LINES,
+    PROP_MARKET_BLEND_WEIGHT,
     PROP_RECENT_SEASONS,
     ROOT_DIR,
     SHARE_CONCENTRATION,
@@ -699,21 +700,30 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     directly on the population actually bet, since two attempts to fix the
     selection mechanism itself didn't work.
 
-    **Manual prop market-blend, STEP 1 (model-upgrade audit Phase 4 --
+    **Manual prop market-blend (model-upgrade audit Phase 4 --
     PHASE-4-CODE-PLAN.md, replaces the paid-API version of Phase 4).** Every
     run also writes ``reports/<year>_r<N>_odds_template.json`` -- every
     priceable leg's exact name (h2h, totals, every gated prop line) mapped to
     ``null`` -- so filling in book prices from the bookie and passing the
     file back via ``--odds`` is copy-paste, not retyping leg names by hand
-    (kills the typo class of bug at the source). A "Total points {line}+"
-    leg now exists too (previously round-report priced no totals leg at
-    all), but ONLY once it has a real price in ``--odds`` -- with no
+    (kills the typo class of bug at the source); the filled file itself is
+    snapshotted to ``reports/<year>_r<N>_odds.json`` (STEP 2.4) so the repo
+    accumulates its own prop-odds history over time. A "Total points
+    {line}+" leg now exists too (previously round-report priced no totals
+    leg at all), but ONLY once it has a real price in ``--odds`` -- with no
     ``--odds`` the leg set, and therefore the SGM ladder, is unchanged. Any
-    prop with a book price (single-sided, or both "+"/"-" sides for an exact
-    two-way devig) is surfaced in a new "Priced props" table per match so the
-    market price's effect on classification/edge is visible at the
-    single-leg level, not just inside the SGM ladder. Odds-file keys that
-    never matched a priceable leg warn (same as ``run-round``)."""
+    priced prop's CALIBRATED model prob is pulled ``PROP_MARKET_BLEND_WEIGHT``
+    of the way toward its devigged book price (STEP 2.1, single-sided
+    "approx" devig if only one side is entered) before pricing/classifying
+    that leg -- a documented prior (no historical prop-odds archive exists
+    to fit it against), not a backtested weight. The blend is surfaced in a
+    new "Priced props" table per match (model vs book vs devig vs blended vs
+    edge vs class) so its effect is visible at the single-leg level, not
+    just inside the SGM ladder -- the SGM ladder's own selected-rung joint
+    probabilities (from the correlated sim masks) are untouched by this
+    blend, so this mitigates per-leg overconfidence on priced legs only, not
+    the joint overconfidence Phase 1-3.6 found. Odds-file keys that never
+    matched a priceable leg warn (same as ``run-round``)."""
     client = SquiggleClient()
     history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
                         ignore_index=True)
@@ -916,8 +926,18 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                         under_name = f"{player_name} {line}- {stat}"
                         over_odds = odds_book.get(name)
                         under_odds = odds_book.get(under_name)
-                        leg = LegCandidate(name, match_id, f"player_{stat}", player_name, prob,
-                                           over_odds if over_odds else fair_odds(prob),
+                        # Pull the calibrated model prob toward the devigged
+                        # market prob (model-upgrade audit Phase 4 STEP 2.1)
+                        # -- price/classify the leg on the BLENDED prob, not
+                        # the raw model prob, whenever a price exists.
+                        blended_prob = prob
+                        devig_prob = devig_label = None
+                        if over_odds or under_odds:
+                            devig_prob, devig_label = devig_prop_leg(over_odds, under_odds)
+                            blended_prob = market_anchored_prob(
+                                prob, fair_odds(devig_prob), PROP_MARKET_BLEND_WEIGHT)
+                        leg = LegCandidate(name, match_id, f"player_{stat}", player_name, blended_prob,
+                                           over_odds if over_odds else fair_odds(blended_prob),
                                            confirmed=confirmed, mask=mask)
                         match_legs.append(leg)
                         predictions.append({"match_id": match_id, "market": f"player_{stat}",
@@ -926,11 +946,11 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                             odds_legs.append(leg)
                         priceable_names.append(name)
                         known_input_keys.update([name, under_name])
-                        if over_odds or under_odds:
-                            devig_prob, devig_label = devig_prop_leg(over_odds, under_odds)
+                        if devig_prob is not None:
                             priced_legs.append({
                                 "name": name, "model_prob": prob, "book_odds": over_odds,
                                 "devig_prob": devig_prob, "devig_label": devig_label,
+                                "blended_prob": blended_prob,
                                 "edge_pct": leg.edge_pct, "classification": leg.classification,
                             })
 
@@ -991,8 +1011,18 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     template_path = out_dir / f"{year}_r{round_no}_odds_template.json"
     template_path.write_text(
         json.dumps(build_odds_template(priceable_names), indent=2), encoding="utf-8")
+    # Snapshot the filled --odds file (model-upgrade audit Phase 4 STEP 2.4)
+    # so the repo accumulates its own prop-odds history over time -- the
+    # exact archive STEP 2.2 says doesn't exist yet, the cheapest path to
+    # one day fitting PROP_MARKET_BLEND_WEIGHT for real.
+    odds_snapshot_path = None
+    if manual:
+        odds_snapshot_path = out_dir / f"{year}_r{round_no}_odds.json"
+        odds_snapshot_path.write_text(json.dumps(manual, indent=2), encoding="utf-8")
     print(md)
-    print(f"\n[saved to {out_path} | predictions: {pred_path} | odds template: {template_path}]")
+    snapshot_note = f" | odds snapshot: {odds_snapshot_path}" if odds_snapshot_path else ""
+    print(f"\n[saved to {out_path} | predictions: {pred_path} | "
+          f"odds template: {template_path}{snapshot_note}]")
 
 
 def grade_round(year: int, round_no: int) -> None:

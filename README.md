@@ -508,14 +508,14 @@ all — it may be non-stationary across seasons (a fit on 2019-2023 doesn't tran
 the true bias may live further upstream, e.g. in the correlation/dispersion model (`corr_gain`)
 itself rather than in calibration or selection.
 
-### Manual prop market-blend, STEP 1 (model-upgrade audit Phase 4)
+### Manual prop market-blend, STEP 1+2 (model-upgrade audit Phase 4)
 
 `PHASE-4-CODE-PLAN.md` supersedes the API-dependent Phase 4 sketched earlier: there is no free,
 stable feed for AFL player-prop odds (The Odds API only carries them on its paid Business tier),
 so Phase 4's value — anchoring prop legs to the market — is built on the **manual `--odds` file**
 a weekly bettor already fills in by hand, not an automated feed (which stays parked, STEP 4). STEP
-1 makes that path clean and first-class; STEP 2 (the actual blend) and STEP 3 (acceptance) follow
-in later commits.
+1 makes that path clean and first-class; STEP 2 does the actual blend; STEP 3 (acceptance) follows
+in a later commit.
 
 - **Odds template.** Every `round-report` run now also writes
   `reports/<year>_r<N>_odds_template.json`: every priceable leg's exact name (both H2H sides, the
@@ -547,8 +547,40 @@ in later commits.
   that matched no priceable leg — covers the typo case for H2H/totals/prop "+" names and the
   optional prop "-" (under) names.
 
-This step is mechanical plumbing, not a fix — it doesn't yet change any probability or edge
-(STEP 2 does the actual blend). Acceptance for the full Phase 4 plan is STEP 3.
+STEP 1 is mechanical plumbing only — it doesn't change any probability/edge. **STEP 2 does the
+actual blend:**
+
+- **Per-leg blend.** Whenever a prop has a book price, its CALIBRATED model probability is pulled
+  `PROP_MARKET_BLEND_WEIGHT` (default 0.6) of the way toward its devigged market probability —
+  reusing the existing `market_anchored_prob(prob, odds, weight)` pull (same mechanic
+  `MULTI_MARKET_SHRINK` already uses at the multi level) by converting the devigged probability
+  back to an equivalent "odds" value first (`fair_odds(devig_prob)`), so `market_anchored_prob`'s
+  internal `implied_prob()` call recovers it exactly — no new blend math duplicated. The leg is
+  then priced/classified on this **blended** probability, not the raw model probability.
+- **Honest weight, not a fitted one.** Unlike the H2H ensemble blend (`fit_market_blend`, fitted
+  out-of-sample on the historical odds archive), there is **no historical prop-odds archive** to
+  fit `PROP_MARKET_BLEND_WEIGHT` against — it is a deliberate prior leaning toward the market
+  (props are noisy, the market is sharp), documented as such in `config.py`, not a backtested
+  optimum. The STEP 2.4 snapshot below is the cheapest path to one day fitting it for real.
+- **Edge on the blend; VALUE still gated on real prices.** A leg's `edge_pct`/classification are
+  now computed on the blended probability. Single-leg VALUE was already implicitly gated on having
+  a real price (an unpriced leg's `market_odds` falls back to its own `fair_odds`, giving exactly
+  zero edge); multi-level VALUE was already gated on `build_sgm_candidates` requiring **every** leg
+  in a combo to have a book price before it gets a `book_odds`/`edge` field at all. Both gates
+  predate this step but are now covered by a dedicated test
+  (`test_build_sgm_candidates_no_edge_unless_every_leg_in_combo_is_priced`) rather than assumed.
+  The SGM ladder's own selected-rung joint probabilities (from the correlated sim's per-iteration
+  masks) are **untouched** by this per-leg blend — `MULTI_MARKET_SHRINK` still applies on top, at
+  the joint level, unchanged.
+- **Odds snapshot.** Every run with a filled `--odds` file also writes
+  `reports/<year>_r<N>_odds.json` (a copy of exactly what was typed in) — the cheapest path to the
+  repo accumulating its own prop-odds history, the archive that doesn't exist yet to fit the blend
+  weight against.
+
+**Set expectations accordingly (per PHASE-4-CODE-PLAN.md's own framing):** this mitigates
+overconfidence on the legs priced by hand; it does **not** touch the joint/SGM-level overconfidence
+that three separate fixes (Phase 3, 3.5, 3.6) already failed to move — that bias lives in the
+correlated sim itself (masks), which this per-leg blend never touches.
 
 ### Staking & bankroll (plan §4.4)
 

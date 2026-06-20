@@ -87,6 +87,25 @@ def test_search_match_sgms_top_band_value_pick_is_shrunk_and_capped():
     assert vp["fair_odds"] >= MULTI_TARGET_ODDS[1]      # at least the mid target (~3.50)
 
 
+def test_build_sgm_candidates_no_edge_unless_every_leg_in_combo_is_priced():
+    # Model-upgrade audit Phase 4 STEP 2.3: VALUE must never be flagged off a
+    # fair-odds-only leg. Price every leg generously above fair EXCEPT one,
+    # which has no book price at all -- every combo that includes it must
+    # come back with no book_odds/edge, however good the other legs' prices.
+    legs = _ladder_legs(odds_mult=1.20)
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    unpriced_name = legs[0].name
+    del odds_book[unpriced_name]
+    candidates = build_sgm_candidates(legs, odds_book=odds_book)
+    for c in candidates:
+        if unpriced_name in c["legs"]:
+            assert "book_odds" not in c and "edge" not in c
+        else:
+            assert "book_odds" in c and "edge" in c
+    out = search_match_sgms(legs, odds_book=odds_book)
+    assert not any(r.get("value_pick") and unpriced_name in r["legs"] for r in out)
+
+
 def test_search_match_sgms_implausible_edge_is_not_flagged_value():
     legs = _ladder_legs(odds_mult=1.15)   # book 15% over fair -> shrunk edge blows past 15%
     odds_book = {leg.name: leg.market_odds for leg in legs}
@@ -208,10 +227,10 @@ def test_render_markdown_priced_props_table_shows_devig_and_class():
         "projections": [], "sgms": [],
         "priced_legs": [
             {"name": "X 20+ disposals", "model_prob": 0.55, "book_odds": 1.85,
-             "devig_prob": 0.52, "devig_label": "two-way devig",
+             "devig_prob": 0.52, "devig_label": "two-way devig", "blended_prob": 0.532,
              "edge_pct": 0.017, "classification": "SKIP"},
             {"name": "Y 15+ disposals", "model_prob": 0.65, "book_odds": None,
-             "devig_prob": 0.60, "devig_label": "single-sided (approx)",
+             "devig_prob": 0.60, "devig_label": "single-sided (approx)", "blended_prob": 0.62,
              "edge_pct": 0.0, "classification": "SKIP"},
         ],
     }]

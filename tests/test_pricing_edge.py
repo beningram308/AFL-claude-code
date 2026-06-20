@@ -7,6 +7,7 @@ from afl_bot.pricing.edge import (
     edge,
     fair_odds,
     implied_prob,
+    market_anchored_prob,
     prob_over,
 )
 
@@ -61,3 +62,14 @@ def test_devig_prop_leg_neither_side_is_none():
 def test_devig_prop_leg_custom_overround():
     prob, _ = devig_prop_leg(2.00, None, assumed_overround=1.10)
     assert abs(prob - implied_prob(2.00) / 1.10) < 1e-9
+
+
+def test_market_anchored_prob_via_fair_odds_of_devig_prob_lands_exactly_between():
+    # The Phase 4 STEP 2.1 trick round-report uses: feed a devigged
+    # probability through market_anchored_prob by converting it back to
+    # "odds" first (fair_odds(devig_prob)), so the internal implied_prob()
+    # call recovers the exact devig_prob -- reuses the tested blend mechanic
+    # without duplicating its math for a probability-only market estimate.
+    model_prob, devig_prob, weight = 0.55, 0.45, 0.6
+    blended = market_anchored_prob(model_prob, fair_odds(devig_prob), weight)
+    assert abs(blended - ((1 - weight) * model_prob + weight * devig_prob)) < 1e-9

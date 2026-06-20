@@ -300,15 +300,17 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             priced = m.get("priced_legs") or []
             if priced:
                 out.append("### Priced props (from --odds)")
-                out.append("| Leg | Model | Book | Devig | Edge | Class |")
-                out.append("|---|--:|--:|--:|--:|---|")
+                out.append("| Leg | Model | Book | Devig | Blended | Edge | Class |")
+                out.append("|---|--:|--:|--:|--:|--:|---|")
                 for p in priced:
                     book_str = f"{p['book_odds']:.2f}" if p["book_odds"] else "-"
                     devig_str = (f"{_fmt_pct(p['devig_prob'])} ({p['devig_label']})"
                                  if p["devig_prob"] is not None else "-")
+                    blended_str = _fmt_pct(p["blended_prob"]) if p.get("blended_prob") is not None else "-"
                     out.append(
                         f"| {p['name']} | {_fmt_pct(p['model_prob'])} | {book_str} "
-                        f"| {devig_str} | {p['edge_pct'] * 100:+.1f}% | {p['classification']} |"
+                        f"| {devig_str} | {blended_str} "
+                        f"| {p['edge_pct'] * 100:+.1f}% | {p['classification']} |"
                     )
                 out.append("")
 

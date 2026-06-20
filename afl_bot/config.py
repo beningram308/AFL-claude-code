@@ -180,6 +180,18 @@ VALUE_PROB_RANGE = (0.40, 0.72)
 # wherever shown so they're never mistaken for a clean two-way devig.
 PROP_ASSUMED_OVERROUND = 1.06
 
+# Per-leg PROP market blend (model-upgrade audit Phase 4 STEP 2.1): pull a
+# priced prop's CALIBRATED model prob this far toward its devigged market
+# prob via the existing `market_anchored_prob` pull (same mechanic as
+# MULTI_MARKET_SHRINK below, just per-leg and prop-specific). Unlike H2H's
+# ensemble blend weight (fitted out-of-sample on the historical odds
+# archive, see fit_market_blend), there is NO historical prop-odds archive
+# to fit this against (PHASE-4-CODE-PLAN.md STEP 2.2) -- this is a
+# deliberate prior leaning toward the market (props are noisy, the market
+# is sharp), not a backtested optimum. Revisit once the round-by-round
+# --odds snapshots (STEP 2.4) accumulate enough history to fit it for real.
+PROP_MARKET_BLEND_WEIGHT = 0.6
+
 # ----------------------------------------------------------------------------- #
 # Promo-aware EV — plan §4.4
 # ----------------------------------------------------------------------------- #
