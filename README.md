@@ -626,6 +626,66 @@ H2H's own ensemble blend (`fit_market_blend`) and the rest of the multi pricing 
 when no prop odds are supplied — this phase only ever adds a probability pull on legs that already
 have a real price.
 
+### corr_gain diagnostic (model-upgrade audit Phase 4, parked diagnostic) — confirmed
+
+PHASE-4-CODE-PLAN.md parks a second idea alongside the manual market-blend: a cheap, **no-odds-needed**
+test of whether the sim's correlation structure itself (`corr_gain = joint_prob - naive_product`,
+from the copula/pace/Dirichlet machinery in `simulate_match`) is the thing systematically inflating
+the multi ladder, rather than calibration or selection (both already ruled out, Phases 3/3.5/3.6).
+The test: bucket the SELECTED rungs by predicted `joint_prob` (`walk_forward_multi_predictions`'s own
+output) and compare the sim's `corr_gain` to the **empirical** corr_gain — actual joint hit-rate minus
+the product of *actual* per-leg hit-rates, estimated by pooling every individual leg outcome within a
+bucket (`n_legs_hit`/`n_legs`, new columns on the predictions frame) and cubing the pooled rate (every
+rung is a 3-leg combo). `corr_gain_diagnostic` in `afl_bot/backtest/multis.py` does this; `grade-multis
+--corr-gain-diagnostic` prints it alongside the existing SELECTED reliability curve. Diagnostic only —
+no haircut is applied.
+
+```
+python -m afl_bot.cli grade-multis --year 2024,2025 --n-sims 3000 --no-calibration --corr-gain-diagnostic
+```
+
+**Real-data result (2024-2025, the same n=835 selected-rung sample every prior phase used):**
+
+| bucket | n | sim corr_gain | empirical corr_gain | gap (sim − empirical) |
+|---|--:|--:|--:|--:|
+| (0, 0.2] | 298 | +0.006 | **−0.044** | **+0.050** |
+| (0.2, 0.4] | 291 | +0.009 | +0.005 | +0.003 |
+| (0.4, 0.6] | 246 | **+0.022** | **−0.002** | **+0.024** |
+
+**Confirmed: the sim systematically overstates the correlation lift, in every bucket.** The gap is
+positive everywhere (the sim's corr_gain is never *smaller* than the empirical one), so this isn't
+noise cancelling out across buckets — it's a consistent direction. Two distinct shapes, though:
+
+- **Low bucket (n=298, the biggest sample): the sim has it backwards.** Empirically these legs are
+  *negatively* correlated (corr_gain −0.044 — actual joint hit-rate sits well below what independent
+  legs with these same actual hit-rates would predict), but the sim says they're mildly *positively*
+  correlated (+0.006). The biggest absolute gap in the table, on the largest sample.
+- **High bucket (n=246, the bucket every previous phase has flagged as the persistently overconfident
+  one — 0.476 predicted vs 0.366 actual): the sim invents lift that isn't there.** Empirical corr_gain
+  is ~0 (−0.002, i.e. these legs behave almost exactly like independent draws in reality), but the sim
+  adds +0.022 of correlation lift on top of its own (already-uncalibrated) naive product. That +0.022
+  is a real, identified slice of this bucket's overconfidence, sitting upstream of every lever the
+  previous three phases pulled (leg calibration, selection mechanism, selection-level recalibration).
+- The middle bucket (n=291) is the one place sim and empirical roughly agree (gap +0.003, indistinguishable
+  from noise at this sample size) — the bias isn't uniform across the probability range.
+
+**Proposed follow-up (not implemented here — diagnostic only): a `corr_gain` haircut.** Shrink the
+correlation term itself, before it's added to the naive product, rather than recalibrating the final
+joint probability (Phase 3.6's approach, which failed) or fiddling with selection (Phase 3.5's approach,
+which also failed) — i.e. target the piece of the pipeline this diagnostic just pinned the bias in.
+Concretely: `joint_prob_haircut = naive_product + CORR_GAIN_HAIRCUT * corr_gain`, with
+`CORR_GAIN_HAIRCUT` (a new `config.py` tunable, default 1.0 = unhaircut/current behaviour) fit by
+walk-forward moment-matching (mirroring Phase 2's correlation-parameter fits, not a gradient search) —
+e.g. the ratio of total empirical corr_gain to total sim corr_gain across the selected-rung sample, or
+a per-bucket/isotonic map if a single global constant doesn't fit the low and high buckets' very
+different gap shapes well simultaneously. **Honest risk going in:** Phase 3.6 already showed that
+fitting *any* map on this same thin, multi-season, possibly non-stationary selected-rung sample doesn't
+reliably transfer from training years to eval years — a `corr_gain`-specific haircut is a more targeted
+intervention (it touches the actual mechanism this diagnostic identified, not just the output), but it
+is not guaranteed to fare better than Phase 3.6 did against the same sample-size/non-stationarity risk.
+Worth trying before further calibration/selection-layer attempts, given this is the first diagnostic to
+actually localise *where* in the pipeline the persistent high-bucket overconfidence is coming from.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
 import pandas as pd
 
 from afl_bot.backtest.ensemble import IsotonicCalibrator
@@ -351,6 +352,12 @@ def walk_forward_multi_predictions(
                     "legs": " + ".join(rung["legs"]), "joint_prob": rung["joint_prob"],
                     "naive_product": rung["naive_product"], "corr_gain": rung["corr_gain"],
                     "fair_odds": rung["fair_odds"], "all_hit": int(all(hits)),
+                    # Per-rung leg-hit count/size (not just the combined all_hit)
+                    # -- lets corr_gain_diagnostic estimate an EMPIRICAL per-leg
+                    # marginal hit rate by pooling across a bucket of rungs,
+                    # the outcome-side analogue of the sim's per-leg fair_prob
+                    # (model-upgrade audit Phase 4 parked diagnostic).
+                    "n_legs_hit": sum(hits), "n_legs": len(hits),
                 }
                 if prop_calibrators is not None:
                     calibrated_naive = 1.0
@@ -536,6 +543,57 @@ def multi_reliability_curve(preds: pd.DataFrame, n_bins: int = 5, column: str = 
         return pd.DataFrame(columns=["bucket", "mean_pred", "actual_rate", "n"])
     return calibration_curve(preds[column].to_numpy(), preds["all_hit"].to_numpy(dtype=float),
                              n_bins=n_bins)
+
+
+def corr_gain_diagnostic(preds: pd.DataFrame, n_bins: int = 5) -> pd.DataFrame:
+    """Compares the sim's ``corr_gain`` (``joint_prob - naive_product``, both
+    from the correlated Monte Carlo sim) to the EMPIRICAL corr_gain (actual
+    joint hit-rate minus the product of actual per-leg hit-rates), bucketed
+    by predicted ``joint_prob`` -- the parked, no-odds-needed diagnostic from
+    PHASE-4-CODE-PLAN.md. If the sim's corr_gain is systematically larger
+    than the empirical one in a bucket, the copula/pace/Dirichlet correlation
+    structure is overstating how often legs actually co-occur there -- a
+    candidate root cause upstream of calibration/selection, both of which
+    three separate fixes (Phases 3, 3.5, 3.6) already failed to move.
+
+    A single rung's outcome is binary (all 3 legs either all hit or not), so
+    there is no per-rung "empirical naive product" -- the empirical
+    marginal leg hit-rate has to be estimated by POOLING every individual
+    leg observation *within a bucket* (``n_legs_hit`` / ``n_legs`` summed
+    across every rung in it), the outcome-side analogue of the sim's
+    per-leg fair_prob feeding ``naive_product``. ``empirical_naive`` then
+    raises that pooled rate to the bucket's (mean) leg count -- 3 for every
+    rung `search_match_sgms` ever builds.
+
+    Diagnostic only: this does not apply any haircut or fix, just reports
+    the gap. Requires ``walk_forward_multi_predictions``'s ``n_legs_hit``/
+    ``n_legs`` columns."""
+    cols = ["bucket", "n", "sim_joint", "sim_naive", "sim_corr_gain",
+            "actual_joint", "empirical_naive", "empirical_corr_gain", "gap"]
+    if preds.empty or not {"n_legs_hit", "n_legs"} <= set(preds.columns):
+        return pd.DataFrame(columns=cols)
+
+    df = preds.copy()
+    df["bucket"] = pd.cut(df["joint_prob"], bins=np.linspace(0, 1, n_bins + 1), include_lowest=True)
+    rows = []
+    for bucket, g in df.groupby("bucket", observed=True):
+        n = len(g)
+        if n == 0:
+            continue
+        sim_joint = float(g["joint_prob"].mean())
+        sim_naive = float(g["naive_product"].mean())
+        actual_joint = float(g["all_hit"].mean())
+        pooled_leg_rate = float(g["n_legs_hit"].sum()) / float(g["n_legs"].sum())
+        empirical_naive = pooled_leg_rate ** float(g["n_legs"].mean())
+        rows.append({
+            "bucket": str(bucket), "n": n,
+            "sim_joint": sim_joint, "sim_naive": sim_naive,
+            "sim_corr_gain": sim_joint - sim_naive,
+            "actual_joint": actual_joint, "empirical_naive": empirical_naive,
+            "empirical_corr_gain": actual_joint - empirical_naive,
+            "gap": (sim_joint - sim_naive) - (actual_joint - empirical_naive),
+        })
+    return pd.DataFrame(rows, columns=cols)
 
 
 MULTI_CALIBRATOR_CACHE = "multi_calibrator"

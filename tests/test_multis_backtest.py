@@ -9,6 +9,7 @@ import pytest
 
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.multis import (
+    corr_gain_diagnostic,
     fit_multi_calibrator,
     load_or_fit_multi_calibrator,
     multi_calibration_report,
@@ -142,6 +143,59 @@ def test_multi_calibration_report_empty_input():
     report = multi_calibration_report(pd.DataFrame())
     assert report["n"] == 0
     assert np.isnan(report["log_loss"])
+
+
+def test_walk_forward_multi_predictions_has_n_legs_hit_and_n_legs(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[7, 8, 9, 10], n_sims=3000, seed=2,
+    )
+    assert {"n_legs_hit", "n_legs"} <= set(preds.columns)
+    assert (preds["n_legs"] == 3).all()                       # search_match_sgms is always 3-leg
+    assert preds["n_legs_hit"].between(0, 3).all()
+    assert (preds.loc[preds["all_hit"] == 1, "n_legs_hit"] == 3).all()
+
+
+def test_corr_gain_diagnostic_matches_hand_computed_values():
+    # One bucket, 2 rungs: sim says joint=0.50/naive=0.30 (corr_gain +0.20) for
+    # both. Actual: rung 1 all 3 legs hit (n_legs_hit=3), rung 2 only 1 of 3
+    # hits (n_legs_hit=1) -- pooled empirical leg rate = (3+1)/(3+3) = 0.667,
+    # empirical_naive = 0.667**3 ~= 0.296, actual_joint = mean([1, 0]) = 0.5.
+    preds = pd.DataFrame({
+        "joint_prob": [0.50, 0.50], "naive_product": [0.30, 0.30],
+        "corr_gain": [0.20, 0.20], "all_hit": [1, 0],
+        "n_legs_hit": [3, 1], "n_legs": [3, 3],
+    })
+    out = corr_gain_diagnostic(preds, n_bins=1)
+    assert len(out) == 1
+    row = out.iloc[0]
+    assert row["n"] == 2
+    assert abs(row["sim_joint"] - 0.50) < 1e-9
+    assert abs(row["sim_naive"] - 0.30) < 1e-9
+    assert abs(row["sim_corr_gain"] - 0.20) < 1e-9
+    assert abs(row["actual_joint"] - 0.5) < 1e-9
+    pooled_rate = 4 / 6
+    assert abs(row["empirical_naive"] - pooled_rate ** 3) < 1e-9
+    expected_empirical_gain = 0.5 - pooled_rate ** 3
+    assert abs(row["empirical_corr_gain"] - expected_empirical_gain) < 1e-9
+    assert abs(row["gap"] - (0.20 - expected_empirical_gain)) < 1e-9
+
+
+def test_corr_gain_diagnostic_empty_input_and_missing_columns():
+    assert corr_gain_diagnostic(pd.DataFrame()).empty
+    # joint_prob/all_hit present but no n_legs_hit/n_legs (e.g. an older cache) -> empty, not a crash.
+    assert corr_gain_diagnostic(pd.DataFrame({"joint_prob": [0.5], "all_hit": [1],
+                                              "naive_product": [0.3]})).empty
+
+
+def test_corr_gain_diagnostic_real_backtest_runs_end_to_end(synth_world):
+    games, player_log = synth_world
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[7, 8, 9, 10], n_sims=3000, seed=2,
+    )
+    out = corr_gain_diagnostic(preds, n_bins=5)
+    assert {"sim_corr_gain", "empirical_corr_gain", "gap"} <= set(out.columns)
+    assert out["n"].sum() == len(preds)
 
 
 def test_walk_forward_multi_predictions_empty_when_round_not_in_games(synth_world):

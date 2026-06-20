@@ -1130,7 +1130,7 @@ def grade_round(year: int, round_no: int) -> None:
 def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                  with_calibration: bool = True, calibration_source: str = "proxy",
                  all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0,
-                 multi_calibration: bool = False) -> None:
+                 multi_calibration: bool = False, corr_gain_diag: bool = False) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
     (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
     3.1's calibration-source choice): for each completed round across every
@@ -1180,8 +1180,16 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     test for whether fitting directly on the selected-rung track record (not
     trying to fix the selection mechanism, which Phase 3.5 found doesn't
     work) actually flattens the curve and beats the unhaircut baseline log
-    loss."""
+    loss.
+
+    `corr_gain_diag=True` (PHASE-4-CODE-PLAN.md's parked, no-odds-needed
+    diagnostic, default False) additionally compares the sim's `corr_gain`
+    (`joint_prob - naive_product`, both from the correlated sim) to the
+    EMPIRICAL corr_gain (actual joint hit-rate minus the product of pooled
+    actual per-leg hit-rates), bucketed by predicted `joint_prob`, on the
+    SELECTED rungs. Diagnostic only -- reports the gap, applies no fix."""
     from afl_bot.backtest.multis import (
+        corr_gain_diagnostic,
         load_or_fit_multi_calibrator,
         multi_calibration_report,
         multi_reliability_curve,
@@ -1258,6 +1266,15 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     for _, row in multi_reliability_curve(preds).iterrows():
         print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
               f"| n={int(row['n'])}")
+
+    if corr_gain_diag:
+        print("\n  CORR-GAIN DIAGNOSTIC (sim vs empirical, per predicted-prob bucket):")
+        for _, row in corr_gain_diagnostic(preds).iterrows():
+            print(f"    {row['bucket']}: sim corr_gain {row['sim_corr_gain']:+.3f} "
+                  f"(joint {row['sim_joint']:.3f} - naive {row['sim_naive']:.3f}) | "
+                  f"empirical corr_gain {row['empirical_corr_gain']:+.3f} "
+                  f"(actual {row['actual_joint']:.3f} - naive {row['empirical_naive']:.3f}) | "
+                  f"gap {row['gap']:+.3f} | n={int(row['n'])}")
 
     if with_calibration and "calibrated_joint_prob" in preds.columns:
         cal_report = multi_calibration_report(preds, column="calibrated_joint_prob")
@@ -1433,6 +1450,11 @@ def main(argv: list[str] | None = None) -> None:
                                "MULTI_CALIBRATION_LOOKBACK prior seasons of selected-rung "
                                "predictions and report a third, MULTI-CALIBRATED reliability "
                                "curve alongside SELECTED/CALIBRATED.")
+    multis_p.add_argument("--corr-gain-diagnostic", action="store_true", dest="corr_gain_diag",
+                          help="Parked no-odds-needed diagnostic (PHASE-4-CODE-PLAN.md): "
+                               "compare the sim's corr_gain to the EMPIRICAL corr_gain (actual "
+                               "joint hit-rate minus pooled actual per-leg hit-rates), bucketed "
+                               "by predicted joint_prob. Diagnostic only, no fix applied.")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1464,7 +1486,7 @@ def main(argv: list[str] | None = None) -> None:
         grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration,
                     calibration_source=args.calibration_source, all_candidates=args.all_candidates,
                     lcb_z=args.lcb_z, price_shrink=args.price_shrink,
-                    multi_calibration=args.multi_calibration)
+                    multi_calibration=args.multi_calibration, corr_gain_diag=args.corr_gain_diag)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":
