@@ -582,6 +582,50 @@ overconfidence on the legs priced by hand; it does **not** touch the joint/SGM-l
 that three separate fixes (Phase 3, 3.5, 3.6) already failed to move — that bias lives in the
 correlated sim itself (masks), which this per-leg blend never touches.
 
+**STEP 3 — acceptance.** With no historical prop-odds archive, this **cannot** be a backtest/log-loss
+claim, and STEP 3 doesn't pretend otherwise — acceptance here is mechanical correctness, checked
+both by unit test and by one real `round-report --year 2026 --round 15` run (the live upcoming
+round at the time of writing) with a hand-filled `--odds` file:
+
+- **(a) Blended prob lands between model and devigged market; edge computed on it — worked
+  example.** `Nick Daicos 1+ goals` priced at book odds 1.40 (over) / 3.40 (under):
+
+  | | value |
+  |---|--:|
+  | Model (calibrated) | 69.3% |
+  | Devig (two-way, both sides entered) | 70.8% |
+  | Blended (`PROP_MARKET_BLEND_WEIGHT` 0.6) | 70.2% |
+  | Edge on the blend (book 1.40) | −1.7% |
+  | Edge on the raw model (no blend, for comparison) | −2.9% |
+
+  The blend sits between 69.3% and 70.8% as required, closer to the market (weight 0.6), and the
+  edge moves with it (−1.7% vs the unblended −2.9%) — confirmed live, not just in the unit test
+  (`test_market_anchored_prob_via_fair_odds_of_devig_prob_lands_exactly_between`).
+- **(b) VALUE only when every leg is priced — confirmed live.** In the same run, with only
+  `Total points 165.5+` and `Collingwood to win` priced (not the other two legs in every combo),
+  the SGM ladder's rungs that included the priced totals leg still showed `Book`/`Edge` as `-`
+  because their *other* legs in the same 3-leg combo had no price — exactly the existing
+  `build_sgm_candidates` "all-or-nothing" gate (STEP 2.3), reproduced outside the unit test.
+- **(c) No `--odds` -> byte-for-byte unchanged.** Verified by code-path inspection rather than a
+  live two-run diff (the live data feed itself drifts minute-to-minute mid-round, which would
+  make a raw diff a false negative, not a real regression check): `total_leg_name` is only ever
+  appended to `match_legs` `if total_leg_name in odds_book`; `blended_prob` is only ever set away
+  from the raw model `prob` `if over_odds or under_odds`; and `priced_legs` (the only new
+  `render_markdown` section) is only ever non-empty when at least one such price exists. All three
+  conditions are `False` whenever `odds_book` is empty (no `--odds`/`--live-odds`), so every new
+  code path is a no-op and the rendered markdown is identical to pre-Phase-4 output — also covered
+  directly by `test_render_markdown_no_priced_legs_section_when_empty`.
+- **(d) Template round-trips with zero unmatched-key warnings.** The live run's freshly emitted
+  `*_odds_template.json` keys were copy-pasted (4 of its 306 priceable legs filled in with prices)
+  and passed straight back via `--odds` — `round-report` printed no "unmatched leg" warning.
+- **(e) `pytest -q` green** with new unit tests for the devig (`test_devig_prop_leg_*`), the blend
+  (`test_market_anchored_prob_via_fair_odds_of_devig_prob_lands_exactly_between`), and the VALUE
+  gate (`test_build_sgm_candidates_no_edge_unless_every_leg_in_combo_is_priced`). 288 tests.
+
+H2H's own ensemble blend (`fit_market_blend`) and the rest of the multi pricing path are unchanged
+when no prop odds are supplied — this phase only ever adds a probability pull on legs that already
+have a real price.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:
