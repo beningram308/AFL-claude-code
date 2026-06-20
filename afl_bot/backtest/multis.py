@@ -44,13 +44,17 @@ marginal naive product onto calibrated per-leg probabilities:
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
+from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.backtest.walkforward import brier_score, calibration_curve, log_loss
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import build_sgm_candidates, search_match_sgms
 from afl_bot.config import (
+    CACHE_DIR,
     LEG_PROB_MAX,
     LEG_PROB_MIN,
     PACE_SIGMA,
@@ -532,3 +536,66 @@ def multi_reliability_curve(preds: pd.DataFrame, n_bins: int = 5, column: str = 
         return pd.DataFrame(columns=["bucket", "mean_pred", "actual_rate", "n"])
     return calibration_curve(preds[column].to_numpy(), preds["all_hit"].to_numpy(dtype=float),
                              n_bins=n_bins)
+
+
+MULTI_CALIBRATOR_CACHE = "multi_calibrator"
+
+
+def fit_multi_calibrator(preds: pd.DataFrame, column: str = "joint_prob") -> IsotonicCalibrator:
+    """An ``IsotonicCalibrator`` mapping the SELECTED rung's joint probability
+    to its actual hit rate (model-upgrade audit Phase 3.6) -- fit directly on
+    the population actually bet (`walk_forward_multi_predictions`'s own
+    output), not the all-candidates pool Phase 3.5 used only for diagnosis.
+    Phase 3.5 confirmed `search_match_sgms`'s closest-to-target selection is
+    itself a biased estimator (the optimizer's curse); this corrects that
+    bias at the point it's introduced, the same way `fit_prop_calibrators`
+    corrects leg-level bias, just one level up -- at the selected-rung level,
+    not the per-leg level. Both of Phase 3.5's attempts to fix the
+    SELECTION MECHANISM (price-shrink, lcb-z) failed; this instead corrects
+    the OUTPUT, like every other calibrator in this codebase."""
+    return IsotonicCalibrator().fit(preds[column].to_numpy(), preds["all_hit"].to_numpy(dtype=float))
+
+
+def load_or_fit_multi_calibrator(
+    games: pd.DataFrame, player_log: pd.DataFrame, *, eval_start_year: int, eval_end_year: int,
+    n_sims: int = SIM_ITERATIONS, seed: int | None = None, cache_dir=CACHE_DIR,
+    force_refresh: bool = False, season_preds_cache: dict[int, pd.DataFrame] | None = None,
+) -> IsotonicCalibrator | None:
+    """Cached selection-level calibrator (model-upgrade audit Phase 3.6):
+    walk-forward-backtests `walk_forward_multi_predictions` across every
+    season in ``[eval_start_year, eval_end_year)`` (mirrors
+    `load_or_fit_prop_calibrators`'s multi-season window via
+    `eval_start_year`), concatenates, and fits. "Expand across more
+    rounds/seasons for a stable fit" -- the default lookback
+    (`MULTI_CALIBRATION_LOOKBACK`) is bigger than the prop calibrators' for
+    exactly this reason: the selected-rung sample is much thinner per season.
+
+    ``season_preds_cache`` (optional, keyed by year) lets a caller fitting
+    this for several overlapping eval-year windows (e.g. `grade-multis`
+    walking forward across multiple years) reuse each season's walk-forward
+    predictions instead of recomputing the same season's full sim backtest
+    twice -- adjacent eval years' windows overlap by ``eval_end_year -
+    eval_start_year - 1`` seasons.
+
+    Returns ``None`` if there isn't enough history to backtest (callers then
+    skip calibration -- the rungs stay at their raw, uncalibrated value)."""
+    path = cache_dir / f"{MULTI_CALIBRATOR_CACHE}.json"
+    if path.exists() and not force_refresh:
+        return IsotonicCalibrator.from_dict(json.loads(path.read_text()))
+
+    cache = season_preds_cache if season_preds_cache is not None else {}
+    frames = []
+    for cal_year in range(eval_start_year, eval_end_year):
+        if cal_year not in cache:
+            cache[cal_year] = walk_forward_multi_predictions(
+                games, player_log, eval_year=cal_year, n_sims=n_sims, seed=seed)
+        if not cache[cal_year].empty:
+            frames.append(cache[cal_year])
+    preds = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if preds.empty:
+        return None
+
+    cal = fit_multi_calibrator(preds)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cal.to_dict()))
+    return cal

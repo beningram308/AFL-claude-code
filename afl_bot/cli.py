@@ -39,7 +39,12 @@ from afl_bot.build.multi import (
     build_promo_multi,
     joint_prob_from_masks,
 )
-from afl_bot.build.report import projection_rows, render_markdown, search_match_sgms
+from afl_bot.build.report import (
+    apply_multi_calibration,
+    projection_rows,
+    render_markdown,
+    search_match_sgms,
+)
 from afl_bot.build.staking import (
     bankroll_report,
     simulate_bankroll,
@@ -53,6 +58,7 @@ from afl_bot.config import (
     LEG_PROB_MAX,
     LEG_PROB_MIN,
     MC_SE_TARGET,
+    MULTI_CALIBRATION_LOOKBACK,
     MULTI_MARKET_SHRINK,
     PLAYER_FORM_WINDOW,
     PROP_CALIBRATION_LOOKBACK,
@@ -676,10 +682,20 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
 def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
                  rain_mm: float | None = None, lineup_path: str | None = None,
                  use_live: bool = False, multis_only: bool = False,
-                 auto_lineup: bool = False) -> None:
+                 auto_lineup: bool = False, multi_calibration: bool = False) -> None:
     """The weekly deliverable (round-2 §10): per-match real-player projection
     tables + same-game multis ranked by joint sim probability, saved to
-    reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log."""
+    reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log.
+
+    ``multi_calibration=False`` (default, opt-in) -- when True, applies a
+    selection-level isotonic calibrator (model-upgrade audit Phase 3.6,
+    `afl_bot.backtest.multis.load_or_fit_multi_calibrator`) to every selected
+    rung's joint probability before it's displayed. Phase 3.5 confirmed
+    `search_match_sgms`'s selection is itself a biased estimator (the
+    optimizer's curse: closest-to-target selection over many noisy
+    candidates over-selects upward noise); Phase 3.6 corrects that bias
+    directly on the population actually bet, since two attempts to fix the
+    selection mechanism itself didn't work."""
     client = SquiggleClient()
     history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
                         ignore_index=True)
@@ -721,6 +737,12 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     rate_priors = {stat: role_rate_priors(recent_log, stat, roles) for stat in PROP_LINES}  # §5.2
     prop_calibrators = load_or_fit_prop_calibrators(
         player_log, eval_start_year=current_season - PROP_CALIBRATION_LOOKBACK)
+    multi_cal = None
+    if multi_calibration:
+        from afl_bot.backtest.multis import load_or_fit_multi_calibrator
+        multi_cal = load_or_fit_multi_calibrator(
+            history, player_log, eval_start_year=current_season - MULTI_CALIBRATION_LOOKBACK,
+            eval_end_year=current_season, n_sims=n_sims)
     team_stat_profiles = team_stat_total_profiles(player_log)
     league_totals = league_stat_totals(player_log)
     volume_stats = [s for s in PROP_LINES if s in PACE_STATS]
@@ -855,9 +877,12 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             if leg.name in odds_book:
                 odds_legs.append(leg)
 
+        sgms = search_match_sgms(match_legs, odds_book=odds_book)
+        if multi_cal is not None:
+            sgms = apply_multi_calibration(sgms, multi_cal)
         matches.append({
             "header": header, "projections": projections,
-            "sgms": search_match_sgms(match_legs, odds_book=odds_book),
+            "sgms": sgms,
             "n_legs": len(match_legs),     # so the report can explain an empty ladder
         })
 
@@ -1001,7 +1026,8 @@ def grade_round(year: int, round_no: int) -> None:
 
 def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                  with_calibration: bool = True, calibration_source: str = "proxy",
-                 all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0) -> None:
+                 all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0,
+                 multi_calibration: bool = False) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
     (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
     3.1's calibration-source choice): for each completed round across every
@@ -1040,8 +1066,20 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     `lcb_z`/`price_shrink` (Phase 3.5, default 0.0 = off) pass through to
     `search_match_sgms`'s selection-haircut params (see its docstring) --
     prototype fixes for the optimizer's curse, opt-in so the unhaircut
-    default behaviour is unchanged."""
+    default behaviour is unchanged. Both failed real-data acceptance (see
+    README's Phase 3.5 section).
+
+    `multi_calibration=True` (model-upgrade audit Phase 3.6, default False)
+    fits a selection-level isotonic calibrator on `MULTI_CALIBRATION_LOOKBACK`
+    seasons strictly before each eval year (a backtest-only cache dir, never
+    touching the live `multi_calibrator.json` `round-report` uses) and
+    reports a third, "MULTI-CALIBRATED" reliability curve -- the acceptance
+    test for whether fitting directly on the selected-rung track record (not
+    trying to fix the selection mechanism, which Phase 3.5 found doesn't
+    work) actually flattens the curve and beats the unhaircut baseline log
+    loss."""
     from afl_bot.backtest.multis import (
+        load_or_fit_multi_calibrator,
         multi_calibration_report,
         multi_reliability_curve,
         walk_forward_multi_predictions,
@@ -1059,6 +1097,7 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
         return
     player_log = load_player_log(games, prefer_real=True)
     backtest_cal_cache = CACHE_DIR / "grade_multis_backtest"
+    multi_cal_season_cache: dict[int, pd.DataFrame] = {}
 
     all_preds = []
     for year in years:
@@ -1090,6 +1129,14 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
         preds = walk_forward_multi_predictions(
             games, player_log, eval_year=year, rounds=rounds, n_sims=n_sims,
             prop_calibrators=prop_calibrators, lcb_z=lcb_z, price_shrink=price_shrink)
+        if multi_calibration and not preds.empty:
+            multi_cal = load_or_fit_multi_calibrator(
+                games, player_log, eval_start_year=year - MULTI_CALIBRATION_LOOKBACK,
+                eval_end_year=year, n_sims=n_sims, cache_dir=backtest_cal_cache,
+                force_refresh=True, seed=1, season_preds_cache=multi_cal_season_cache)
+            if multi_cal is not None:
+                preds = preds.assign(
+                    multi_calibrated_joint_prob=multi_cal.predict(preds["joint_prob"].to_numpy()))
         all_preds.append(preds)
     preds = pd.concat(all_preds, ignore_index=True) if all_preds else pd.DataFrame()
     if preds.empty:
@@ -1116,6 +1163,16 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
               f"actual hit rate {cal_report['hit_rate']:.3f}")
         print("  CALIBRATED reliability (mean predicted vs actual hit rate per bucket):")
         for _, row in multi_reliability_curve(preds, column="calibrated_joint_prob").iterrows():
+            print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
+                  f"| n={int(row['n'])}")
+
+    if multi_calibration and "multi_calibrated_joint_prob" in preds.columns:
+        mc_report = multi_calibration_report(preds, column="multi_calibrated_joint_prob")
+        print(f"  MULTI-CALIBRATED n={mc_report['n']} | log loss {mc_report['log_loss']:.4f} | "
+              f"brier {mc_report['brier']:.4f} | mean pred {mc_report['mean_pred']:.3f} | "
+              f"actual hit rate {mc_report['hit_rate']:.3f}")
+        print("  MULTI-CALIBRATED reliability (mean predicted vs actual hit rate per bucket):")
+        for _, row in multi_reliability_curve(preds, column="multi_calibrated_joint_prob").iterrows():
             print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
                   f"| n={int(row['n'])}")
 
@@ -1227,6 +1284,11 @@ def main(argv: list[str] | None = None) -> None:
     rep_p.add_argument("--auto-lineup", action="store_true", dest="auto_lineup",
                        help="Fetch team selections from Footywire and exclude players "
                             "not named to play. Overridden by --lineup if both are given.")
+    rep_p.add_argument("--multi-calibration", action="store_true", dest="multi_calibration",
+                       help="Apply a selection-level isotonic calibrator (model-upgrade "
+                            "audit Phase 3.6) to every selected rung's joint probability -- "
+                            "corrects search_match_sgms's own selection bias (the "
+                            "optimizer's curse, confirmed in Phase 3.5). Opt-in.")
 
     grade_p = sub.add_parser("grade-round",
                              help="Score a completed round's saved predictions vs actuals.")
@@ -1263,6 +1325,11 @@ def main(argv: list[str] | None = None) -> None:
                           help="Phase 3.5 selection haircut: shrink the selected rung's "
                                "joint_prob toward its target odds' implied probability by "
                                "this factor, 0-1 (0 = off, the default).")
+    multis_p.add_argument("--multi-calibration", action="store_true", dest="multi_calibration",
+                          help="Phase 3.6: fit a selection-level isotonic calibrator on "
+                               "MULTI_CALIBRATION_LOOKBACK prior seasons of selected-rung "
+                               "predictions and report a third, MULTI-CALIBRATED reliability "
+                               "curve alongside SELECTED/CALIBRATED.")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1285,7 +1352,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "round-report":
         round_report(args.year, args.round_no, args.odds, args.n_sims,
                      args.rain_mm, args.lineup_path, args.use_live, args.multis_only,
-                     args.auto_lineup)
+                     args.auto_lineup, args.multi_calibration)
     elif args.command == "grade-round":
         grade_round(args.year, args.round_no)
     elif args.command == "grade-multis":
@@ -1293,7 +1360,8 @@ def main(argv: list[str] | None = None) -> None:
         years = [int(y) for y in args.year.split(",")]
         grade_multis(years, rounds, args.n_sims, with_calibration=not args.no_calibration,
                     calibration_source=args.calibration_source, all_candidates=args.all_candidates,
-                    lcb_z=args.lcb_z, price_shrink=args.price_shrink)
+                    lcb_z=args.lcb_z, price_shrink=args.price_shrink,
+                    multi_calibration=args.multi_calibration)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":

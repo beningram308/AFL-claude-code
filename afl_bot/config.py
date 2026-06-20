@@ -207,6 +207,13 @@ LEG_PROB_MAX = 0.78
 # (REAL-MULTIS ADDENDUM 1). Selection uses closest fair-odds to each target.
 MULTI_TARGET_ODDS = (1.75, 3.50, 5.00)
 
+# Seasons of SELECTED-rung walk-forward backtest (the population actually
+# bet, `walk_forward_multi_predictions`) to fit the Phase 3.6 selection-level
+# calibrator on. Bigger than PROP_CALIBRATION_LOOKBACK on purpose -- the
+# selected-rung sample is much thinner per season (~3 rungs/match) than the
+# per-leg prop sample, so it needs more seasons for a comparably stable fit.
+MULTI_CALIBRATION_LOOKBACK = 5
+
 # Player-prop lines priced live (round-report/run-round) -- single source of
 # truth (model-upgrade audit Phase 3.1). `afl_bot.backtest.props` and
 # `afl_bot.backtest.multis` import this too, so the prop backtest/calibrators

@@ -204,6 +204,31 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     return selected
 
 
+def apply_multi_calibration(sgms: list[dict], calibrator) -> list[dict]:
+    """Apply a selection-level ``IsotonicCalibrator`` (model-upgrade audit
+    Phase 3.6, e.g. from `afl_bot.backtest.multis.load_or_fit_multi_calibrator`)
+    to each selected rung's joint probability **in place**, recomputing
+    `fair_odds`/edge from the calibrated value. Phase 3.5 found
+    `search_match_sgms`'s closest-to-target selection is itself a biased
+    estimator (the optimizer's curse) and that two prototyped fixes to the
+    selection mechanism itself (`lcb_z`, `price_shrink`) didn't help — this
+    instead corrects the OUTPUT, fit directly on the walk-forward SELECTED
+    rungs' own track record, the same way every other calibrator in this
+    codebase works. No-op (returns ``sgms`` unchanged) when ``calibrator``
+    is ``None`` -- the opt-in default."""
+    if calibrator is None:
+        return sgms
+    for s in sgms:
+        s["joint_prob"] = float(calibrator.predict([s["joint_prob"]])[0])
+        s["fair_odds"] = fair_odds(s["joint_prob"])
+        if "book_odds" in s:
+            book = s["book_odds"]
+            s["raw_edge"] = s["joint_prob"] * book - 1.0
+            s["edge"] = market_anchored_prob(s["joint_prob"], book, MULTI_MARKET_SHRINK) * book - 1.0
+            s["odds"] = book
+    return sgms
+
+
 def _fmt_pct(p: float) -> str:
     return f"{p * 100:.0f}%"
 

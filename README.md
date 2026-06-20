@@ -471,6 +471,43 @@ all-candidates population* (which is large and much closer to flat) and apply it
 rungs' joint probabilities — a "selection-level" calibrator analogous to Phase 2.5/3's leg-level
 calibrators, rather than a hand-picked shrink target or ranking tweak.
 
+### Selection-level isotonic recalibration (model-upgrade audit Phase 3.6) — also fails
+
+Phase 3.5 ended on the idea of fitting an isotonic map on the population actually bet (the selected
+rungs), not the all-candidates pool, since the selected-rung track record is what `round-report`
+ultimately needs corrected. `fit_multi_calibrator`/`load_or_fit_multi_calibrator` in
+`afl_bot/backtest/multis.py` do exactly that: walk-forward backtest `MULTI_CALIBRATION_LOOKBACK`
+(5) prior seasons of selected-rung predictions, fit an `IsotonicCalibrator` from predicted
+`joint_prob` to `all_hit`, and cache it to disk. `apply_multi_calibration` in `build/report.py`
+applies the map to a match's searched SGMs (recomputing `fair_odds`/`edge`/`raw_edge` from the
+calibrated probability). Wired in as an opt-in `--multi-calibration` flag on both `round-report`
+and `grade-multis`, off by default.
+
+**Real-data acceptance test** (`grade-multis --year 2024,2025 --n-sims 3000 --multi-calibration`,
+calibrator fit on 2019-2023 walk-forward selected rungs per eval year):
+
+| | n | log loss | brier | mean pred | actual hit rate |
+|---|---|---|---|---|---|
+| SELECTED (baseline) | 835 | 0.5757 | 0.1948 | 0.311 | 0.268 |
+| MULTI-CALIBRATED | 835 | **0.5836** | **0.1982** | 0.339 | 0.268 |
+
+Both acceptance criteria fail: log loss got worse, not better, and mean predicted probability moved
+*further* from the actual hit rate (0.339 vs baseline's 0.311), not closer. The calibrator also
+collapsed the bucket structure — the previously separate 0.2-0.4 (n=291) and 0.4-0.6 (n=246) buckets
+merged into one n=537 bucket post-calibration, so the original "+0.110 gap" isn't even cleanly
+comparable post-fix, but the aggregate trend is unambiguously negative.
+
+**Conclusion: this is the third consecutive failed fix attempt for the multi-ladder overconfidence**
+(after Phase 3's sim-based calibration source and Phase 3.5's price-shrink/LCB haircuts). Per the
+project's "if it doesn't help, keep the default" rule, `--multi-calibration` stays off everywhere,
+not wired into `round-report`/`run-round`'s default path. It ships as a tested, opt-in knob for
+further experimentation. The recurring failure across three structurally different fixes (a better
+leg-probability source, a selection-mechanism tweak, and a selection-level recalibration) suggests
+the overconfidence may not be fixable by post-hoc adjustment of the selected-rung probabilities at
+all — it may be non-stationary across seasons (a fit on 2019-2023 doesn't transfer to 2024-2025), or
+the true bias may live further upstream, e.g. in the correlation/dispersion model (`corr_gain`)
+itself rather than in calibration or selection.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

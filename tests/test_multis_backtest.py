@@ -9,6 +9,8 @@ import pytest
 
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.multis import (
+    fit_multi_calibrator,
+    load_or_fit_multi_calibrator,
     multi_calibration_report,
     multi_reliability_curve,
     walk_forward_multi_predictions,
@@ -17,6 +19,7 @@ from afl_bot.backtest.multis import (
 )
 from afl_bot.backtest.props import apply_prop_calibration, fit_prop_calibrators
 from afl_bot.backtest.walkforward import log_loss
+from afl_bot.build.report import apply_multi_calibration
 from afl_bot.config import LEG_PROB_MAX, LEG_PROB_MIN, MULTI_TARGET_ODDS
 from afl_bot.data.player_stats import synthetic_player_log
 
@@ -349,3 +352,83 @@ def test_multi_calibration_report_missing_column_returns_empty():
     report = multi_calibration_report(preds, column="calibrated_joint_prob")
     assert report["n"] == 0
     assert np.isnan(report["log_loss"])
+
+
+def test_fit_multi_calibrator_improves_in_sample(synth_world):
+    """Model-upgrade audit Phase 3.6: an IsotonicCalibrator fit directly on
+    the SELECTED-rung walk-forward predictions (not the all-candidates pool)
+    can't worsen in-sample log loss -- the same guarantee
+    test_fit_prop_calibrators_improve_in_sample checks at the leg level."""
+    games, player_log = synth_world
+    preds = walk_forward_multi_predictions(
+        games, player_log, eval_year=2024, rounds=[7, 8, 9, 10], n_sims=3000, seed=2,
+    )
+    cal = fit_multi_calibrator(preds)
+    raw = log_loss(preds["joint_prob"].to_numpy(), preds["all_hit"].to_numpy(dtype=float))
+    calibrated = log_loss(cal.predict(preds["joint_prob"].to_numpy()), preds["all_hit"].to_numpy(dtype=float))
+    assert calibrated <= raw + 1e-9
+
+
+def test_load_or_fit_multi_calibrator_caches(tmp_path, synth_world):
+    games, player_log = synth_world
+    cal = load_or_fit_multi_calibrator(
+        games, player_log, eval_start_year=2022, eval_end_year=2024, n_sims=3000,
+        cache_dir=tmp_path, seed=1,
+    )
+    assert cal is not None
+    assert (tmp_path / "multi_calibrator.json").exists()
+    again = load_or_fit_multi_calibrator(
+        games, player_log, eval_start_year=2022, eval_end_year=2024, n_sims=3000,
+        cache_dir=tmp_path, seed=1,
+    )
+    p = 0.4
+    assert again.predict([p])[0] == cal.predict([p])[0]
+
+
+def test_load_or_fit_multi_calibrator_reuses_season_preds_cache(tmp_path, synth_world):
+    """The shared season_preds_cache must hold every season actually
+    backtested (so a caller fitting overlapping windows for adjacent eval
+    years, e.g. grade-multis across multiple years, doesn't recompute the
+    same season's full sim backtest twice)."""
+    games, player_log = synth_world
+    cache: dict[int, pd.DataFrame] = {}
+    load_or_fit_multi_calibrator(
+        games, player_log, eval_start_year=2022, eval_end_year=2024, n_sims=3000,
+        cache_dir=tmp_path, force_refresh=True, seed=1, season_preds_cache=cache,
+    )
+    assert set(cache) == {2022, 2023}
+    cached_2022 = cache[2022]
+    # Refitting an overlapping window (2023-2024) must reuse the cached 2023
+    # predictions and only compute the new season (2024) -- not recompute 2023.
+    load_or_fit_multi_calibrator(
+        games, player_log, eval_start_year=2023, eval_end_year=2025, n_sims=3000,
+        cache_dir=tmp_path, force_refresh=True, seed=1, season_preds_cache=cache,
+    )
+    assert set(cache) == {2022, 2023, 2024}
+    pd.testing.assert_frame_equal(cache[2022], cached_2022)
+
+
+def test_load_or_fit_multi_calibrator_empty_when_no_history(tmp_path, synth_world):
+    games, player_log = synth_world
+    cal = load_or_fit_multi_calibrator(
+        games, player_log, eval_start_year=2018, eval_end_year=2019, n_sims=2000, seed=1,
+        cache_dir=tmp_path,
+    )
+    assert cal is None
+
+
+def test_apply_multi_calibration_no_op_when_calibrator_none():
+    sgms = [{"joint_prob": 0.3, "fair_odds": 3.33}]
+    out = apply_multi_calibration(sgms, None)
+    assert out[0]["joint_prob"] == 0.3
+    assert out[0]["fair_odds"] == 3.33
+
+
+def test_apply_multi_calibration_recomputes_fair_odds_and_edge():
+    halving = IsotonicCalibrator(x_=np.array([0.0, 1.0]), y_=np.array([0.0, 0.5]))
+    sgms = [{"joint_prob": 0.4, "fair_odds": 2.5, "book_odds": 3.0, "raw_edge": 0.2, "edge": 0.1}]
+    out = apply_multi_calibration(sgms, halving)
+    assert out[0]["joint_prob"] == pytest.approx(0.2)             # halved
+    assert out[0]["fair_odds"] == pytest.approx(5.0)              # 1/0.2
+    assert out[0]["raw_edge"] == pytest.approx(0.2 * 3.0 - 1.0)   # recomputed off the calibrated prob
+    assert out[0]["odds"] == 3.0
