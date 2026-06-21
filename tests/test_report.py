@@ -196,6 +196,22 @@ def test_search_match_sgms_corr_gain_haircut_recomputes_edge_when_priced():
     assert haircut["raw_edge"] == pytest.approx(expected_raw_edge)
 
 
+def test_round_report_and_grade_multis_default_to_the_validated_corr_gain_haircut():
+    # Closing the model-upgrade overconfidence investigation: round-report's
+    # OWN default is now CORR_GAIN_HAIRCUT (0.0, OOS-validated), even though
+    # search_match_sgms's own bare default stays 1.0/unhaircut (see the test
+    # above) -- the validated value is a live-default choice made by the
+    # caller, not a change to the general-purpose low-level function.
+    import inspect
+
+    from afl_bot.cli import grade_multis, round_report
+    from afl_bot.config import CORR_GAIN_HAIRCUT
+
+    assert CORR_GAIN_HAIRCUT == 0.0
+    assert inspect.signature(round_report).parameters["corr_gain_haircut"].default == CORR_GAIN_HAIRCUT
+    assert inspect.signature(grade_multis).parameters["corr_gain_haircut"].default == CORR_GAIN_HAIRCUT
+
+
 def test_search_match_sgms_lcb_z_can_change_the_selected_combo():
     """Two pure 3-leg pools with exact joint_prob 0.30 and 0.31 (n=200 masks,
     no extra leg-level noise), target implied prob 0.29 (both pools sit

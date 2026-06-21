@@ -244,11 +244,18 @@ MULTI_CALIBRATION_LOOKBACK = 5
 # joint_prob. The diagnostic (README "corr_gain diagnostic" section) found
 # the sim systematically overstates this lift -- in the persistently
 # overconfident 0.4-0.6 bucket the sim adds +0.022 of lift the data doesn't
-# back up (empirical corr_gain there is ~0). 1.0 = unhaircut (current
-# behaviour, the default); 0.0 = price purely off the naive/independent
-# product. Opt-in -- see README's "corr_gain haircut" section for the
-# real-data fit/acceptance result before changing this default.
-CORR_GAIN_HAIRCUT = 1.0
+# back up (empirical corr_gain there is ~0). 0.0 = price purely off the
+# naive/independent product -- OOS-validated both directions (fit-2024/
+# test-2025 and fit-2025/test-2024) and, stacked with per-leg prop
+# calibration, is the best result of the whole overconfidence investigation
+# (log loss 0.5757 -> 0.5650, high-bucket gap +0.110 -> +0.051). This is now
+# the LIVE DEFAULT for round-report/grade-multis -- see README's "corr_gain
+# haircut" section for the closing writeup, including the bounded ~+0.05
+# residual that's accepted and managed via staking + market-anchoring rather
+# than chased further (a per-leg marginal haircut was tried as a fourth
+# lever and failed OOS, so it was never shipped). 1.0 = raw/unhaircut sim
+# joint_prob, kept available via --corr-gain-haircut for diagnostics.
+CORR_GAIN_HAIRCUT = 0.0
 
 # Player-prop lines priced live (round-report/run-round) -- single source of
 # truth (model-upgrade audit Phase 3.1). `afl_bot.backtest.props` and

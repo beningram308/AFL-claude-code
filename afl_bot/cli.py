@@ -55,6 +55,7 @@ from afl_bot.build.staking import (
 from afl_bot.config import (
     ANCHOR_MIN_PROB,
     CACHE_DIR,
+    CORR_GAIN_HAIRCUT,
     DEFAULT_BANKROLL,
     LEG_PROB_MAX,
     LEG_PROB_MIN,
@@ -686,7 +687,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                  rain_mm: float | None = None, lineup_path: str | None = None,
                  use_live: bool = False, multis_only: bool = False,
                  auto_lineup: bool = False, multi_calibration: bool = False,
-                 corr_gain_haircut: float = 1.0) -> None:
+                 corr_gain_haircut: float = CORR_GAIN_HAIRCUT) -> None:
     """The weekly deliverable (round-2 §10): per-match real-player projection
     tables + same-game multis ranked by joint sim probability, saved to
     reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log.
@@ -726,10 +727,15 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     the joint overconfidence Phase 1-3.6 found. Odds-file keys that never
     matched a priceable leg warn (same as ``run-round``).
 
-    ``corr_gain_haircut`` (corr_gain-diagnostic follow-up, opt-in, default
-    1.0 = unhaircut) passes through to `search_match_sgms`'s same param --
-    see its docstring and the README's "corr_gain haircut" section for the
-    real-data fit/acceptance result before changing this default."""
+    ``corr_gain_haircut`` (corr_gain-diagnostic follow-up, default
+    ``CORR_GAIN_HAIRCUT`` = 0.0, now the LIVE DEFAULT) passes through to
+    `search_match_sgms`'s same param -- OOS-validated both directions and,
+    stacked with the always-on per-leg prop calibration above, the best
+    result of the whole model-upgrade overconfidence investigation (log
+    loss 0.5757 -> 0.5650, high-bucket gap +0.110 -> +0.051). See the
+    README's "corr_gain haircut" section for the closing writeup and the
+    accepted, bounded ~+0.05 residual. Pass 1.0 via --corr-gain-haircut for
+    the raw/unhaircut sim joint_prob (diagnostics only)."""
     client = SquiggleClient()
     history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
                         ignore_index=True)
@@ -1138,7 +1144,7 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                  with_calibration: bool = True, calibration_source: str = "proxy",
                  all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0,
                  multi_calibration: bool = False, corr_gain_diag: bool = False,
-                 corr_gain_haircut: float = 1.0) -> None:
+                 corr_gain_haircut: float = CORR_GAIN_HAIRCUT) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
     (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
     3.1's calibration-source choice): for each completed round across every
@@ -1200,14 +1206,15 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
     (`fit_corr_gain_haircut`) fit directly on the run's own
     `naive_product`/`corr_gain` columns -- no second sim pass needed.
 
-    `corr_gain_haircut` (default 1.0 = unhaircut) passes straight through to
+    `corr_gain_haircut` (default `CORR_GAIN_HAIRCUT` = 0.0, mirroring
+    `round-report`'s live default) passes straight through to
     `walk_forward_multi_predictions`/`search_match_sgms`'s same param --
     reprices every SELECTED rung as `naive_product + corr_gain_haircut *
     corr_gain` instead of the raw sim `joint_prob`, so SELECTED's own
-    log-loss/reliability-curve numbers reflect the haircut. Pass a value
-    found by a separate out-of-sample check (e.g. fit on one year, apply to
-    another) to see whether it actually beats the unhaircut baseline --
-    see README's "corr_gain haircut" section for the real-data result."""
+    log-loss/reliability-curve numbers reflect the haircut by default. Pass
+    1.0 to recover the original raw/unhaircut baseline for comparison --
+    see README's "corr_gain haircut" section for the OOS fit/acceptance
+    result and the closing writeup."""
     from afl_bot.backtest.multis import (
         corr_gain_diagnostic,
         fit_corr_gain_haircut,
@@ -1435,11 +1442,13 @@ def main(argv: list[str] | None = None) -> None:
                             "audit Phase 3.6) to every selected rung's joint probability -- "
                             "corrects search_match_sgms's own selection bias (the "
                             "optimizer's curse, confirmed in Phase 3.5). Opt-in.")
-    rep_p.add_argument("--corr-gain-haircut", type=float, default=1.0, dest="corr_gain_haircut",
+    rep_p.add_argument("--corr-gain-haircut", type=float, default=CORR_GAIN_HAIRCUT,
+                       dest="corr_gain_haircut",
                        help="corr_gain-diagnostic follow-up: reprice a selected rung as "
                             "naive_product + haircut*corr_gain instead of the raw sim "
-                            "joint_prob (1.0 = unhaircut, the default; 0.0 = naive product "
-                            "only). See README's 'corr_gain haircut' section.")
+                            "joint_prob (0.0 = naive product only, the live default, "
+                            "OOS-validated; 1.0 = raw/unhaircut sim joint_prob). See "
+                            "README's 'corr_gain haircut' section.")
 
     grade_p = sub.add_parser("grade-round",
                              help="Score a completed round's saved predictions vs actuals.")
@@ -1486,11 +1495,13 @@ def main(argv: list[str] | None = None) -> None:
                                "compare the sim's corr_gain to the EMPIRICAL corr_gain (actual "
                                "joint hit-rate minus pooled actual per-leg hit-rates), bucketed "
                                "by predicted joint_prob. Diagnostic only, no fix applied.")
-    multis_p.add_argument("--corr-gain-haircut", type=float, default=1.0, dest="corr_gain_haircut",
+    multis_p.add_argument("--corr-gain-haircut", type=float, default=CORR_GAIN_HAIRCUT,
+                          dest="corr_gain_haircut",
                           help="corr_gain-diagnostic follow-up: reprice selected rungs as "
                                "naive_product + haircut*corr_gain instead of the raw sim "
-                               "joint_prob (1.0 = unhaircut, the default; 0.0 = naive product "
-                               "only).")
+                               "joint_prob (0.0 = naive product only, the live default, "
+                               "mirrors round-report; 1.0 = raw/unhaircut sim joint_prob, "
+                               "for baseline comparison).")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,

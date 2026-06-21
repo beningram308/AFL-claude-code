@@ -686,7 +686,7 @@ is not guaranteed to fare better than Phase 3.6 did against the same sample-size
 Worth trying before further calibration/selection-layer attempts, given this is the first diagnostic to
 actually localise *where* in the pipeline the persistent high-bucket overconfidence is coming from.
 
-### corr_gain haircut (the proposed follow-up, implemented) — partial win, OOS-validated
+### corr_gain haircut (the proposed follow-up, implemented) — CLOSED, now the live default
 
 Implemented exactly as proposed: `search_match_sgms`/`walk_forward_multi_predictions` gained an opt-in
 `corr_gain_haircut` param (default 1.0 = unhaircut) that reprices a SELECTED rung as `naive_product +
@@ -732,15 +732,48 @@ product still isn't enough to fully explain this bucket's actual hit rate). This
 **first attempt across Phase 3/3.5/3.6/this one that shows a genuine, two-directional out-of-sample
 improvement** rather than a flat failure — but it's a partial, not complete, fix.
 
-**Per the project's "if it doesn't help, keep the default" rule — `CORR_GAIN_HAIRCUT` stays 1.0
-(unhaircut) everywhere, not wired into `round-report`/`run-round`'s default path**, since the user's own
-acceptance bar (gap *closes*, not just narrows) wasn't fully cleared. `corr_gain_haircut=0.0` ships as a
-validated, recommended **opt-in** value (`--corr-gain-haircut 0.0` on `round-report`/`grade-multis`) —
-the best-evidenced lever found so far, just not a complete fix. Given the remaining +0.090 gap, the
-overconfidence in this bucket isn't *purely* a corr_gain problem; some of it is something else this
-diagnostic doesn't isolate (e.g. the per-leg marginals feeding `naive_product` itself, which the sim's
-own `sim_naive` consistently overstates relative to the empirical pooled-leg rate in this bucket too —
-see the corr_gain diagnostic's numbers above).
+**Stacking with per-leg prop calibration — the closing result.** The `corr_gain_haircut=0.0` backtest
+above was run with per-leg prop calibration **OFF** (Phase 2.5/3's lever, separate from this one and
+already always-on in `round-report` itself). Since the diagnostic's own numbers hinted some of the
+high bucket's overconfidence sits in the per-leg marginals feeding `naive_product`, not just in
+`corr_gain`, the two existing levers were tested **stacked** (per-leg calibration ON + `corr_gain_haircut
+=0.0`) on the same 2024-2025 selected-rung sample, rather than building a third, dedicated fix first:
+
+| | log loss | high bucket (0.4-0.6) gap |
+|---|--:|--:|
+| baseline (no calibration, unhaircut) | 0.5757 | +0.110 |
+| `corr_gain_haircut=0.0` alone | 0.5728 | +0.090 |
+| **calibration ON + `corr_gain_haircut=0.0` (stacked)** | **0.5650** | **+0.051** |
+
+**The two levers are complementary, not redundant** — stacked, they roughly double the improvement
+either gives alone (gap narrows ~54% from baseline vs ~18% for the haircut alone), the best result of
+the entire Phase 3/3.5/3.6/Phase-4 overconfidence investigation. A third lever was also tried before
+settling here: a flat **per-leg marginal haircut** (shrinking the calibrated `naive_product` itself by a
+constant factor, `naive_product * (1 - MARGINAL_HAIRCUT)`, mirroring `price_shrink`'s 0=off convention)
+on top of the stack, OOS-tested the same way (fit on one year, test on the other, both directions). It
+**did not replicate OOS** — it won in one direction and lost in the other, and even the in-sample
+combined-sample picture showed the high-bucket gap widening slightly under the best-looking candidate —
+so, per the same "don't ship what doesn't survive OOS" standard the corr_gain fit itself was held to, it
+was never written into production code.
+
+**Decision: the stack ships as the live default, and the investigation closes here.** Per-leg prop
+calibration was already unconditionally on in `round-report`; `CORR_GAIN_HAIRCUT` in `config.py` is now
+**0.0** (was 1.0) and is wired as the actual default for `round-report`'s and `grade-multis`'s own
+`corr_gain_haircut` parameter (previously the constant existed but nothing referenced it — every caller
+had its own independently hardcoded `1.0`). `search_match_sgms`/`walk_forward_multi_predictions`
+themselves keep their own bare default at 1.0/unhaircut (these are general-purpose, reused by tests and
+diagnostics that need the raw sim decomposition) — the validated `0.0` is a live-default choice made by
+the callers that ship it, not a change to the low-level mechanism. Pass `--corr-gain-haircut 1.0` to
+either CLI command to recover the original raw/unhaircut baseline for comparison.
+
+The remaining **~+0.05 high-bucket gap is now a known, bounded residual** — not a flaw to keep chasing
+with more fitted maps (Phase 3.6, the fitted corr_gain coefficient, and the marginal haircut all tried
+that path and failed OOS, the consistent failure mode being non-stationarity across seasons on this thin
+selected-rung sample), but an accepted, quantified limit managed downstream by the existing **staking**
+(`KELLY_FRACTION`/per-bet/per-round caps already size positions conservatively against estimation error)
+and **market-anchoring** (`market_anchored_prob`/`MULTI_MARKET_SHRINK` already pull the priced edge back
+toward the book's own number) machinery, rather than something the joint-probability estimate itself
+needs to fully resolve before the ladder is usable.
 
 ### Staking & bankroll (plan §4.4)
 
