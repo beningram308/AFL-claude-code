@@ -1,0 +1,107 @@
+================================================================================
+FIX: SGM LADDER — REAL ODDS + A TARGET-BAND LABEL ($1.75 / $3 / $5)
+================================================================================
+Date: 2026-06-25 (v2 — supersedes v1 of this file; supersedes the corr_gain
+part of FIX-BETTABLE-LEGS-AND-PRICING.txt)
+From: Ben
+
+RETRACTION (don't re-chase): the earlier claim that CORR_GAIN_HAIRCUT=0.0 wasn't
+reaching the report was WRONG — you were right in commit 2c9028c, the haircut IS
+applied (joint = naive product; displayed corr_gain is the informational
+pre-haircut lift). DO NOT touch the haircut. Keep the book-menu + model-only-tag
+work from 2c9028c.
+
+CONTEXT — what Ben is reacting to:
+  Old report reports/2026_r14_report.md showed every rung pinned to EXACTLY
+  $1.75 / $2.50 / $3.50 (57% / 40% / 29% = exactly 1/odds). That was a cosmetic
+  clamp to the target (price_shrink), NOT the real combo odds. It was turned off
+  later, so r15/r16 now show the real fair odds (e.g. $2.18 / $3.39 / $4.37),
+  which don't land on round bet-slip numbers. Ben wants the round numbers back
+  for the bet slip BUT also the honest price next to them — and he does NOT want
+  the bottom rung drifting too short (he saw ~$1.50, which is under the band).
+
+WHAT BEN CHOSE: "Both — real combo odds AND an exact target-band label per rung."
+So each rung shows the BAND it's filling ($1.75 / $3 / $5) plus the real,
+honest joint prob and fair odds of the actual combo. No cosmetic clamping of the
+probability.
+
+--------------------------------------------------------------------------------
+STEP 1 — Targets Ben wants
+--------------------------------------------------------------------------------
+config.MULTI_TARGET_ODDS = (1.75, 3.0, 5.0)   # was (1.75, 3.5, 5.0)
+
+--------------------------------------------------------------------------------
+STEP 2 — Make a real ~$1.75 rung reachable (near-lock anchor legs)
+--------------------------------------------------------------------------------
+Why it's needed: legs are capped at LEG_PROB_MAX=0.78, and multis price at the
+naive product, so the shortest possible 3-leg multi is 0.78^3 = $2.11 — a REAL
+$1.75 multi is impossible until near-lock legs are allowed in. (That's why r14's
+"$1.75" had to be cosmetic.)
+
+  - Add a ladder-only cap, e.g.:
+        SGM_LADDER_LEG_PROB_MAX = 0.95
+    Use it ONLY when building the SGM ladder candidate pool. Keep
+    LEG_PROB_MIN=0.30 as the floor for ladder legs. Leave LEG_PROB_MIN/MAX
+    (0.30/0.78) UNCHANGED for single-leg ANCHOR/VALUE/SKIP classification and
+    the predictions CSV.
+  - In cli.py round_report, gate the leg that feeds match_legs (the SGM pool) on
+    LEG_PROB_MIN < prob < SGM_LADDER_LEG_PROB_MAX instead of < LEG_PROB_MAX.
+    A leg with a real --odds/live price is always allowed (unchanged).
+  - The book-menu filter from 2c9028c still applies; these anchor legs
+    (15+/20+ disposals for top mids) are on the menu and rank top-N, so they
+    pass — verify they do.
+
+--------------------------------------------------------------------------------
+STEP 3 — Selection: land ON each band, never overshoot SHORT
+--------------------------------------------------------------------------------
+Ben's complaint was the bottom rung coming out ~$1.50 (too short / "under
+priced"). Fix the selection so each rung lands at-or-just-above its target, not
+below it:
+  - For each target T, choose the combo whose fair odds is closest to T but
+    preferentially NOT shorter than T (i.e. among combos with fair_odds >= T,
+    pick the smallest fair_odds; only if none exist >= T, fall back to the
+    closest one below). This makes the $1.75 rung land ~$1.75–1.90 instead of
+    $1.50, and likewise for $3 / $5.
+  - Keep one-combo-per-rung de-dup and the "every match gets a full ladder"
+    guarantee (fill remaining bands from the closest leftover combo, tagged
+    model-only as today).
+  - Do NOT clamp the displayed probability/odds (price_shrink stays 0.0). The
+    Joint prob / Fair odds columns must remain the combo's REAL values.
+
+--------------------------------------------------------------------------------
+STEP 4 — Show both: a Target/Band column next to the real odds
+--------------------------------------------------------------------------------
+In build/report.py render_markdown, add a "Band" column to the ladder table so
+each rung reads e.g.:
+
+  | Legs | Band | Joint prob | Fair odds | Corr gain | Pick |
+  | ...  | $1.75 | 54% | 1.85 | +2.1pp |  |
+  | ...  | $3.00 | 33% | 3.03 | -0.4pp |  |
+  | ...  | $5.00 | 19% | 5.21 | +1.8pp |  |
+
+  - "Band" = the target this rung fills ($1.75 / $3 / $5), formatted as money.
+  - "Fair odds" / "Joint prob" = the real combo numbers (honest), as now.
+  - Keep the Book/Edge columns when --odds is supplied, and the VALUE PICK and
+    model-only tags exactly as they are.
+
+--------------------------------------------------------------------------------
+STEP 5 — Validate and show Ben
+--------------------------------------------------------------------------------
+  - Re-run: python -m afl_bot.cli round-report --year 2026 --round 16
+  - In reports/2026_r16_report.md, confirm for every match:
+      * three rungs labelled $1.75 / $3 / $5 in the Band column,
+      * real Fair odds sitting close to each band, with the bottom rung
+        ~$1.75–1.90 (NOT $1.50, NOT stuck at $2.2),
+      * sensible near-lock legs in the $1.75 rung (top mids' 15+/20+ disposals),
+      * corr_gain haircut still applied (joint = naive product),
+      * model-only tags present; no VALUE/stake without real odds.
+  - pytest -q green. Add tests: (a) a pool with 0.90+ legs yields a reachable
+    sub-$1.90 bottom rung; (b) selection never returns a bottom rung shorter
+    than the target when a >= target combo exists; (c) single-leg
+    classification still uses the 0.78 cap. Commit + update README/memory.
+
+ACCEPTANCE (how Ben judges it):
+  Open reports/2026_r16_report.md — each match's ladder shows clean $1.75 / $3 /
+  $5 band labels for the bet slip, with the real, honest odds beside them, and
+  the safe rung actually sits near $1.75 instead of $1.50 or $2.2.
+================================================================================

@@ -824,6 +824,62 @@ to fully-priced combos (`build_sgm_candidates`/`search_match_sgms`,
 `round-report` itself never calls the staking module, so no stake was ever at risk
 of being sized off an unpriced leg.
 
+### Ladder target odds: real combo prices + a band label (FIX-LADDER-TARGET-ODDS)
+
+**Retraction (from the fix above):** the `corr_gain_haircut` claim was wrong — Ben
+confirmed commit `2c9028c`'s investigation was correct (the haircut IS applied;
+`corr_gain` in the table is always the pre-haircut informational lift). Not touched
+again here.
+
+**Problem this fix addresses.** An old report (`2026_r14_report.md`) had every rung
+pinned to *exactly* $1.75 / $2.50 / $3.50 — a cosmetic `price_shrink` clamp to the
+target, not the combo's real odds. With that clamp off, r15/r16 showed the honest
+fair odds (e.g. $2.18 / $3.39 / $4.37), which don't read as clean bet-slip numbers,
+and the bottom rung could land *shorter* than its target (e.g. ~$1.50 instead of
+~$1.75) when same-game correlation pushed a combo's real joint probability above its
+naive product. Ben wants both: the real, honest odds AND a target-band label per
+rung, with the bottom rung never landing short.
+
+1. **Targets**: `MULTI_TARGET_ODDS` is now `(1.75, 3.00, 5.00)` (was `3.50` mid).
+2. **A real ~$1.75 rung needs near-lock legs.** Three legs each capped at
+   `LEG_PROB_MAX` (0.78) cap the naive product at `0.78^3 ≈ 0.475` (fair odds
+   ~$2.11) — a genuine $1.75 multi is mathematically unreachable below that without
+   admitting higher-probability legs. `SGM_LADDER_LEG_PROB_MAX = 0.95` is a second,
+   wider cap used ONLY when building the SGM ladder's own candidate pool (`cli.py
+   round_report`'s leg-construction loop gates `match_legs` on
+   `LEG_PROB_MIN < prob < SGM_LADDER_LEG_PROB_MAX` instead of `< LEG_PROB_MAX`).
+   These near-lock legs (e.g. a top mid's 15+/20+ disposals) feed the multi pool
+   ONLY — `LEG_PROB_MAX` (0.78) still gates the predictions CSV (`grade-round`
+   calibration tracking) and single-leg ANCHOR/VALUE/SKIP classification unchanged.
+   The book-menu filter (above) still applies to these legs the same as any other
+   model-only leg.
+3. **Selection now lands at-or-above each target, never short.** `search_match_sgms`
+   (`afl_bot/build/report.py`) used to pick the combo with the smallest *absolute*
+   `|fair_odds - target|`, which could pick a combo whose real joint probability
+   (lifted by same-game correlation) made it shorter than the target even though a
+   longer, still-close combo existed. `_select_for_target` now prefers, for each
+   target, the combo whose odds are **at or longer** than the target (closest from
+   above); only falls back to the closest combo below the target when nothing
+   reaches it. Scoped to `lcb_z<=0` (round-report's own path) so it doesn't
+   short-circuit the Phase 3.5 `lcb_z` selection-haircut diagnostic, which relies on
+   pure closest-distance picking to demonstrate its effect
+   (`test_search_match_sgms_lcb_z_can_change_the_selected_combo`). Each selected
+   rung is tagged with its own `target_odds` (the band it filled).
+4. **Display stays honest.** `price_shrink` stays `0.0` (off) — `Joint prob`/`Fair
+   odds` are always the combo's real numbers. A new **Band** column shows the target
+   each rung filled (`$1.75` / `$3.00` / `$5.00`) right next to them, so the bet-slip
+   number and the honest price are both visible.
+
+**Side effect worth knowing:** `grade-multis` calls the same `search_match_sgms`
+with its own `lcb_z` default of `0.0`, so the "land at-or-above" selection change
+applies there too by default, not just to `round-report` — unlike the book-menu
+filter above (deliberately scoped to `round_report` only), this is a fix to
+`search_match_sgms`'s own selection mechanism. The historical OOS validation
+numbers in the corr_gain-haircut writeup above were captured before this change;
+they were not re-run as part of this fix (out of scope here) since neither the
+naive product nor the joint probability themselves changed, only which combo gets
+selected when an above-target option exists.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

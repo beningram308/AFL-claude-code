@@ -222,12 +222,24 @@ MC_SE_TARGET = 0.002
 # Lines outside this window are either too short to post (near-cert, prob > MAX)
 # or too long to appear on standard book menus (prob < MIN). Replaces the loose
 # 0.05/0.97 gate that admitted "15+ disposals" for ball-magnets (~99% prob).
+# Governs single-leg ANCHOR/VALUE/SKIP classification and the predictions CSV
+# (grading) -- unchanged by the wider SGM-ladder-only cap below.
 LEG_PROB_MIN = 0.30
 LEG_PROB_MAX = 0.78
 
+# Wider cap used ONLY when building the SGM ladder's candidate leg pool
+# (FIX-LADDER-TARGET-ODDS STEP 2) -- LEG_PROB_MAX (0.78) caps a single 3-leg
+# multi's naive product at 0.78^3 ~= $2.11, making a real (non-cosmetic)
+# ~$1.75 rung unreachable. Near-lock legs (top mids' 15+/20+ disposals) up to
+# this prob are allowed into the multi pool only, never into the single-leg
+# predictions CSV or classification (those stay gated by LEG_PROB_MAX).
+SGM_LADDER_LEG_PROB_MAX = 0.95
+
 # Target combined odds for the three rungs of the same-game multi ladder
-# (REAL-MULTIS ADDENDUM 1). Selection uses closest fair-odds to each target.
-MULTI_TARGET_ODDS = (1.75, 3.50, 5.00)
+# (REAL-MULTIS ADDENDUM 1; FIX-LADDER-TARGET-ODDS retargeted the middle rung
+# 3.50 -> 3.00 for a cleaner bet-slip number). Selection lands AT OR LONGER
+# than each target, never shorter (see search_match_sgms).
+MULTI_TARGET_ODDS = (1.75, 3.00, 5.00)
 
 # Seasons of SELECTED-rung walk-forward backtest (the population actually
 # bet, `walk_forward_multi_predictions`) to fit the Phase 3.6 selection-level

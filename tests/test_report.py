@@ -236,6 +236,63 @@ def test_search_match_sgms_lcb_z_can_change_the_selected_combo():
     assert haircut[0]["joint_prob"] == pytest.approx(0.31)
 
 
+def test_search_match_sgms_bottom_rung_reachable_with_near_lock_legs():
+    # FIX-LADDER-TARGET-ODDS STEP 2: a real (non-cosmetic) ~$1.75 3-leg rung
+    # needs at least one near-lock (>0.78) leg in the pool -- three legs
+    # capped at LEG_PROB_MAX (0.78) naive-product to at most 0.78^3 ~= 0.475
+    # (fair_odds ~2.11), and same-game correlation can push that even
+    # shorter, never longer. With a 0.93 near-lock leg available, the bottom
+    # rung lands close to (and at-or-above) the $1.75 target instead.
+    rng = np.random.default_rng(3)
+    n = 40000
+    probs = {"A": 0.93, "B": 0.90, "C": 0.85, "D": 0.70, "E": 0.55, "F": 0.40}
+    legs = []
+    for name, p in probs.items():
+        mask = rng.random(n) < p
+        prob = mask.mean()
+        legs.append(_leg(f"{name} 15+ disp", prob, mask, name))
+
+    out = search_match_sgms(legs)
+    bottom = out[0]
+    assert bottom["target_odds"] == MULTI_TARGET_ODDS[0]
+    assert 1.75 <= bottom["fair_odds"] <= 1.95          # reachable, landed at/just above target
+    assert any(name.startswith("A ") for name in bottom["legs"])   # needed the near-lock leg
+
+
+def test_search_match_sgms_lands_at_or_above_target_not_short_when_possible():
+    # Two pure 3-leg pools, nested masks so every MIXED combo collapses to the
+    # smaller (LONG-odds) pool's joint (intersecting with a subset forces the
+    # AND down to it): a pure-SHORT combo at joint 0.55 (fair $1.82, CLOSER to
+    # the $2.00 target in absolute distance) vs. 19 LONG combos at joint 0.45
+    # (fair $2.22, reaches/exceeds the target). The old closest-distance-only
+    # selection would pick the closer-but-shorter $1.82 combo (Ben's "~$1.50"
+    # complaint); the fix must prefer the one that doesn't undershoot.
+    n = 1000
+    mask_short = np.zeros(n, dtype=bool)
+    mask_short[:550] = True   # pure pool joint_prob 0.55 -- shorter than target
+    mask_long = np.zeros(n, dtype=bool)
+    mask_long[:450] = True    # pure pool joint_prob 0.45 -- reaches/exceeds target (nested subset)
+    pool_short = [_leg(f"S{i} 15+", 1.0, mask_short, f"S{i}") for i in range(3)]
+    pool_long = [_leg(f"L{i} 15+", 1.0, mask_long, f"L{i}") for i in range(3)]
+    legs = pool_short + pool_long
+    target = 2.0   # implied prob 0.5
+
+    out = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)
+    assert out[0]["joint_prob"] == pytest.approx(0.45)
+    assert out[0]["fair_odds"] >= target
+
+
+def test_sgm_ladder_leg_prob_max_is_wider_than_single_leg_cap():
+    # FIX-LADDER-TARGET-ODDS STEP 2: the SGM ladder pool's wider cap must
+    # stay strictly above the single-leg ANCHOR/VALUE/SKIP/predictions-CSV
+    # cap -- cli.py relies on this ordering to admit near-lock legs into the
+    # multi pool ONLY, never into single-leg classification or grading.
+    from afl_bot.config import LEG_PROB_MAX, SGM_LADDER_LEG_PROB_MAX
+
+    assert LEG_PROB_MAX == 0.78
+    assert SGM_LADDER_LEG_PROB_MAX > LEG_PROB_MAX
+
+
 def test_render_markdown_smoke():
     matches = [{
         "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
@@ -246,6 +303,26 @@ def test_render_markdown_smoke():
     }]
     md = render_markdown(2026, 14, matches, has_odds=False)
     assert "AFL Round Report" in md and "A vs B" in md
+
+
+def test_render_markdown_shows_band_column_for_each_rung_target():
+    sgms = [
+        {"legs": ["A 15+", "B 15+", "C 15+"], "joint_prob": 0.55, "naive_product": 0.50,
+         "corr_gain": 0.05, "fair_odds": 1.82, "odds": 1.82, "value_pick": False,
+         "target_odds": 1.75},
+        {"legs": ["D 15+", "E 15+", "F 15+"], "joint_prob": 0.20, "naive_product": 0.19,
+         "corr_gain": 0.01, "fair_odds": 5.0, "odds": 5.0, "value_pick": False,
+         "target_odds": 5.0},
+    ]
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": sgms,
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=False)
+    assert "| Band |" in md
+    assert "$1.75" in md and "$5.00" in md
 
 
 def test_render_markdown_labels_value_pick_and_odds_note():

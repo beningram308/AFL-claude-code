@@ -167,11 +167,18 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     (default 15%) is treated as "model is wrong, not the book".
 
     Rung selection: for each target in ``target_odds`` (default ``MULTI_TARGET_ODDS``
-    = 1.75 / 3.50 / 5.00), the combo whose **fair odds** is closest to the target
-    is chosen; highest joint prob breaks ties. The top rung (highest target) is
-    promoted to ``value_pick=True`` when a qualifying shrunk edge (0, max_plausible_edge]
-    exists among the available combos. De-duplication: each combo can fill only one
-    rung; if the pool is exhausted, remaining rungs are filled from the full pool.
+    = 1.75 / 3.00 / 5.00), prefer the combo whose fair odds is closest to the
+    target FROM ABOVE -- i.e. land *at or longer than* the target, never
+    shorter (FIX-LADDER-TARGET-ODDS: a bottom rung quietly landing at $1.50
+    when $1.75 was promised is a worse surprise for the bet slip than landing
+    at $1.90). Only when no combo reaches the target at all does selection
+    fall back to the closest one below it. Highest joint prob breaks ties. The
+    top rung (highest target) is promoted to ``value_pick=True`` when a
+    qualifying shrunk edge (0, max_plausible_edge] exists among the available
+    combos. De-duplication: each combo can fill only one rung; if the pool is
+    exhausted, remaining rungs are filled from the full pool. Each selected
+    rung is tagged with its own ``target_odds`` (the band it filled) for
+    display.
 
     ``lcb_z`` (model-upgrade audit Phase 3.5, opt-in, default 0.0 = off, the
     existing behaviour): rank combos for selection by a lower-confidence-bound
@@ -236,6 +243,22 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             return abs(_lcb_value(c) - 1.0 / target)
         return abs(c["fair_odds"] - target)
 
+    def _select_for_target(available: list[dict], target: float) -> dict:
+        # Prefer combos whose odds are AT OR LONGER than the target (i.e.
+        # joint_prob <= 1/target -- never overshoot short); among those, the
+        # closest to the target is the one with the HIGHEST joint_prob
+        # (shortest odds that still clear the target). Only fall back to the
+        # closest combo below the target if none reach it at all. Scoped to
+        # ``lcb_z<=0`` (round-report's own path, lcb_z always 0) -- ``lcb_z>0``
+        # is an opt-in Phase 3.5 selection-haircut diagnostic whose whole
+        # point is to flip the pick via the lcb-adjusted distance, which this
+        # "land at/above" preference would short-circuit.
+        if lcb_z <= 0.0:
+            reaches_target = [c for c in available if c["joint_prob"] <= 1.0 / target]
+            if reaches_target:
+                return max(reaches_target, key=lambda c: (c["joint_prob"], -_distance(c, target)))
+        return min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
+
     selected: list[dict] = []
     chosen: set[int] = set()
     for i, target in enumerate(target_odds):
@@ -249,9 +272,10 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 pick = valued[0]
                 pick["value_pick"] = True
             else:
-                pick = min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
+                pick = _select_for_target(available, target)
         else:
-            pick = min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
+            pick = _select_for_target(available, target)
+        pick["target_odds"] = target
         chosen.add(id(pick))
         selected.append(pick)
 
@@ -390,8 +414,8 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             else:
                 out.append("_No 3-leg combination cleared the probability floor for this match._")
         else:
-            header = "| Legs | Joint prob | Fair odds | Corr gain |"
-            sep = "|---|--:|--:|--:|"
+            header = "| Legs | Band | Joint prob | Fair odds | Corr gain |"
+            sep = "|---|--:|--:|--:|--:|"
             if has_odds:
                 header += " Book | Edge |"
                 sep += "--:|--:|"
@@ -400,7 +424,8 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             out.append(header)
             out.append(sep)
             for s in m["sgms"]:
-                line = (f"| {' + '.join(s['legs'])} | {_fmt_pct(s['joint_prob'])} "
+                band = f"${s['target_odds']:.2f}" if "target_odds" in s else "-"
+                line = (f"| {' + '.join(s['legs'])} | {band} | {_fmt_pct(s['joint_prob'])} "
                         f"| {s['fair_odds']:.2f} | {s['corr_gain'] * 100:+.1f}pp |")
                 if has_odds:
                     if "book_odds" in s:
