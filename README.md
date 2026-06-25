@@ -880,6 +880,58 @@ they were not re-run as part of this fix (out of scope here) since neither the
 naive product nor the joint probability themselves changed, only which combo gets
 selected when an above-target option exists.
 
+### Placeable legs + honest $2.10 floor (FIX-PLACEABLE-LEGS-AND-210-FLOOR) — retires the near-lock anchor idea above
+
+**Two linked problems Ben found in `reports/2026_r16_report.md`.** (A) the ladder
+offered legs no book posts a market on — e.g. "Lachie Whitfield 15+ disposals"
+(95%) — because `SGM_LADDER_LEG_PROB_MAX = 0.95` admitted near-lock legs into the
+multi pool ONLY, exactly the mechanism point 2 above describes; those are phantom
+legs, not placeable bets. (B) the multi price could still drift short of its band
+(a $1.75-band rung printing **$1.59** Fair odds) because `_select_for_target`'s
+"never land shorter" guard (point 3 above) checked the combo's **pre-haircut**
+joint probability, while the printed number was the **post-`corr_gain_haircut`**
+one — in the r16 GWS case a combo with negative `corr_gain` (-5.6pp) had a raw
+joint of 57% (passing the $1.75 guard) that the haircut (the live
+`CORR_GAIN_HAIRCUT=0.0` default, pricing off `naive_product` alone) pushed up to
+63%, printing $1.59. The root insight: FIX-LADDER-TARGET-ODDS admitted near-lock
+legs *on purpose* so a real ~$1.75 multi could exist (`0.78³ ≈ $2.11` otherwise)
+— but those near-lock legs are exactly the unplaceable phantoms from (A). You
+can't have both; Ben's call: **drop the phantoms, accept the honest floor.**
+
+1. **One leg-probability cap everywhere.** `SGM_LADDER_LEG_PROB_MAX` is retired —
+   the SGM ladder pool now uses the same `LEG_PROB_MIN < prob < LEG_PROB_MAX`
+   (0.30/0.78) gate as single-leg classification and the predictions CSV
+   (`afl_bot/config.py`). No near-lock leg above 0.78 enters the pool unless it
+   has a real `--odds` price (the existing bettable-by-definition override).
+2. **`BOOKABLE_PROP_MENU`'s "disposals" line drops 15+** (now `[20, 25, 30]`) —
+   a near-lock on a gun mid, not a market a book posts standalone.
+3. **One best (highest-prob) UNPRICED line per (player, stat)** in the live
+   ladder pool — `afl_bot/build/report.py:select_ladder_lines`, called from
+   `cli.py round_report`'s leg-construction loop. A book doesn't post both a
+   15+ and a 25+ line on the same player; a PRICED line is always exempt from
+   this cull (every priced line is a confirmed market). `predictions.csv`
+   (grading) is unaffected — it still records every `(player, stat, line)` that
+   clears the probability gate, cull or no cull.
+4. **Bands move to the honest floor.** `MULTI_TARGET_ODDS = (2.10, 3.00, 5.00)`
+   (was `1.75`) — `0.78³ ≈ $2.11` falls out naturally now that the pool has no
+   near-lock assist.
+5. **The guard now checks the number it prints.** `search_match_sgms` applies
+   `corr_gain_haircut` AND an optional `multi_calibrator` to **every candidate
+   in the pool before selection** (previously: select on the raw joint, haircut
+   only the winners afterwards, calibrate even later in `cli.py`). `_select_for_
+   target`'s "never land shorter" test and the top-rung VALUE edge filter both
+   now read the same final, priced number that ends up in the report — closing
+   exactly the gap that produced the $1.59-under-a-$1.75-band bug. `round_report`
+   passes its loaded `multi_cal` straight into `search_match_sgms` now;
+   `apply_multi_calibration` (still exported, still tested) is no longer called
+   from the live path — it's a no-op-when-`None` convenience for any caller that
+   wants to calibrate an already-built rung list directly.
+
+**Net effect:** every ladder leg is a real, placeable market; each player
+contributes at most one model-only line per stat; the bottom rung reads
+~$2.10–2.40 (never the old ~$1.50/$1.59 drift); and a rung's printed Fair odds
+is now guaranteed at or above its Band whenever a qualifying combo exists.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

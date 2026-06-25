@@ -222,24 +222,21 @@ MC_SE_TARGET = 0.002
 # Lines outside this window are either too short to post (near-cert, prob > MAX)
 # or too long to appear on standard book menus (prob < MIN). Replaces the loose
 # 0.05/0.97 gate that admitted "15+ disposals" for ball-magnets (~99% prob).
-# Governs single-leg ANCHOR/VALUE/SKIP classification and the predictions CSV
-# (grading) -- unchanged by the wider SGM-ladder-only cap below.
+# Governs single-leg ANCHOR/VALUE/SKIP classification, the predictions CSV
+# (grading), AND the SGM ladder's candidate leg pool (FIX-PLACEABLE-LEGS-AND-
+# 210-FLOOR retired the wider SGM_LADDER_LEG_PROB_MAX cap -- near-lock legs up
+# to 0.95 were unplaceable phantoms a book won't post a market on; the ladder
+# is now placeable-only, with an honest ~$2.11 floor falling out of this same
+# 0.78 cap rather than a near-lock-assisted ~$1.75).
 LEG_PROB_MIN = 0.30
 LEG_PROB_MAX = 0.78
 
-# Wider cap used ONLY when building the SGM ladder's candidate leg pool
-# (FIX-LADDER-TARGET-ODDS STEP 2) -- LEG_PROB_MAX (0.78) caps a single 3-leg
-# multi's naive product at 0.78^3 ~= $2.11, making a real (non-cosmetic)
-# ~$1.75 rung unreachable. Near-lock legs (top mids' 15+/20+ disposals) up to
-# this prob are allowed into the multi pool only, never into the single-leg
-# predictions CSV or classification (those stay gated by LEG_PROB_MAX).
-SGM_LADDER_LEG_PROB_MAX = 0.95
-
 # Target combined odds for the three rungs of the same-game multi ladder
-# (REAL-MULTIS ADDENDUM 1; FIX-LADDER-TARGET-ODDS retargeted the middle rung
-# 3.50 -> 3.00 for a cleaner bet-slip number). Selection lands AT OR LONGER
-# than each target, never shorter (see search_match_sgms).
-MULTI_TARGET_ODDS = (1.75, 3.00, 5.00)
+# (REAL-MULTIS ADDENDUM 1; FIX-PLACEABLE-LEGS-AND-210-FLOOR retargeted the
+# bottom rung 1.75 -> 2.10, the honest 0.78^3 ~= $2.11 floor now that the
+# ladder pool is placeable-only -- see LEG_PROB_MAX above). Selection lands AT
+# OR LONGER than each target, never shorter (see search_match_sgms).
+MULTI_TARGET_ODDS = (2.10, 3.00, 5.00)
 
 # Seasons of SELECTED-rung walk-forward backtest (the population actually
 # bet, `walk_forward_multi_predictions`) to fit the Phase 3.6 selection-level
@@ -293,7 +290,8 @@ PROP_LINES = {
 # per stat per team, and -- for marks/tackles -- roles books actually price
 # those markets on. Conservative starting values; widen later if too tight.
 BOOKABLE_PROP_MENU = {
-    "disposals": [15, 20, 25, 30],   # 35+ dropped as a standalone unless priced
+    "disposals": [20, 25, 30],   # 15+/35+ dropped as standalone unless priced
+                                  # (15+ is a near-lock on a gun mid, not a posted market)
     "goals": [1, 2, 3],
     "marks": [4, 5, 6, 7],
     "tackles": [3, 4, 5, 6],

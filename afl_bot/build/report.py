@@ -82,6 +82,21 @@ def is_bookable_model_only_leg(stat: str, line: int, player: str, role: str | No
     return True
 
 
+def select_ladder_lines(qualifying: list[dict]) -> list[dict]:
+    """From every line for ONE (player, stat) that already cleared the
+    LEG_PROB_MIN/MAX gate and (if unpriced) the ``BOOKABLE_PROP_MENU`` gate
+    (FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 2.2), pick which ones become live
+    ladder legs: every PRICED line (each ``{"priced": True, ...}`` entry is a
+    confirmed real market, so all are kept) plus, if any UNPRICED lines
+    qualify, only the single highest-``"prob"`` one -- a book doesn't post
+    both a near-lock 15+ line and a 25+ line on the same gun mid, so the
+    model-only ladder pool shouldn't either. Returns ``[]`` if ``qualifying``
+    is empty."""
+    priced = [q for q in qualifying if q["priced"]]
+    unpriced = [q for q in qualifying if not q["priced"]]
+    return priced + ([max(unpriced, key=lambda q: q["prob"])] if unpriced else [])
+
+
 # Kept for backward compatibility — no longer used in search_match_sgms.
 DEFAULT_ODDS_BANDS = ((1.75, 2.50), (2.50, 3.50), (3.50, 5.50))
 
@@ -153,7 +168,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                       min_joint_prob: float = 0.05,
                       max_plausible_edge: float = 0.15,
                       lcb_z: float = 0.0, price_shrink: float = 0.0,
-                      corr_gain_haircut: float = 1.0) -> list[dict]:
+                      corr_gain_haircut: float = 1.0,
+                      multi_calibrator=None) -> list[dict]:
     """Build a *ladder* of same-game multis with one rung per target odds
     (REAL-MULTIS ADDENDUM 1), selected from ``build_sgm_candidates``'s full
     candidate pool. For each combo: the JOINT sim prob (from masks), naive
@@ -167,18 +183,22 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     (default 15%) is treated as "model is wrong, not the book".
 
     Rung selection: for each target in ``target_odds`` (default ``MULTI_TARGET_ODDS``
-    = 1.75 / 3.00 / 5.00), prefer the combo whose fair odds is closest to the
-    target FROM ABOVE -- i.e. land *at or longer than* the target, never
-    shorter (FIX-LADDER-TARGET-ODDS: a bottom rung quietly landing at $1.50
-    when $1.75 was promised is a worse surprise for the bet slip than landing
-    at $1.90). Only when no combo reaches the target at all does selection
-    fall back to the closest one below it. Highest joint prob breaks ties. The
-    top rung (highest target) is promoted to ``value_pick=True`` when a
-    qualifying shrunk edge (0, max_plausible_edge] exists among the available
-    combos. De-duplication: each combo can fill only one rung; if the pool is
-    exhausted, remaining rungs are filled from the full pool. Each selected
-    rung is tagged with its own ``target_odds`` (the band it filled) for
-    display.
+    = 2.10 / 3.00 / 5.00), prefer the combo whose FINAL fair odds -- i.e.
+    after ``corr_gain_haircut`` and ``multi_calibrator`` are applied, the same
+    number that gets reported -- is closest to the target FROM ABOVE: land
+    *at or longer than* the target, never shorter (FIX-PLACEABLE-LEGS-AND-
+    210-FLOOR: a bottom rung quietly printing $1.50 when $2.10 was promised
+    is a worse surprise for the bet slip than printing $2.20; checking the
+    guard against a PRE-haircut/PRE-calibration joint, as a now-retired
+    version of this function did, let the printed number drift below the
+    band it supposedly cleared). Only when no combo reaches the target at
+    all does selection fall back to the closest one below it. Highest FINAL
+    joint prob breaks ties. The top rung (highest target) is promoted to
+    ``value_pick=True`` when a qualifying FINAL shrunk edge (0,
+    max_plausible_edge] exists among the available combos. De-duplication:
+    each combo can fill only one rung; if the pool is exhausted, remaining
+    rungs are filled from the full pool. Each selected rung is tagged with
+    its own ``target_odds`` (the band it filled) for display.
 
     ``lcb_z`` (model-upgrade audit Phase 3.5, opt-in, default 0.0 = off, the
     existing behaviour): rank combos for selection by a lower-confidence-bound
@@ -206,19 +226,36 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     correlation structure contributed before any haircut).
 
     ``corr_gain_haircut`` (model-upgrade audit Phase 4 corr_gain-diagnostic
-    follow-up, opt-in, default 1.0 = unhaircut/current behaviour): after
-    selection, reprices the WINNING combo as ``naive_product +
-    corr_gain_haircut * corr_gain`` instead of the raw sim ``joint_prob``,
-    clipped to ``[0, 1]`` -- 0.0 prices purely off the naive/independent
-    product. The diagnostic (README "corr_gain diagnostic" section) found
-    the sim's correlation lift is systematically larger than the empirical
-    one, so this shrinks that specific term rather than the final
-    probability (`apply_multi_calibration`'s approach, which failed) or the
-    selection mechanism (`lcb_z`/`price_shrink`, which also failed).
-    ``corr_gain``/``naive_product`` themselves are left at their pre-haircut
-    (raw sim) values -- informational, same convention as ``price_shrink``.
-    Applied before ``price_shrink`` if both are set (fix the model's own
-    estimate first, then any book-anchoring shrink on top).
+    follow-up, opt-in, default 1.0 = unhaircut/current behaviour): reprices
+    EVERY combo in the pool as ``naive_product + corr_gain_haircut *
+    corr_gain`` instead of the raw sim ``joint_prob``, clipped to ``[0, 1]``
+    -- 0.0 prices purely off the naive/independent product. The diagnostic
+    (README "corr_gain diagnostic" section) found the sim's correlation lift
+    is systematically larger than the empirical one, so this shrinks that
+    specific term rather than the selection mechanism (`lcb_z`/`price_shrink`,
+    which failed). Applied BEFORE selection (FIX-PLACEABLE-LEGS-AND-210-
+    FLOOR STEP 4) so the "never land shorter" guard above sees the same
+    number it reports, not the pre-haircut one. ``corr_gain``/
+    ``naive_product`` on the returned, SELECTED rungs are left at their
+    pre-haircut (raw sim) values -- informational, same convention as
+    ``price_shrink``.
+
+    ``multi_calibrator`` (model-upgrade audit Phase 3.6, opt-in, default
+    ``None``, e.g. an ``afl_bot.backtest.ensemble.IsotonicCalibrator`` from
+    `afl_bot.backtest.multis.load_or_fit_multi_calibrator`): applied to every
+    combo's ``corr_gain_haircut``-ed joint prob, ALSO before selection, for
+    the same reason -- the old two-step pattern of selecting here and then
+    calibrating the winners afterwards (`apply_multi_calibration`, now a
+    standalone no-op-when-None convenience left for other callers) let
+    calibration inflate a rung's joint prob (e.g. 57% -> 63%) AFTER the
+    band-clearing guard had already passed on the uncalibrated value,
+    printing fair odds below the band it supposedly cleared. Folding it in
+    here closes that gap: the guard and the printed number are now always
+    the same final, calibrated value.
+
+    Both haircut and calibrator are applied before ``price_shrink`` if that
+    is also set (fix the model's own estimate first, then any book-anchoring
+    shrink on top).
 
     Returned safest -> longest (by fair odds)."""
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
@@ -227,9 +264,26 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     if not combos:
         return []
 
+    # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 4: price every combo (haircut +
+    # calibrator) BEFORE selection, so the guards below and the final report
+    # both work off the same number -- see docstring.
+    for c in combos:
+        if corr_gain_haircut != 1.0:
+            priced_joint = min(max(c["naive_product"] + corr_gain_haircut * c["corr_gain"], 0.0), 1.0)
+        else:
+            priced_joint = c["joint_prob"]
+        if multi_calibrator is not None:
+            priced_joint = float(multi_calibrator.predict([priced_joint])[0])
+        c["_priced_joint"] = priced_joint
+        c["_priced_fair_odds"] = fair_odds(priced_joint)
+        if "book_odds" in c:
+            book = c["book_odds"]
+            c["_priced_raw_edge"] = priced_joint * book - 1.0
+            c["_priced_edge"] = market_anchored_prob(priced_joint, book, MULTI_MARKET_SHRINK) * book - 1.0
+
     def _lcb_value(c: dict) -> float:
         if lcb_z <= 0.0 or c["n_sims"] is None:
-            return c["joint_prob"]
+            return c["_priced_joint"]
         return max(0.0, c["joint_prob"] - lcb_z * mc_standard_error(c["joint_prob"], c["n_sims"]))
 
     def _lcb_active(c: dict) -> bool:
@@ -241,22 +295,23 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         # odds-space distance (the original behaviour) otherwise.
         if _lcb_active(c):
             return abs(_lcb_value(c) - 1.0 / target)
-        return abs(c["fair_odds"] - target)
+        return abs(c["_priced_fair_odds"] - target)
 
     def _select_for_target(available: list[dict], target: float) -> dict:
-        # Prefer combos whose odds are AT OR LONGER than the target (i.e.
-        # joint_prob <= 1/target -- never overshoot short); among those, the
-        # closest to the target is the one with the HIGHEST joint_prob
-        # (shortest odds that still clear the target). Only fall back to the
-        # closest combo below the target if none reach it at all. Scoped to
-        # ``lcb_z<=0`` (round-report's own path, lcb_z always 0) -- ``lcb_z>0``
-        # is an opt-in Phase 3.5 selection-haircut diagnostic whose whole
-        # point is to flip the pick via the lcb-adjusted distance, which this
-        # "land at/above" preference would short-circuit.
+        # Prefer combos whose FINAL (priced) odds are AT OR LONGER than the
+        # target (i.e. priced joint <= 1/target -- never overshoot short);
+        # among those, the closest to the target is the one with the HIGHEST
+        # priced joint prob (shortest odds that still clear the target). Only
+        # fall back to the closest combo below the target if none reach it
+        # at all. Scoped to ``lcb_z<=0`` (round-report's own path, lcb_z
+        # always 0) -- ``lcb_z>0`` is an opt-in Phase 3.5 selection-haircut
+        # diagnostic whose whole point is to flip the pick via the
+        # lcb-adjusted distance, which this "land at/above" preference would
+        # short-circuit.
         if lcb_z <= 0.0:
-            reaches_target = [c for c in available if c["joint_prob"] <= 1.0 / target]
+            reaches_target = [c for c in available if c["_priced_joint"] <= 1.0 / target]
             if reaches_target:
-                return max(reaches_target, key=lambda c: (c["joint_prob"], -_distance(c, target)))
+                return max(reaches_target, key=lambda c: (c["_priced_joint"], -_distance(c, target)))
         return min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
 
     selected: list[dict] = []
@@ -266,9 +321,9 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         is_top = (i == len(target_odds) - 1)
         if is_top:
             valued = [c for c in available
-                      if c.get("edge") is not None and 0.0 < c["edge"] <= max_plausible_edge]
+                      if c.get("_priced_edge") is not None and 0.0 < c["_priced_edge"] <= max_plausible_edge]
             if valued:
-                valued.sort(key=lambda c: c["edge"], reverse=True)
+                valued.sort(key=lambda c: c["_priced_edge"], reverse=True)
                 pick = valued[0]
                 pick["value_pick"] = True
             else:
@@ -279,18 +334,13 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         chosen.add(id(pick))
         selected.append(pick)
 
-    if corr_gain_haircut != 1.0:
-        for pick in selected:
-            haircut_joint = min(max(
-                pick["naive_product"] + corr_gain_haircut * pick["corr_gain"], 0.0), 1.0)
-            pick["joint_prob"] = haircut_joint
-            pick["fair_odds"] = fair_odds(haircut_joint)
-            if "book_odds" in pick:
-                book = pick["book_odds"]
-                pick["raw_edge"] = haircut_joint * book - 1.0
-                pick["edge"] = (market_anchored_prob(haircut_joint, book, MULTI_MARKET_SHRINK) * book
-                                - 1.0)
-                pick["odds"] = book
+    for pick in selected:
+        pick["joint_prob"] = pick.pop("_priced_joint")
+        pick["fair_odds"] = pick.pop("_priced_fair_odds")
+        if "book_odds" in pick:
+            pick["raw_edge"] = pick.pop("_priced_raw_edge")
+            pick["edge"] = pick.pop("_priced_edge")
+            pick["odds"] = pick["book_odds"]
 
     if price_shrink > 0.0:
         for pick, target in zip(selected, target_odds):
@@ -311,15 +361,25 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
 def apply_multi_calibration(sgms: list[dict], calibrator) -> list[dict]:
     """Apply a selection-level ``IsotonicCalibrator`` (model-upgrade audit
     Phase 3.6, e.g. from `afl_bot.backtest.multis.load_or_fit_multi_calibrator`)
-    to each selected rung's joint probability **in place**, recomputing
-    `fair_odds`/edge from the calibrated value. Phase 3.5 found
-    `search_match_sgms`'s closest-to-target selection is itself a biased
-    estimator (the optimizer's curse) and that two prototyped fixes to the
-    selection mechanism itself (`lcb_z`, `price_shrink`) didn't help — this
-    instead corrects the OUTPUT, fit directly on the walk-forward SELECTED
-    rungs' own track record, the same way every other calibrator in this
-    codebase works. No-op (returns ``sgms`` unchanged) when ``calibrator``
-    is ``None`` -- the opt-in default."""
+    to each rung's joint probability **in place**, recomputing `fair_odds`/
+    edge from the calibrated value. Phase 3.5 found `search_match_sgms`'s
+    closest-to-target selection is itself a biased estimator (the
+    optimizer's curse) and that two prototyped fixes to the selection
+    mechanism itself (`lcb_z`, `price_shrink`) didn't help — this instead
+    corrects the OUTPUT, fit directly on the walk-forward SELECTED rungs' own
+    track record, the same way every other calibrator in this codebase
+    works. No-op (returns ``sgms`` unchanged) when ``calibrator`` is ``None``
+    -- the opt-in default.
+
+    `search_match_sgms`'s own ``multi_calibrator`` param (FIX-PLACEABLE-LEGS-
+    AND-210-FLOOR STEP 4) now folds this same transform in BEFORE selection
+    instead, so the round-report live path doesn't call this function
+    anymore -- calibrating already-selected rungs after the fact let the
+    band-clearing guard pass on the uncalibrated joint, then print a
+    calibrated fair odds below the band. This standalone version stays for
+    any caller that wants to calibrate an already-built rung list directly
+    (e.g. ad-hoc analysis), and for the test below pinning its own
+    behaviour."""
     if calibrator is None:
         return sgms
     for s in sgms:
@@ -405,7 +465,7 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                     )
                 out.append("")
 
-        out.append("### Same-game multi ladder (3-leg, ~1.75 -> ~5.0; top rung = value pick)")
+        out.append("### Same-game multi ladder (3-leg, ~2.10 -> ~5.0; top rung = value pick)")
         if not m["sgms"]:
             n_legs = m.get("n_legs")
             if n_legs is not None and n_legs < 3:

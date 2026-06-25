@@ -11,6 +11,7 @@ from afl_bot.build.report import (
     projection_rows,
     render_markdown,
     search_match_sgms,
+    select_ladder_lines,
     top_n_players_by_stat,
 )
 from afl_bot.config import MULTI_TARGET_ODDS
@@ -155,7 +156,10 @@ def test_search_match_sgms_price_shrink_pulls_toward_target_implied_prob():
 
 
 def test_search_match_sgms_corr_gain_haircut_zero_lift_equals_naive_product():
-    legs = _ladder_legs()
+    # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 4 moved the haircut to BEFORE
+    # selection, so it can change which combo wins with a wider leg pool --
+    # exactly 3 legs (one possible combo) isolates the haircut math itself.
+    legs = _ladder_legs()[:3]
     target = MULTI_TARGET_ODDS[-1]
     raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
     zero = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0,
@@ -178,7 +182,8 @@ def test_search_match_sgms_corr_gain_haircut_default_is_unhaircut():
 
 
 def test_search_match_sgms_corr_gain_haircut_half_is_midpoint():
-    legs = _ladder_legs()
+    # Same isolation as the zero-lift test above -- exactly 3 legs, one combo.
+    legs = _ladder_legs()[:3]
     target = MULTI_TARGET_ODDS[-1]
     raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
     half = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0,
@@ -236,16 +241,15 @@ def test_search_match_sgms_lcb_z_can_change_the_selected_combo():
     assert haircut[0]["joint_prob"] == pytest.approx(0.31)
 
 
-def test_search_match_sgms_bottom_rung_reachable_with_near_lock_legs():
-    # FIX-LADDER-TARGET-ODDS STEP 2: a real (non-cosmetic) ~$1.75 3-leg rung
-    # needs at least one near-lock (>0.78) leg in the pool -- three legs
-    # capped at LEG_PROB_MAX (0.78) naive-product to at most 0.78^3 ~= 0.475
-    # (fair_odds ~2.11), and same-game correlation can push that even
-    # shorter, never longer. With a 0.93 near-lock leg available, the bottom
-    # rung lands close to (and at-or-above) the $1.75 target instead.
+def test_search_match_sgms_bottom_rung_lands_at_honest_floor_without_near_lock_legs():
+    # FIX-PLACEABLE-LEGS-AND-210-FLOOR: the SGM ladder pool is now placeable-
+    # only -- every leg capped at LEG_PROB_MAX (0.78, no near-lock legs above
+    # it). The bottom rung's target moved 1.75 -> 2.10, the honest floor that
+    # falls out of three 0.78-capped legs (0.78^3 ~= $2.11) WITHOUT needing
+    # any unplaceable near-lock leg the old $1.75 target required.
     rng = np.random.default_rng(3)
     n = 40000
-    probs = {"A": 0.93, "B": 0.90, "C": 0.85, "D": 0.70, "E": 0.55, "F": 0.40}
+    probs = {"A": 0.78, "B": 0.75, "C": 0.70, "D": 0.60, "E": 0.50, "F": 0.40}
     legs = []
     for name, p in probs.items():
         mask = rng.random(n) < p
@@ -254,9 +258,24 @@ def test_search_match_sgms_bottom_rung_reachable_with_near_lock_legs():
 
     out = search_match_sgms(legs)
     bottom = out[0]
-    assert bottom["target_odds"] == MULTI_TARGET_ODDS[0]
-    assert 1.75 <= bottom["fair_odds"] <= 1.95          # reachable, landed at/just above target
-    assert any(name.startswith("A ") for name in bottom["legs"])   # needed the near-lock leg
+    assert bottom["target_odds"] == MULTI_TARGET_ODDS[0] == 2.10
+    assert 2.10 <= bottom["fair_odds"] <= 2.50          # reachable, landed at/just above target
+
+
+def test_search_match_sgms_never_lands_short_after_calibration():
+    # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 4: a calibrator that INFLATES
+    # joint probability (and so shrinks fair odds) must not be able to sneak
+    # a rung's DISPLAYED fair odds below the band it was selected to clear --
+    # the "never land shorter" guard must see the same final (haircut +
+    # calibrated) number that ends up reported, not the pre-calibration one.
+    class InflatingCalibrator:
+        def predict(self, probs):
+            return np.minimum(np.asarray(probs, dtype=float) * 1.15, 0.999)
+
+    legs = _ladder_legs()
+    out = search_match_sgms(legs, multi_calibrator=InflatingCalibrator())
+    for r in out:
+        assert r["fair_odds"] >= r["target_odds"] - 1e-9
 
 
 def test_search_match_sgms_lands_at_or_above_target_not_short_when_possible():
@@ -282,15 +301,29 @@ def test_search_match_sgms_lands_at_or_above_target_not_short_when_possible():
     assert out[0]["fair_odds"] >= target
 
 
-def test_sgm_ladder_leg_prob_max_is_wider_than_single_leg_cap():
-    # FIX-LADDER-TARGET-ODDS STEP 2: the SGM ladder pool's wider cap must
-    # stay strictly above the single-leg ANCHOR/VALUE/SKIP/predictions-CSV
-    # cap -- cli.py relies on this ordering to admit near-lock legs into the
-    # multi pool ONLY, never into single-leg classification or grading.
-    from afl_bot.config import LEG_PROB_MAX, SGM_LADDER_LEG_PROB_MAX
+def test_select_ladder_lines_keeps_every_priced_line_plus_best_unpriced():
+    # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 2.2: at most one UNPRICED line
+    # per (player, stat) -- the highest-prob ("best line") -- survives into
+    # the live ladder pool, but every PRICED line is exempt from the cull.
+    qualifying = [
+        {"line": 20, "prob": 0.60, "priced": False},
+        {"line": 25, "prob": 0.45, "priced": False},   # lower prob, unpriced -> dropped
+        {"line": 30, "prob": 0.20, "priced": True},     # priced -> always kept
+    ]
+    kept = select_ladder_lines(qualifying)
+    assert {q["line"] for q in kept} == {20, 30}
 
-    assert LEG_PROB_MAX == 0.78
-    assert SGM_LADDER_LEG_PROB_MAX > LEG_PROB_MAX
+
+def test_select_ladder_lines_keeps_all_priced_lines_with_no_unpriced():
+    qualifying = [
+        {"line": 20, "prob": 0.60, "priced": True},
+        {"line": 25, "prob": 0.45, "priced": True},
+    ]
+    assert select_ladder_lines(qualifying) == qualifying
+
+
+def test_select_ladder_lines_empty_in_empty_out():
+    assert select_ladder_lines([]) == []
 
 
 def test_render_markdown_smoke():

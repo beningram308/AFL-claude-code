@@ -40,12 +40,12 @@ from afl_bot.build.multi import (
     joint_prob_from_masks,
 )
 from afl_bot.build.report import (
-    apply_multi_calibration,
     build_odds_template,
     is_bookable_model_only_leg,
     projection_rows,
     render_markdown,
     search_match_sgms,
+    select_ladder_lines,
     top_n_players_by_stat,
 )
 from afl_bot.build.staking import (
@@ -72,7 +72,6 @@ from afl_bot.config import (
     PROP_MARKET_BLEND_WEIGHT,
     PROP_RECENT_SEASONS,
     ROOT_DIR,
-    SGM_LADDER_LEG_PROB_MAX,
     SHARE_CONCENTRATION,
     SIM_ITERATIONS,
     TEAM_STAT_DISPERSION,
@@ -935,20 +934,20 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                     arr = stats.get(stat)
                     if arr is None:
                         continue
+                    # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 2.2: collect every
+                    # qualifying line for this (player, stat) first, then keep
+                    # at most ONE unpriced line (the highest-prob -- "best
+                    # line"), since a book doesn't post a near-lock 15+ line
+                    # AND a 25+ line on the same gun mid. A line with a real
+                    # book price is exempt -- always kept, it's a confirmed
+                    # market regardless of how many others are priced too.
+                    qualifying = []
                     for line in lines:
                         mask = arr >= line
                         prob = prob_event(mask)
                         prob = apply_prop_calibration(prop_calibrators, stat, line, prob)
-                        # FIX-LADDER-TARGET-ODDS STEP 2: the SGM ladder pool
-                        # uses a WIDER cap than single-leg classification --
-                        # LEG_PROB_MAX (0.78) alone makes a real ~$1.75 3-leg
-                        # multi unreachable (0.78^3 ~= $2.11). Near-lock legs
-                        # above LEG_PROB_MAX feed the multi pool ONLY -- never
-                        # the predictions CSV / single-leg ANCHOR/VALUE/SKIP
-                        # classification, which stay gated by LEG_PROB_MAX.
-                        if not (LEG_PROB_MIN < prob < SGM_LADDER_LEG_PROB_MAX):
+                        if not (LEG_PROB_MIN < prob < LEG_PROB_MAX):
                             continue
-                        ladder_only_anchor = prob >= LEG_PROB_MAX
                         name = f"{player_name} {line}+ {stat}"
                         # "-" (under) side is optional, manual-entry only --
                         # not in the template, but recognised so typing one
@@ -957,18 +956,25 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                         under_name = f"{player_name} {line}- {stat}"
                         over_odds = odds_book.get(name)
                         under_odds = odds_book.get(under_name)
-                        if not ladder_only_anchor:
-                            predictions.append({"match_id": match_id, "market": f"player_{stat}",
-                                                "subject": player_name, "line": line, "prob": prob})
+                        predictions.append({"match_id": match_id, "market": f"player_{stat}",
+                                            "subject": player_name, "line": line, "prob": prob})
+                        priced = over_odds is not None or under_odds is not None
                         # A leg with NO real price is only kept if it's a
                         # realistic bookmaker market (STEP 1.2) -- a posted
                         # price always wins regardless of the menu, since
                         # it's bettable by definition. Still recorded above
                         # for grading (predictions.csv) even when filtered
                         # out of the live ladder here.
-                        if over_odds is None and under_odds is None and not is_bookable_model_only_leg(
+                        if not priced and not is_bookable_model_only_leg(
                                 stat, line, player_name, roles.get(player_name), team_top_by_stat[stat]):
                             continue
+                        qualifying.append({"line": line, "prob": prob, "mask": mask, "name": name,
+                                           "under_name": under_name, "over_odds": over_odds,
+                                           "under_odds": under_odds, "priced": priced})
+                    for q in select_ladder_lines(qualifying):
+                        line, prob, mask = q["line"], q["prob"], q["mask"]
+                        name, under_name = q["name"], q["under_name"]
+                        over_odds, under_odds = q["over_odds"], q["under_odds"]
                         # Pull the calibrated model prob toward the devigged
                         # market prob (model-upgrade audit Phase 4 STEP 2.1)
                         # -- price/classify the leg on the BLENDED prob, not
@@ -1000,9 +1006,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                 odds_legs.append(leg)
 
         sgms = search_match_sgms(match_legs, odds_book=odds_book,
-                                 corr_gain_haircut=corr_gain_haircut)
-        if multi_cal is not None:
-            sgms = apply_multi_calibration(sgms, multi_cal)
+                                 corr_gain_haircut=corr_gain_haircut, multi_calibrator=multi_cal)
         matches.append({
             "header": header, "projections": projections,
             "sgms": sgms, "priced_legs": priced_legs,

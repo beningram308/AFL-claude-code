@@ -1,0 +1,180 @@
+================================================================================
+FIX: PLACEABLE LEGS ONLY + REAL ~$2.10 MULTI FLOOR (read first, then execute)
+================================================================================
+Date: 2026-06-25 (v3 — supersedes FIX-LADDER-TARGET-ODDS.txt and the
+SGM_LADDER_LEG_PROB_MAX / near-lock-anchor idea entirely)
+From: Ben
+
+Work autonomously through the steps; only stop if genuinely blocked. Standing
+rules unchanged: pytest stays green; if a change regresses grade-multis
+out-of-sample, keep the safer default and report it. Do NOT modify any saved
+report older than r15 (leave r14 and earlier exactly as they are).
+
+--------------------------------------------------------------------------------
+WHAT BEN IS REACTING TO (two linked problems in reports/2026_r16_report.md)
+--------------------------------------------------------------------------------
+PROBLEM A — the ladder offers legs you cannot actually place.
+  e.g. "Will Ashcroft 15+ disposals" (91%), "Callum Mills 15+ disposals" (87%),
+  "Lachie Whitfield 15+ disposals" (95%). Books don't post a 15+ disposals line
+  on a genuine gun mid — it's a near-lock, not a market. These are phantom legs.
+
+PROBLEM B — the multi price drifts too short (~$1.50).
+  GWS rung shows Band $1.75 but Fair odds **$1.59** (63%) — BELOW the band.
+  Two causes stacking:
+    (1) SGM_LADDER_LEG_PROB_MAX=0.95 lets near-lock legs (the same phantoms from
+        Problem A) into the multi pool, so the joint product collapses toward 1.
+    (2) The "never land shorter than the band" rule in search_match_sgms
+        (_select_for_target) is enforced on the PRE-calibration joint. Then
+        apply_multi_calibration() inflates the joint (e.g. 57% -> 63%) and
+        recomputes fair_odds DOWN to $1.59 — after the guard has already passed.
+        So the displayed price can sit below the band even though selection
+        "landed at/above" it.
+
+ROOT INSIGHT (why the last fix was wrong): FIX-LADDER-TARGET-ODDS added near-lock
+legs ON PURPOSE so a real ~$1.75 3-leg multi could exist (0.78^3 = $2.11 floor
+otherwise). But those near-lock legs ARE the unplaceable phantoms. You can't have
+both. Ben's decision: drop the phantoms, accept the honest floor.
+
+--------------------------------------------------------------------------------
+WHAT BEN DECIDED (build exactly this)
+--------------------------------------------------------------------------------
+1. Legs must be REAL bettable markets. Use each player's single HIGHEST-% real
+   line per stat ("highest % hit"), never a near-lock the book doesn't post.
+2. The 3-leg multi FLOOR is ~$2.10 (the honest 0.78^3 floor), NOT $1.75. Bands
+   become $2.10 / $3.00 / $5.00.
+3. A rung's DISPLAYED odds must never read shorter than its band. The $1.50/$1.59
+   drift must be gone.
+
+================================================================================
+STEP 1 — Kill the near-lock pool cap (PROBLEM A + half of B)
+================================================================================
+1.1 config.py: gate the SGM ladder candidate pool on the SAME cap as everything
+    else. Either delete SGM_LADDER_LEG_PROB_MAX and use LEG_PROB_MAX (0.78), or
+    set SGM_LADDER_LEG_PROB_MAX = LEG_PROB_MAX. The pool gate becomes:
+        LEG_PROB_MIN < prob < LEG_PROB_MAX        (0.30 < prob < 0.78)
+1.2 cli.py round_report (~line 949): change the gate from
+        if not (LEG_PROB_MIN < prob < SGM_LADDER_LEG_PROB_MAX): continue
+    to the 0.78 cap above, and REMOVE the `ladder_only_anchor` branch entirely
+    (lines ~951, ~960 and its use). Every ladder leg is now also a normal
+    single-leg candidate again, so it goes into predictions.csv as before — no
+    special anchor handling.
+    EFFECT: a leg at 91% (Ashcroft 15+) now fails prob < 0.78 and never enters
+    the pool. The shortest possible 3-leg multi is 0.78^3 = $2.11 — Ben's ~$2.10
+    floor falls out naturally, no cosmetic clamp.
+    A leg with a REAL --odds price is still always allowed (a posted market is
+    bettable by definition) — keep that override.
+
+================================================================================
+STEP 2 — Drop the phantom 15+ disposals line; one best line per player (A)
+================================================================================
+2.1 config.py BOOKABLE_PROP_MENU: drop 15 from disposals. New menu:
+        "disposals": [20, 25, 30],   # 15+ is a near-lock, not a posted market
+        "goals":     [1, 2, 3],
+        "marks":     [4, 5, 6, 7],
+        "tackles":   [3, 4, 5, 6],
+    (15+ disposals is then ONLY ever a leg if Ben types a real price for it via
+     --odds — same override rule as everything else.)
+2.2 "Highest % hit per player" — in cli.py round_report leg construction, for each
+    (player, stat) keep only the SINGLE highest-probability line that passes the
+    menu + 0.78 cap, instead of adding every qualifying line as its own leg.
+    Concretely: while iterating PROP_LINES for a player+stat, collect the
+    qualifying (line, prob, leg) tuples, then append to match_legs only the one
+    with the highest prob (the player's best real line for that stat). A line
+    with a real book price is exempt from the "one per stat" cull — keep every
+    priced line, since each is a confirmed market.
+    Leave predictions.csv (grading) unchanged: it should still record every
+    (player, stat, line) it does today for calibration/grading — this cull is
+    for the LIVE LADDER POOL only.
+2.3 Keep the existing role filter for marks/tackles (BOOKABLE_MARKS_ROLES /
+    BOOKABLE_TACKLES_ROLES) and the BOOKABLE_TOP_N_BY_STAT top-N gate as-is.
+
+================================================================================
+STEP 3 — Retarget the bands to the real floor (PROBLEM B)
+================================================================================
+3.1 config.py:
+        MULTI_TARGET_ODDS = (2.10, 3.00, 5.00)   # was (1.75, 3.00, 5.00)
+    Update the surrounding comment: the bottom rung is now the honest ~$2.11
+    floor (0.78^3), not a near-lock-assisted $1.75.
+
+================================================================================
+STEP 4 — Make "never land short" hold on the DISPLAYED odds (PROBLEM B)
+================================================================================
+The guard must use each rung's FINAL joint (after corr_gain haircut AND the
+multi calibrator), not the pre-calibration joint. Do ONE of these (4A preferred):
+
+4A. (preferred) Apply the transforms to the candidate combos BEFORE selection.
+    In build/report.py search_match_sgms, accept the multi calibrator (pass it
+    through from round_report, or apply it inside) and, for every combo in the
+    pool, compute final_joint = calibrator(naive_product + haircut*corr_gain)
+    and final_fair_odds from it. Run _select_for_target's "reaches_target"
+    test (joint <= 1/target) on final_joint, and report final_joint /
+    final_fair_odds. Then apply_multi_calibration becomes a no-op on already-
+    calibrated rungs (or fold it in here and drop the later call in cli.py
+    ~line 1004-1005). Net: the number the guard checks == the number printed.
+
+4B. (fallback, if 4A is too invasive) Keep selection as-is but add a POST-
+    calibration repair pass in round_report after apply_multi_calibration: for
+    any rung whose final fair_odds < its target_odds, re-pick from the pool the
+    closest combo whose FINAL (calibrated) fair_odds >= target, respecting the
+    one-combo-per-rung de-dup. Only fall back to the closest-below combo if none
+    in the pool clears the band post-calibration.
+
+Either way, the acceptance test is: with the live default calibrator ON, NO
+rung's printed Fair odds is below its Band.
+
+================================================================================
+STEP 5 — Report rendering
+================================================================================
+5.1 build/report.py render_markdown: Band column now shows $2.10 / $3.00 / $5.00.
+    Keep Joint prob / Fair odds = the rung's real (calibrated) numbers, the
+    Book/Edge columns when --odds is supplied, the VALUE PICK tag (top rung,
+    real edge only), and the "(model-only — verify market exists)" tag for any
+    rung whose legs aren't all priced. No probability clamping.
+5.2 Header line for the ladder: update "~1.75 -> ~5.0" to "~2.10 -> ~5.0".
+
+================================================================================
+STEP 6 — Tests (add/adjust, keep all green)
+================================================================================
+6.1 Pool cap: a candidate leg with model prob > 0.78 and NO book price never
+    appears in any selected rung (assert no "<player> 15+ disposals" leg for a
+    >0.78 player unless priced). Adjust any existing test that asserted the old
+    0.95 near-lock behavior (test_sgm.py / test_real_multis.py) to the new
+    placeable-only rule.
+6.2 Never-short on displayed odds: build a pool, run the full round-report path
+    (haircut + calibrator), assert every selected rung's final fair_odds >= its
+    band whenever a qualifying combo exists; and that the bottom rung lands in
+    ~$2.10-2.40, never ~$1.50.
+6.3 One-best-line-per-(player,stat): a player with multiple qualifying unpriced
+    lines contributes exactly one leg (highest prob) to the ladder pool, but a
+    priced line is always kept.
+6.4 Single-leg classification + predictions.csv still use LEG_PROB_MAX (0.78)
+    and still record every line — unchanged by Steps 1-2.
+
+================================================================================
+STEP 7 — Regenerate and show Ben
+================================================================================
+7.1 python -m afl_bot.cli round-report --year 2026 --round 16   (default args)
+    Overwrite reports/2026_r16_report.md. (r15 may be regenerated too; do NOT
+    touch r14 or older.)
+7.2 Confirm in the new r16:
+    - No "15+ disposals" legs anywhere (none priced), and no near-lock phantom
+      legs — every prop leg is a realistic 20+/25+/30+ disp, 1+/2+ goals,
+      4+/5+/6+ marks (right roles), 3+/4+/5+ tackles.
+    - Each player shows at most one line per stat in the ladder legs.
+    - Every rung's Fair odds is AT OR ABOVE its Band — bottom rung ~$2.10-2.40,
+      NOT $1.50/$1.59; middle ~$3; top ~$5.
+    - corr_gain haircut still applied (joint = naive product at haircut 0.0).
+    - VALUE / stake only where real odds were entered.
+7.3 pytest -q green. Commit. Update README + memory: near-lock anchor idea
+    retired; ladder is placeable-only with an honest ~$2.10 floor; band-landing
+    now enforced on calibrated odds.
+
+--------------------------------------------------------------------------------
+ACCEPTANCE (how Ben judges it)
+--------------------------------------------------------------------------------
+Open reports/2026_r16_report.md:
+  - Every leg is something he can actually place on a book (no 15+ disposals
+    near-locks).
+  - The safe rung reads ~$2.10+, never ~$1.50, and no rung prints below its band.
+  - Middle/top rungs ~$3 / ~$5 as before, model-only + VALUE tags intact.
+================================================================================
