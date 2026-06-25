@@ -775,6 +775,55 @@ and **market-anchoring** (`market_anchored_prob`/`MULTI_MARKET_SHRINK` already p
 toward the book's own number) machinery, rather than something the joint-probability estimate itself
 needs to fully resolve before the ladder is usable.
 
+### Bettable-legs book menu (FIX-BETTABLE-LEGS-AND-PRICING)
+
+**Problem.** `round-report` was building a `LegCandidate` for every (player, stat,
+line) in `PROP_LINES` that cleared the `LEG_PROB_MIN`/`MAX` gate, with no check
+against what a bookmaker would actually post. With no `--odds` entered, the whole
+ladder was model-invented legs, including phantoms like "key defender 5+ marks" —
+Australian books rarely post a marks/tackles market on a key defender at all.
+
+**Investigated alongside this: was the `corr_gain_haircut` default (closed out
+above) actually reaching `round-report`?** A live r16 rung showed `Joint 36%` /
+`Corr gain +15.6pp`, which read like `naive_product (~20%) + the full corr_gain
+lift` — i.e. the haircut not applying. Tracing it end to end (`config.CORR_GAIN_HAIRCUT`
+→ `round_report`'s own default → `search_match_sgms`'s `corr_gain_haircut` param →
+the haircut block) and instrumenting the actual call confirmed `joint_prob` *does*
+equal `naive_product` with the default unhaircut (`corr_gain_haircut=0.0`) — the
+naive product for that combo is genuinely ~36% (three high-probability marks legs),
+not ~20%. `corr_gain` in the table is **always the pre-haircut, informational** value
+(documented in `search_match_sgms`'s own docstring) so it doesn't move when the
+haircut is applied — reading it as "what got added to the displayed joint" was the
+misdiagnosis. This was already locked in by
+`test_search_match_sgms_corr_gain_haircut_zero_lift_equals_naive_product` and
+`test_round_report_and_grade_multis_default_to_the_validated_corr_gain_haircut`
+before this fix; no code change was needed here, only the investigation.
+
+**Fix (the real bug): a "book menu" filter for MODEL-ONLY legs.** A leg with a
+*real* book price (`--odds`/live odds) is always kept — a posted market is bettable
+by definition. A leg with **no** price now only survives if it passes
+`is_bookable_model_only_leg` (`afl_bot/build/report.py`):
+- the line is on `config.BOOKABLE_PROP_MENU` (drops standalone 35+ disposals etc.),
+- the player is in the top `BOOKABLE_TOP_N_BY_STAT[stat]` projected players for that
+  stat on their team (`top_n_players_by_stat`) — books price the obvious names, and
+- for marks/tackles specifically, the player's inferred role (`classify_roles`) is
+  in `BOOKABLE_MARKS_ROLES`/`BOOKABLE_TACKLES_ROLES` — key defenders are excluded.
+
+Applied only to `round_report`'s own live leg construction; `afl_bot/backtest/multis.py`
+(the walk-forward SGM backtest) deliberately keeps building legs the old way so its
+validated calibration numbers stay comparable — the menu is a live-ladder UX/honesty
+fix, not a pricing-model change. The predictions sidecar (`reports/*_predictions.csv`,
+used for `grade-round`) still records every leg that clears `LEG_PROB_MIN`/`MAX`
+regardless of the menu, so calibration grading is unaffected.
+
+Rungs with no full book price on every leg (`"book_odds" not in combo`) are now
+tagged `(model-only — verify market exists)` in the ladder table so a phantom can
+never be mistaken for a confirmed, priced bet — `VALUE PICK`/edge were already gated
+to fully-priced combos (`build_sgm_candidates`/`search_match_sgms`,
+`test_build_sgm_candidates_no_edge_unless_every_leg_in_combo_is_priced`), and
+`round-report` itself never calls the staking module, so no stake was ever at risk
+of being sized off an unpriced leg.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

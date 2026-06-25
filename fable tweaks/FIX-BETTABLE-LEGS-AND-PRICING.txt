@@ -1,0 +1,156 @@
+================================================================================
+FIX: UNBETTABLE SGM LEGS + MULTI PRICES TOO SHORT (read first, then execute)
+================================================================================
+Date: 2026-06-25
+From: Ben (via review of reports/2026_r16_report.md)
+
+Work autonomously through the steps below; only stop if genuinely blocked.
+Keep the project's standing rules: tests must stay green, and if a change
+regresses grade-multis out-of-sample, keep the safer default and report it.
+
+--------------------------------------------------------------------------------
+WHAT'S WRONG (two separate problems, both confirmed in the r16 report)
+--------------------------------------------------------------------------------
+
+PROBLEM A — The ladder invents legs you can't actually bet.
+  Example from reports/2026_r16_report.md, Brisbane top rung:
+    "Darcy Wilmot 5+ marks + Ryan Lester 5+ marks + Harris Andrews 5+ marks"
+  Wilmot/Lester/Andrews are key defenders; Australian books rarely post a
+  marks market on them at all, let alone a 5+ line. These are phantom legs.
+
+  Root cause: cli.py round_report (~lines 921-954) builds a LegCandidate for
+  EVERY rostered player x EVERY line in config.PROP_LINES (disposals 15-35,
+  goals 1-3, marks 4-8, tackles 3-7) as long as the calibrated model prob
+  lands inside the LEG_PROB_MIN/MAX gate (0.30-0.78). There is NO check
+  against what a bookmaker actually posts. With no --odds source (the r16 run
+  had none), the whole ladder is model-invented legs, some unplaceable.
+
+PROBLEM B — The multi prices are too short; the corr_gain haircut is NOT
+  reaching the report.
+  Same Brisbane rung shows: Joint 36% / Fair $2.75 / Corr gain +15.6pp.
+  That is naive_product (~20.4%) + the FULL correlation lift. But
+  config.CORR_GAIN_HAIRCUT = 0.0 is the shipped live default (commit
+  47f2b71), which should price that rung at the naive product (~20% -> ~$4.90)
+  — i.e. a LOWER probability / LONGER odds. Every rung in the r16 file shows
+  the raw, un-haircut joint, so the haircut you validated is not taking effect
+  in the generated report. The r16 file was written 2026-06-25 05:07, AFTER
+  47f2b71, so this is not an old-code artifact — either it was run with an
+  explicit --corr-gain-haircut 1.0, or the default isn't wiring through.
+
+--------------------------------------------------------------------------------
+WHAT BEN WANTS (decisions already made — build exactly this)
+--------------------------------------------------------------------------------
+For bettable legs: do BOTH of the following —
+  (1) a realistic line/role "book menu" filter so the report still works with
+      NO odds entered, and
+  (2) require REAL book odds before any rung is tagged VALUE or sized for a
+      stake.
+
+--------------------------------------------------------------------------------
+STEP 1 — Realistic "book menu" filter for model-only prop legs  (PROBLEM A)
+--------------------------------------------------------------------------------
+Goal: stop manufacturing legs at (stat, line, player) combos that books don't
+realistically post, while keeping plausible ones (mid disposals, forward
+goals, genuine high-mark / high-tackle players).
+
+1.1 Add a config-driven menu in config.py, e.g.:
+    BOOKABLE_PROP_MENU = {
+        "disposals": [15, 20, 25, 30],   # drop 35+ as a standalone unless priced
+        "goals":     [1, 2, 3],
+        "marks":     [4, 5, 6, 7],
+        "tackles":   [3, 4, 5, 6],
+    }
+    # Only the top-N projected players for a stat on each team are eligible to
+    # become a MODEL-ONLY leg for that stat (books price the obvious names):
+    BOOKABLE_TOP_N_BY_STAT = {"disposals": 8, "goals": 6, "marks": 6, "tackles": 6}
+    # Restrict marks/tackles to roles books actually price them on (use the
+    # existing role classification — ruck/forward/mid/general). Key defenders
+    # should NOT get a model-only marks leg.
+    BOOKABLE_MARKS_ROLES   = {"forward", "mid", "ruck"}
+    BOOKABLE_TACKLES_ROLES = {"mid", "forward"}
+    (Tune the exact numbers to taste — the point is they are config, not buried
+     in code. Pick conservative starting values; Ben can widen later.)
+
+1.2 In cli.py round_report, when a leg has NO real book price (over_odds is
+    None), only create the LegCandidate if it passes BOTH:
+      - the line is in BOOKABLE_PROP_MENU[stat], AND
+      - the player is in the top-BOOKABLE_TOP_N_BY_STAT[stat] for that stat on
+        their team (rank by projected mean), AND
+      - for marks/tackles, the player's inferred role is in the allowed role
+        set.
+    If a leg DOES have a real book price (it's in odds_book), always keep it —
+    a posted market is bettable by definition, menu or not.
+
+1.3 Keep the existing LEG_PROB_MIN/MAX gate on top of the menu (unchanged).
+
+1.4 IMPORTANT — do not silently change the validated backtest. The multi
+    backtest (afl_bot/backtest/multis.py _build_match_legs) must keep building
+    legs the way it does today so grade-multis' validated numbers stay
+    comparable, UNLESS you deliberately apply the same menu there. If you do
+    apply the menu in the backtest too, re-run
+    `grade-multis --year 2024,2025 --n-sims 3000` and report whether log loss /
+    the high-bucket gap move. Default: apply the menu to the LIVE report leg
+    construction only; note this choice in the README.
+
+--------------------------------------------------------------------------------
+STEP 2 — VALUE / staking only on real prices  (PROBLEM A, part 2)
+--------------------------------------------------------------------------------
+2.1 Confirm and lock the existing gate: build_sgm_candidates only computes
+    book_odds/edge when every leg in the combo has a real price, and
+    search_match_sgms only tags value_pick when a qualifying edge exists. There
+    is already a test (test_build_sgm_candidates_no_edge_unless_every_leg_in_combo_is_priced)
+    — keep it and make sure it still passes after Step 1.
+2.2 Make sure NO stake is ever recommended for a multi/leg that lacks a real
+    book price on every leg (check the staking path in build/staking.py and
+    wherever round-report/run-round size bets). A model-only rung must show no
+    stake.
+2.3 In the round-report markdown, clearly mark model-only rungs (no book price
+    on all legs) with a short tag like "(model-only — verify market exists)" so
+    a phantom can never be mistaken for a confirmed, priced bet.
+
+--------------------------------------------------------------------------------
+STEP 3 — Fix the corr_gain haircut not reaching the report  (PROBLEM B)
+--------------------------------------------------------------------------------
+3.1 Reproduce: run `python -m afl_bot.cli round-report --year 2026 --round 16`
+    with default args (NO --corr-gain-haircut flag). Inspect the Brisbane top
+    rung. With CORR_GAIN_HAIRCUT=0.0 it should now price near the naive product
+    (~20% / ~$4.90), NOT 36% / $2.75. If it still shows 36%, the default is not
+    wiring through.
+3.2 Trace the path: config.CORR_GAIN_HAIRCUT (0.0) -> cli.round_report param
+    default (line ~690) -> search_match_sgms(..., corr_gain_haircut=...) (line
+    ~973-974) -> the haircut block in build/report.py search_match_sgms
+    (~lines 220-231, the `if corr_gain_haircut != 1.0:` branch). Find why the
+    0.0 isn't applied (e.g. an arg default overriding the config, the CLI
+    argparse default, or a caller passing 1.0). Fix it so an un-flagged
+    round-report uses 0.0.
+3.3 Add a regression test in the round_report path asserting that with
+    CORR_GAIN_HAIRCUT=0.0 a known selected rung's reported joint_prob equals its
+    naive_product (i.e. the haircut is actually applied end-to-end), so this
+    can't silently regress again.
+
+--------------------------------------------------------------------------------
+STEP 4 — Regenerate and show Ben
+--------------------------------------------------------------------------------
+4.1 Re-run round-report for 2026 round 16 and overwrite reports/2026_r16_report.md.
+4.2 Confirm in the new file:
+    - No model-only defender-marks phantom legs (e.g. no "Darcy Wilmot 5+
+      marks" unless it's actually priced via --odds).
+    - Prop legs in the ladder are either realistic book markets (menu) or
+      backed by a real entered price.
+    - Multi joint probabilities reflect the 0.0 haircut (priced near the naive
+      product) — the headline odds should be LONGER / lower-prob than the old
+      file.
+    - No rung tagged VALUE or given a stake without a real book price on every
+      leg.
+4.3 `pytest -q` green, commit, and update README + memory with what changed.
+
+--------------------------------------------------------------------------------
+ACCEPTANCE CHECK (how Ben will judge it)
+--------------------------------------------------------------------------------
+Open the regenerated reports/2026_r16_report.md:
+  - Every prop leg in every ladder is something he could actually place
+    (realistic market or a leg he priced), and obvious phantoms are gone.
+  - The multi odds are longer than before because the corr_gain=0.0 haircut is
+    finally applied.
+  - VALUE PICK / stakes appear only where real odds were entered.
+================================================================================

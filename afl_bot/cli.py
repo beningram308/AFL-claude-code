@@ -42,9 +42,11 @@ from afl_bot.build.multi import (
 from afl_bot.build.report import (
     apply_multi_calibration,
     build_odds_template,
+    is_bookable_model_only_leg,
     projection_rows,
     render_markdown,
     search_match_sgms,
+    top_n_players_by_stat,
 )
 from afl_bot.build.staking import (
     bankroll_report,
@@ -54,6 +56,7 @@ from afl_bot.build.staking import (
 )
 from afl_bot.config import (
     ANCHOR_MIN_PROB,
+    BOOKABLE_TOP_N_BY_STAT,
     CACHE_DIR,
     CORR_GAIN_HAIRCUT,
     DEFAULT_BANKROLL,
@@ -917,6 +920,13 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                 rate_priors, team_stat_profiles, league_totals, volume_stats, is_wet, roofed,
                 n_sims, rng, lineup_tog=lineup_tog)
             projections.append((team, projection_rows(samples, PROP_LINES, prop_calibrators)))
+            # "Book menu" filter (FIX-BETTABLE-LEGS-AND-PRICING STEP 1): which
+            # players are even plausible bookmaker names for each stat on this
+            # team, used below to gate MODEL-ONLY legs (no real price entered).
+            team_top_by_stat = {
+                stat: top_n_players_by_stat(samples, stat, BOOKABLE_TOP_N_BY_STAT.get(stat, 0))
+                for stat in PROP_LINES
+            }
 
             for player_name, stats in samples.items():
                 confirmed = (team not in lineup) or (player_name in lineup[team])
@@ -938,6 +948,17 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                         under_name = f"{player_name} {line}- {stat}"
                         over_odds = odds_book.get(name)
                         under_odds = odds_book.get(under_name)
+                        predictions.append({"match_id": match_id, "market": f"player_{stat}",
+                                            "subject": player_name, "line": line, "prob": prob})
+                        # A leg with NO real price is only kept if it's a
+                        # realistic bookmaker market (STEP 1.2) -- a posted
+                        # price always wins regardless of the menu, since
+                        # it's bettable by definition. Still recorded above
+                        # for grading (predictions.csv) even when filtered
+                        # out of the live ladder here.
+                        if over_odds is None and under_odds is None and not is_bookable_model_only_leg(
+                                stat, line, player_name, roles.get(player_name), team_top_by_stat[stat]):
+                            continue
                         # Pull the calibrated model prob toward the devigged
                         # market prob (model-upgrade audit Phase 4 STEP 2.1)
                         # -- price/classify the leg on the BLENDED prob, not
@@ -952,8 +973,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                                            over_odds if over_odds else fair_odds(blended_prob),
                                            confirmed=confirmed, mask=mask)
                         match_legs.append(leg)
-                        predictions.append({"match_id": match_id, "market": f"player_{stat}",
-                                            "subject": player_name, "line": line, "prob": prob})
                         if name in odds_book:
                             odds_legs.append(leg)
                         priceable_names.append(name)

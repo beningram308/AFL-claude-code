@@ -16,7 +16,14 @@ from itertools import combinations
 
 from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.build.multi import LegCandidate, _no_conflicts, combined_odds, joint_prob_from_masks
-from afl_bot.config import MULTI_MARKET_SHRINK, MULTI_TARGET_ODDS
+from afl_bot.config import (
+    BOOKABLE_MARKS_ROLES,
+    BOOKABLE_PROP_MENU,
+    BOOKABLE_TACKLES_ROLES,
+    BOOKABLE_TOP_N_BY_STAT,
+    MULTI_MARKET_SHRINK,
+    MULTI_TARGET_ODDS,
+)
 from afl_bot.pricing.edge import fair_odds, market_anchored_prob, mc_standard_error
 
 
@@ -42,6 +49,37 @@ def projection_rows(player_samples: dict[str, dict], lines: dict[str, list],
         rows.append(row)
     rows.sort(key=lambda r: r.get("disposals_mean", 0.0), reverse=True)
     return rows
+
+
+def top_n_players_by_stat(player_samples: dict[str, dict], stat: str, n: int) -> set[str]:
+    """The ``n`` players (of those carrying ``stat``) with the highest projected
+    mean for it -- "books price the obvious names" (FIX-BETTABLE-LEGS), used to
+    gate which players can get a MODEL-ONLY prop leg for that stat."""
+    ranked = sorted(
+        (p for p, s in player_samples.items() if s.get(stat) is not None),
+        key=lambda p: float(player_samples[p][stat].mean()), reverse=True)
+    return set(ranked[:n])
+
+
+def is_bookable_model_only_leg(stat: str, line: int, player: str, role: str | None,
+                               team_top_n: set[str]) -> bool:
+    """Whether a MODEL-ONLY prop leg (no real book price entered) is realistic
+    enough to post in the live ladder (FIX-BETTABLE-LEGS-AND-PRICING STEP 1):
+    the line must be on the ``BOOKABLE_PROP_MENU``, the player must be a
+    top-projected name for that stat on their team, and -- for marks/tackles,
+    where books are picky about which roles get a market -- the player's
+    inferred role must be one books actually post. A leg WITH a real book
+    price always bypasses this (a posted market is bettable by definition);
+    this only gates legs the model invented with nothing behind them."""
+    if line not in BOOKABLE_PROP_MENU.get(stat, ()):
+        return False
+    if player not in team_top_n:
+        return False
+    if stat == "marks" and role not in BOOKABLE_MARKS_ROLES:
+        return False
+    if stat == "tackles" and role not in BOOKABLE_TACKLES_ROLES:
+        return False
+    return True
 
 
 # Kept for backward compatibility — no longer used in search_match_sgms.
@@ -369,7 +407,12 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                         line += f" {s['book_odds']:.2f} | {s['edge'] * 100:+.1f}% |"
                     else:
                         line += " - | - |"
-                line += " **VALUE PICK** |" if s.get("value_pick") else "  |"
+                if s.get("value_pick"):
+                    line += " **VALUE PICK** |"
+                elif "book_odds" not in s:
+                    line += " _(model-only — verify market exists)_ |"
+                else:
+                    line += "  |"
                 out.append(line)
         out.append("")
 

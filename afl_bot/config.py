@@ -270,6 +270,26 @@ PROP_LINES = {
     "tackles": [3, 4, 5, 6, 7],
 }
 
+# "Book menu" filter for MODEL-ONLY prop legs (no real price entered) -- FIX-
+# BETTABLE-LEGS-AND-PRICING: round-report was building a LegCandidate for
+# every (player, stat, line) in PROP_LINES that cleared the LEG_PROB_MIN/MAX
+# gate, with no check against what a bookmaker actually posts. Key defenders
+# rarely get a marks/tackles market at all, and 35+ disposals is too long a
+# line to stand alone unpriced. This menu restricts model-only legs (a real
+# --odds price always overrides it, since a posted market is bettable by
+# definition) to realistic (stat, line) combos, the top-N projected players
+# per stat per team, and -- for marks/tackles -- roles books actually price
+# those markets on. Conservative starting values; widen later if too tight.
+BOOKABLE_PROP_MENU = {
+    "disposals": [15, 20, 25, 30],   # 35+ dropped as a standalone unless priced
+    "goals": [1, 2, 3],
+    "marks": [4, 5, 6, 7],
+    "tackles": [3, 4, 5, 6],
+}
+BOOKABLE_TOP_N_BY_STAT = {"disposals": 8, "goals": 6, "marks": 6, "tackles": 6}
+BOOKABLE_MARKS_ROLES = {"forward", "midfielder", "ruck"}
+BOOKABLE_TACKLES_ROLES = {"midfielder", "forward"}
+
 # ----------------------------------------------------------------------------- #
 # Simulation
 # ----------------------------------------------------------------------------- #

@@ -7,9 +7,11 @@ from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import (
     build_odds_template,
     build_sgm_candidates,
+    is_bookable_model_only_leg,
     projection_rows,
     render_markdown,
     search_match_sgms,
+    top_n_players_by_stat,
 )
 from afl_bot.config import MULTI_TARGET_ODDS
 
@@ -263,6 +265,55 @@ def test_render_markdown_labels_value_pick_and_odds_note():
     md = render_markdown(2026, 14, matches, has_odds=True, odds_note="_Live odds: 4 H2H legs._")
     assert "VALUE PICK" in md
     assert "Live odds: 4 H2H legs" in md
+
+
+def test_top_n_players_by_stat_ranks_by_projected_mean():
+    samples = {
+        "Star": {"disposals": np.full(10, 30.0)},
+        "Role": {"disposals": np.full(10, 15.0)},
+        "Bench": {"disposals": np.full(10, 8.0)},
+        "Ruck": {"marks": np.full(10, 5.0)},   # no disposals array -- ignored for that stat
+    }
+    assert top_n_players_by_stat(samples, "disposals", 2) == {"Star", "Role"}
+    assert top_n_players_by_stat(samples, "disposals", 1) == {"Star"}
+    assert top_n_players_by_stat(samples, "marks", 5) == {"Ruck"}
+
+
+def test_is_bookable_model_only_leg_requires_menu_line():
+    top_n = {"Star"}
+    assert is_bookable_model_only_leg("disposals", 20, "Star", "midfielder", top_n)
+    assert not is_bookable_model_only_leg("disposals", 35, "Star", "midfielder", top_n)  # off-menu
+
+
+def test_is_bookable_model_only_leg_requires_top_n_rank():
+    assert not is_bookable_model_only_leg("disposals", 20, "Bench", "midfielder", {"Star"})
+
+
+def test_is_bookable_model_only_leg_gates_marks_and_tackles_by_role():
+    top_n = {"Key Defender"}
+    # key defenders rarely get a marks/tackles market posted -- "general" role excluded
+    assert not is_bookable_model_only_leg("marks", 5, "Key Defender", "general", top_n)
+    assert not is_bookable_model_only_leg("tackles", 4, "Key Defender", "general", top_n)
+    assert is_bookable_model_only_leg("marks", 5, "Key Defender", "ruck", top_n)
+    assert is_bookable_model_only_leg("tackles", 4, "Key Defender", "forward", top_n)
+    # disposals/goals aren't role-gated
+    assert is_bookable_model_only_leg("disposals", 20, "Key Defender", "general", top_n)
+    assert is_bookable_model_only_leg("goals", 1, "Key Defender", "general", top_n)
+
+
+def test_render_markdown_tags_model_only_rung_without_book_price():
+    sgms = [
+        {"legs": ["A 15+", "B 15+", "C 15+"], "joint_prob": 0.30, "naive_product": 0.28,
+         "corr_gain": 0.02, "fair_odds": 3.33, "odds": 3.33, "value_pick": False},
+    ]
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": sgms,
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=False)
+    assert "model-only — verify market exists" in md
 
 
 def test_build_odds_template_every_name_maps_to_null_plus_rules_stub():
