@@ -1,0 +1,156 @@
+================================================================================
+DO THIS: (1) ONE LEG PER PLAYER + MORE MULTIS, THEN (2) MULTIS DASHBOARD + BET
+TRACKER / P&L   — single combined plan, run top to bottom
+================================================================================
+Date: 2026-06-26
+From: Ben
+(Supersedes the separate FIX-ONE-LEG-PER-PLAYER-AND-MORE-MULTIS.txt and
+BUILD-MULTIS-DASHBOARD-AND-TRACKER.txt — this file is both, in order.)
+
+Work autonomously top to bottom. Do STAGE 1 first (it changes the multis), then
+STAGE 2 (the dashboard reads the result of STAGE 1). Do NOT touch the sim/
+modelling, the odds scrape, or projections — both stages are assembly +
+presentation layers on top. Keep pytest green; ONE commit at the very end after
+everything passes. Runs on Ben's AU machine; keep Claude Code OFF the 1M-context
+mode (standard context) so it doesn't hit the usage-credit wall.
+
+################################################################################
+# STAGE 1 — ONE LEG PER PLAYER IN A MULTI + MORE MULTIS PER GAME
+################################################################################
+Applies to BOTH ladders (model + Sportsbet) — they share the combo builder.
+CONTEXT: r16 produced combos with the same player twice ("Karl Amon 20+ disp +
+Karl Amon 5+ marks") and only 3 rungs per game. Ben wants a different player per
+leg, and more multi options per game.
+
+1A. One leg per player (and per team) in any single multi.
+    In afl_bot/build/report.py search_match_sgms, where candidate combos are
+    formed (itertools.combinations over the leg pool), REJECT any combo where two
+    legs share the same `subject`. Each LegCandidate carries `subject` (player
+    name for props, team name for h2h/totals). Keep a combo only if:
+        len({leg.subject for leg in combo}) == len(combo)
+    Do this in the SHARED combo generation, BEFORE rung selection, so each band
+    still gets the best DISTINCT-player combo (don't just drop the rung). Keep
+    the "every match gets a full ladder" guarantee.
+
+1B. More multis per game — widen the ladder. In config.py:
+        MULTI_TARGET_ODDS = (2.10, 2.75, 3.50, 5.00, 8.00, 15.00)   # was 3 rungs
+    Both ladders produce one rung per band (land at-or-longer than each target,
+    never short; top band = VALUE PICK by best positive edge). Keep one-combo-
+    per-rung de-dup. If a band can't be filled with distinct-player legs, fill
+    what you can and note the skipped band rather than repeating a combo. These
+    targets are config — easy to widen/narrow later.
+
+1C. Tests for STAGE 1:
+    - No selected rung (either ladder) contains two legs with the same subject,
+      across a pool with multiple lines for the same player.
+    - A deep pool yields up to 6 distinct rungs, each landing at/above its band.
+    - Update any test that hard-coded 3 rungs.
+
+################################################################################
+# STAGE 2 — MULTIS DASHBOARD + BET TRACKER / P&L  (local "command center")
+################################################################################
+A local browser dashboard (same spirit as the trade-bot command center) where
+Ben SEES each round's multis, TICKS the ones he placed (stake + odds he got), and
+the bot AUTO-SETTLES after the round and tracks running P&L / ROI / strike rate.
+Local app launched from the CLI, data persisted to a file, nothing in the cloud.
+
+2A. Emit machine-readable multis JSON.
+    When round-report runs, ALSO write reports/{year}_r{round}_multis.json beside
+    the .md — one record per rung, BOTH ladders, with a STABLE id. Schema:
+      {
+        "id": "2026-r16-HAW-GWS-model-2.10",   # year-round-game-ladder-band
+        "year": 2026, "round": 16,
+        "game": "Hawthorn vs Greater Western Sydney",
+        "ladder": "model" | "sportsbet",
+        "band": 2.10,
+        "legs": [ {"player":"...","market":"disposals","line":20,
+                   "name":"Will Day 20+ disposals","book_odds":1.42}, ... ],
+        "model_joint": 0.48, "model_fair": 2.10,
+        "book_combo": 1.41,        # product of legs' real Sportsbet prices (null if unpriced)
+        "edge": -0.245,            # model vs book (null if unpriced)
+        "value_pick": false
+      }
+    Reuse the exact numbers already computed for the .md (refactor render so both
+    the .md and the JSON consume ONE in-memory structure — they must never
+    disagree).
+
+2B. Bets ledger — reports/bets_ledger.json (survives restarts, git-trackable):
+      {
+        "bet_id": "<uuid>",
+        "multi_id": "2026-r16-HAW-GWS-sportsbet-3.00",   # links to 2A record
+        "year": 2026, "round": 16, "game": "...", "ladder": "sportsbet",
+        "legs": [ ...snapshot of the legs AT placement time... ],
+        "stake": 25.0,
+        "taken_odds": 3.10,        # odds Ben ACTUALLY got (he types it; may differ from book_combo)
+        "placed_at": "2026-06-26T13:00:00+10:00",   # Australia/Melbourne
+        "status": "pending"|"won"|"lost"|"void",
+        "settled_at": null, "payout": null, "leg_results": null
+      }
+    Snapshot the legs at placement so later report regenerations can't mutate a
+    recorded bet. All datetimes Australia/Melbourne.
+
+2C. Auto-settlement — reuse the grading the bot ALREADY has (cli `grade-round`,
+    the player-stat actuals, reports/{year}_r{round}_predictions.csv). For each
+    PENDING bet whose round is complete:
+      - Each leg: look up the player's ACTUAL stat for that game and test the line
+        (disposals >= 20, etc.); team/H2H/totals legs settle off the result.
+      - Won only if EVERY leg hit; else lost. Void a leg only if the player didn't
+        play / market voids -> drop that leg and re-settle on the rest (document
+        this; standard book rule).
+      - Set status, settled_at, payout (stake*taken_odds on win, 0 on loss,
+        stake on full void), leg_results.
+    Expose `python -m afl_bot.cli settle-bets [--year --round]` AND run it
+    automatically when the dashboard loads / on a "Settle now" action. Do NOT
+    build a second stats source — reuse the existing actuals path.
+
+2D. The dashboard — small local Flask (or stdlib http.server) app in
+    afl_bot/dashboard/, launched by `python -m afl_bot.cli dashboard` ->
+    http://127.0.0.1:8765 . Single-page DARK "command center" styling to match
+    the trade bot. Reads/writes the JSON files above (no external DB). Panels:
+      1) ROUND VIEW — round dropdown (defaults to latest multis.json). Each GAME
+         is a card; inside, both ladders (Model / Sportsbet) as tables: legs,
+         band, model %, model fair, book combo, edge, VALUE PICK highlighted.
+         Sort/filter by edge, by price (band), value-picks-only toggle.
+      2) PLACE A BET — "I placed this" on any rung opens a form: stake +
+         taken_odds (prefilled with book_combo, editable) -> appends to the ledger
+         as pending, with confirmation.
+      3) TRACKER / P&L (headline) — open (pending) bets, and settled bets grouped
+         by round. Per-bet: legs, stake, taken odds, status, payout, profit
+         (payout-stake). Season summary: total staked, total returned, NET
+         PROFIT, ROI %, strike rate (won/total settled), and a cumulative-profit
+         line (Chart.js from CDN is fine). A "Settle now" button runs 2C and
+         refreshes.
+      4) Optional REFRESH button: shells `round-report --sportsbet` for the
+         current round and reloads (nice-to-have; skip if fiddly).
+    Persist to reports/bets_ledger.json on every change (server-side). Whole UI
+    in ONE html/template + the small server; no build step. All times AEST/AEDT.
+
+2E. Tests for STAGE 2:
+    - multis.json matches the .md numbers; every rung has a stable unique id.
+    - placing a bet appends a pending record with a leg snapshot.
+    - settlement: all legs hit -> won + correct payout; one miss -> lost; a non-
+      playing player -> void-leg handling as documented (mock actuals).
+    - P&L summary: net profit / ROI / strike rate correct over a fixture ledger.
+    - No live server required in the suite — test the data/settlement layer
+      directly (optionally the Flask routes via test client).
+
+################################################################################
+# FINISH (once BOTH stages pass)
+################################################################################
+- Regenerate reports/2026_r16_report.md (+ the new multis.json) on Ben's machine:
+      python -m afl_bot.cli round-report --year 2026 --round 16 --sportsbet
+  Confirm: no player appears twice in any multi; ~6 rungs per game per ladder;
+  multis.json written.
+- Launch once to eyeball it: python -m afl_bot.cli dashboard
+- pytest -q GREEN. ONE commit covering both stages. Update README (distinct-
+  subject rule, 6-band ladder, how to launch the dashboard, how settle works,
+  where the ledger lives) + memory. Push when Ben confirms.
+
+ACCEPTANCE:
+  - Every multi in r16 uses a different player per leg; each game shows ~6 rungs
+    spanning safe -> longshot on both ladders.
+  - `python -m afl_bot.cli dashboard` shows those multis as cards; Ben ticks the
+    ones he placed with stake + odds; after the round each shows won/lost with
+    running season profit, ROI and strike rate — persisted, in AEST, styled like
+    the trade-bot command center.
+================================================================================
