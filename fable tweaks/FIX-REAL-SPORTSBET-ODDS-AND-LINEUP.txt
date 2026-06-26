@@ -1,0 +1,204 @@
+================================================================================
+FIX: REAL SPORTSBET ODDS (NO PAID API) + FINAL-22 LINEUP + MODEL-vs-MARKET LADDER
+================================================================================
+Date: 2026-06-26
+From: Ben (via Cowork review of reports/2026_r16_report.md)
+
+Work autonomously; only stop if genuinely blocked. Standing rules unchanged:
+pytest stays green; if a change regresses grade-multis out-of-sample, keep the
+safer default and report it. Do NOT modify any saved report older than r15.
+
+NOTE ON ENV: the Sportsbet scraper in PART A only works from an AUSTRALIAN IP
+(Sportsbet geo-blocks everyone else — it returns non-JSON / a block page). It
+must run on Ben's local Windows machine, NOT in CI/cloud (CI will be blocked).
+Gate the scrape behind a flag and fall back cleanly when it can't reach the API.
+This is for Ben's personal use; keep request volume low (cache, ~1 req/market-
+grouping) and never hammer the site.
+
+--------------------------------------------------------------------------------
+WHY (three findings from the r16 review)
+--------------------------------------------------------------------------------
+1. The report ran 100% MODEL-ONLY (no ODDS_API_KEY, no --odds file). Every
+   "Fair odds" is the model's own number, so it doesn't match the book: the
+   model priced Hawthorn/GWS bottom rung $2.38, Sportsbet has the same legs at
+   $1.53. The $1.53 is real; the $2.38 is the model (legs capped 0.78, priced as
+   an independent product). The bot is only useful once it prices against REAL
+   book odds and reports EDGE = model vs market.
+2. The $2.10 "floor" is a model construct; the market prices these near-lock
+   combos ~$1.50. Ben wants to KEEP the model-only $2.10 ladder for reference,
+   but ALSO show the real Sportsbet ladder next to it (model-vs-market).
+3. Players who aren't actually playing (e.g. Jesse Hogan, GWS) are in multis.
+   Root cause: the auto-lineup parses Footywire's EXTENDED SQUAD — every team in
+   data_cache/lineup_2026_r16.json has 26-30 names; a real sheet is 22 (+sub).
+   Emergencies / squad cuts are being treated as confirmed.
+
+================================================================================
+PART A — REAL SPORTSBET ODDS WITHOUT A PAID API  (scrape the site's own JSON API)
+================================================================================
+Sportsbet's website is driven by an undocumented public JSON API (no key, no
+login). Confirmed working endpoints (decimal odds), reference implementation:
+github.com/declanwalpole/sportsbook-odds-scraper (sportsbook_implementations/
+sportsbet.py). Reproduce this logic in-repo; don't add the package as a dep.
+
+A1. New module afl_bot/data/sportsbet_odds.py exposing:
+        def fetch_sportsbet_odds(event_urls_or_ids: list[str]) -> dict[str, float]:
+            """Return {leg_name: decimal_odds} in the SAME key format the report
+            already uses, so it drops straight into odds_book (same contract as
+            data/live_odds.py fetch_live_odds)."""
+
+A2. Endpoints (GET, headers: Accept: application/json + a desktop User-Agent):
+    event_id = the 7-digit number at the end of a Sportsbet match URL, e.g.
+      https://www.sportsbet.com.au/betting/australian-rules/afl/<match-slug>-NNNNNNN
+    (a) Market groupings for an event (the "card"):
+        https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Events/{event_id}/SportCard?displayWinnersPriceMkt=true&includeLiveMarketGroupings=true&includeCollection=true
+        -> json["marketGrouping"] = [{ "id":..., "name":... }, ...]
+    (b) Markets within a grouping (the actual prices):
+        https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Events/{event_id}/MarketGroupings/{market_group_id}/Markets
+        -> [ { "name": market_name, "id":..., "selections": [
+                 { "id":..., "name": selection_name,
+                   "price": {"winPrice": <decimal_odds>},
+                   "displayHandicap": <line or null> }, ... ] }, ... ]
+    If a response's Content-Type isn't application/json, you're being geo-blocked
+    (not in AU) or rate-limited — log it and fall back (do NOT retry-storm).
+
+A3. Getting the event_ids for the round — AUTO-DISCOVER, no pasting (DEFAULT).
+    Ben should NOT have to paste URLs. The bot already knows the round's fixtures
+    (home/away teams from the Squiggle/fixture data it builds the report from);
+    use that to find the Sportsbet events automatically:
+      1. Fetch Sportsbet's Australian-Rules / AFL competition listing from the
+         same apigw the per-event endpoints live on. Determine the exact route
+         LOCALLY (you're on Ben's AU machine): open
+         sportsbet.com.au/betting/australian-rules/afl, watch the Network tab for
+         the apigw XHR it fires, and use that "competition events" / SportCard
+         endpoint. It returns the round's events, each with an event id + the two
+         team names. (Likely shape:
+         .../apigw/sportsbook-sports/Sportsbook/Sports/Competitions/{afl_comp_id}/Events
+         — confirm the live path rather than trusting this string.)
+      2. Match each Sportsbet event to a round fixture by NORMALISED team name
+         (afl_bot.data.teams.normalize_team_name on both sides). Keep the event
+         id per matched fixture; log any fixture you couldn't match.
+      3. Feed those event ids straight into the SportCard/Markets calls (A2).
+    So a normal run is just:  round-report --year 2026 --round 16 --sportsbet
+    with NOTHING to paste.
+    - FALLBACK ONLY (optional, absent is fine): if auto-discovery can't match a
+      fixture (endpoint changed, or match not posted yet), read override URLs
+      from reports/{year}_r{round}_sportsbet_urls.json (["<url>", ...]) and take
+      the trailing 7-digit id. Used only to patch a gap, not the normal path.
+
+A4. Map Sportsbet markets/selections -> the bot's leg keys (cli.py builds them as
+    f"{player_name} {line}+ {stat}", e.g. "Will Ashcroft 20+ disposals";
+    "<Team> to win"; "Total points 170.5+"). Handle these AFL markets:
+      * Head-to-head / Match Result      -> "<normalised team> to win"
+      * Total Points (Over/Under)        -> "Total points <line>+"  (Over side)
+      * Player Disposals (alt lines / "N+ Disposals" / Over N.5)
+                                         -> "<player> <int>+ disposals"
+      * Anytime Goalscorer / To Kick N+ Goals
+                                         -> "<player> <N>+ goals"
+      * Player Marks                     -> "<player> <N>+ marks"
+      * Player Tackles                   -> "<player> <N>+ tackles"
+    Line handling: a milestone market ("20+ Disposals") -> N=20. An Over/Under
+    market with displayHandicap 19.5 -> the OVER selection = "20+" (ceil to the
+    next integer, matching how the bot names lines). Take the posted winPrice.
+    Normalise team names via afl_bot.data.teams.normalize_team_name and player
+    names through the SAME identity/normalisation path cli.py uses, BEFORE
+    returning, or the keys won't join and edges won't compute. Log how many
+    selections matched a bot leg vs were dropped (low hit-rate must be visible).
+
+A5. Caching + safety: cache each event's raw JSON ~2 min (reuse the data_cache
+    pattern). One request per market grouping is fine; don't fan out further.
+    Any network/parse/geo-block error -> return {} for that event and continue.
+
+A6. Wiring (cli.py round_report): merge real odds into odds_book the same way
+    live odds were meant to (manual --odds file still overrides, for hand-fixes):
+        sb = fetch_sportsbet_odds(urls) if use_sportsbet else {}
+        manual = json.loads(Path(odds_path).read_text()) if odds_path else {}
+        odds_book = {**sb, **manual}
+    Add a CLI flag (next to --odds / --live-odds):
+        --sportsbet           # auto-discover the round's AFL events + scrape (AU IP only)
+        --sportsbet-urls PATH # OPTIONAL override file; only used to patch a gap
+    Thread use_sportsbet through round_report and main(). Report note must state
+    the ACTUAL prop source this run: "Player-prop odds: live from Sportsbet
+    (scraped)." vs "...: Sportsbet scrape unavailable (not in AU / blocked) —
+    fell back to --odds file / model-only." A rung only gets Book/Edge + a VALUE
+    tag when every leg in it has a real Sportsbet (or --odds) price.
+
+================================================================================
+PART B — LINEUP: USE THE FINAL 22, NOT THE EXTENDED SQUAD  (kills Hogan)
+================================================================================
+B1. Manual outs override (the dependable fix — do this for sure).
+    Support an "outs" list that ALWAYS removes a named player from a team's
+    confirmed set, regardless of what Footywire says. Accept it either as a
+    top-level "_outs" key in the lineup file or a separate --outs PATH:
+        {"_outs": {"Greater Western Sydney": ["Jesse Hogan"], "Hawthorn": ["..."]}}
+    Apply it in cli.py after the lineup is resolved (manual > auto): for each
+    team, lineup[team] -= set(outs[team]). A player in _outs is treated as NOT
+    named — excluded from the leg pool and counted in the "excluded as not named"
+    note. Add load_outs() in data/lineups.py (normalise team + player names).
+B2. Trim the auto-lineup toward the real 22 (best-effort, don't over-fit HTML).
+    In data/lineups._parse_footywire_selections, the page (once final teams are
+    posted Thu/Fri) separates the named team from EMERGENCIES and the OUT list.
+    Parse those sections and EXCLUDE emergencies + outs from the confirmed set so
+    a team resolves to ~22-23, not 28-30. If the markup can't be reliably
+    distinguished this round, leave the parse as-is but log each team's named
+    count and WARN when a team has >24 confirmed (signals extended-squad data),
+    so it's visible that the sheet isn't final yet. Don't silently trust 30 names.
+B3. Natural cross-check (free, once PART A lands): Sportsbet only posts player
+    props for players actually named. So when a leg REQUIRES a real Sportsbet
+    price (priced rungs), an omitted player (Hogan) has no market and can't enter
+    a priced multi. The model-only ladder still needs B1/B2 — that's why both.
+
+================================================================================
+PART C — REPORT: KEEP MODEL-ONLY $2.10 LADDER **AND** ADD A REAL-ODDS LADDER
+================================================================================
+Ben chose "keep the model-only $2.10 floor too" — so show BOTH per match:
+C1. Model ladder (unchanged): the existing $2.10 / $3 / $5 model-only ladder
+    (build/report.py search_match_sgms + render_markdown) stays exactly as is,
+    clearly headed "Model ladder (model fair odds, no book)".
+C2. Market ladder (new): when odds_book has real Sportsbet prices, build a second
+    ladder from the SAME leg pool but selected/priced on BOOK odds, headed
+    "Sportsbet ladder (real prices)". For each rung show:
+        | Legs | Book odds (combo) | Model joint % | Model fair | Edge |
+      - Book odds (combo) = product of the legs' real Sportsbet winPrices (this
+        is the naive combo; note SGM specials may differ — see C3).
+      - Edge = model_joint_prob * book_combo_odds - 1  (your existing edge math,
+        market-anchored as today). VALUE PICK = best positive edge, real prices
+        only. This is where genuine value shows up (model disagrees with book).
+C3. Honesty note in the report: "Sportsbet same-game multi specials are priced
+    with the book's own correlation model and will differ from the leg-product
+    shown here; use the per-leg book prices as the source of truth." (We are NOT
+    scraping Sportsbet's pre-built SGM combo price — only the individual legs.)
+C4. If no real odds this run: print the model ladder only, plus the existing
+    "(model-only — verify market exists)" tags. No VALUE/edge without book odds.
+
+================================================================================
+PART D — TESTS, VALIDATE, SHIP
+================================================================================
+D1. Tests (keep all green; mock HTTP — no live calls in the suite):
+    - sportsbet_odds: given a saved sample SportCard + Markets JSON fixture,
+      fetch_sportsbet_odds returns correctly-keyed legs ("<player> 20+ disposals",
+      "<team> to win", "Total points N+") with the right winPrice; unmatched
+      selections are dropped and counted; a non-JSON/blocked response yields {}.
+    - lineup outs: a player in _outs is removed from confirmed and treated as not
+      named; >24-named-team triggers the WARN.
+    - report: with a book-priced pool, the market ladder computes Edge and tags
+      VALUE only when every leg is priced; model ladder still renders unchanged.
+D2. Regenerate r16 FROM BEN'S MACHINE with the scrape on (auto-discovers the
+    games — nothing to paste):
+        python -m afl_bot.cli round-report --year 2026 --round 16 --sportsbet
+    Confirm: Hogan (and other non-22) gone; market ladder shows real Sportsbet
+    prices (the safe combo should read ~$1.5 if that's the real price, NOT a
+    model $2.38); model ladder still shows the $2.10 reference; VALUE picks only
+    where edge is real. (If run off-AU, scrape falls back and the note says so.)
+D3. pytest -q green. Commit. Update README + memory: real Sportsbet odds via the
+    site's JSON API (AU-only, local), manual outs override + final-22 trim,
+    dual model/market ladder. Push when Ben confirms.
+
+--------------------------------------------------------------------------------
+ACCEPTANCE (how Ben judges it)
+--------------------------------------------------------------------------------
+  - Prices in the market ladder match what he sees on Sportsbet (the $1.53 case),
+    because they're scraped from Sportsbet — not invented by the model.
+  - Players who aren't named in the final 22 (Hogan) never appear.
+  - He still has the model-only $2.10 ladder beside the real one, and the report
+    flags where the model genuinely disagrees with the market (the real value).
+================================================================================

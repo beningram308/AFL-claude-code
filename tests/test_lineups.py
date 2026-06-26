@@ -8,9 +8,11 @@ from afl_bot.cli import _normalize_name, _select_players
 from afl_bot.data.lineups import (
     _parse_footywire_selections,
     _slug_to_name,
+    apply_outs,
     fetch_lineup,
     load_lineup,
     load_lineup_tog,
+    load_outs,
 )
 
 
@@ -154,12 +156,41 @@ def test_load_lineup_tog_skips_meta_keys(tmp_path):
 # --------------------------------------------------------------------------- #
 
 def _make_footywire_html(teams: dict[str, list[str]]) -> str:
-    """Build a minimal Footywire-style HTML page with pp- hrefs."""
-    links = []
+    """Build a minimal Footywire-style HTML page: each player link sits in a
+    grid-style ``<tr class="lightcolor">`` row -- the on-field position table
+    the real-site parser always treats as confirmed, with no section
+    headers needed (see ``_make_footywire_team_html`` below for the
+    Interchange/Emergencies/Ins/Outs sidebar structure)."""
+    rows = []
     for team_slug, player_slugs in teams.items():
         for slug in player_slugs:
-            links.append(f'<a href="pp-{team_slug}--{slug}">X</a>')
-    return "<html><body>" + "".join(links) + "</body></html>"
+            rows.append(f'<tr class="lightcolor"><td><a href="pp-{team_slug}--{slug}">X</a></td></tr>')
+    return "<html><body><table>" + "".join(rows) + "</table></body></html>"
+
+
+def _make_footywire_team_html(team_slug: str, grid: list[str], *,
+                              interchange: list[str] = (), emergencies: list[str] = (),
+                              ins: list[str] = (), outs: list[str] = ()) -> str:
+    """Build a realistic single-team Footywire block: an on-field grid plus
+    a sidebar with Interchange/Emergencies/Ins/Outs sections in that order,
+    matching the real site's structure (each section a ``<b>`` header row
+    followed by ``pp-`` link rows)."""
+    grid_rows = "".join(
+        f'<tr class="lightcolor"><td><a href="pp-{team_slug}--{slug}">X</a></td></tr>'
+        for slug in grid
+    )
+
+    def _section(name: str, slugs: list[str]) -> str:
+        rows = [f"<tr><td><b>{name}</b></td></tr>"]
+        rows += [f'<tr><td><a href="pp-{team_slug}--{slug}">X</a></td></tr>' for slug in slugs]
+        return "".join(rows)
+
+    sidebar = (_section("Interchange", list(interchange)) + _section("Emergencies", list(emergencies))
+               + _section("Ins", list(ins)) + _section("Outs", list(outs)))
+    return (f'<html><body>'
+           f'<table cellpadding="2">{sidebar}</table>'
+           f'<table>{grid_rows}</table>'
+           f'</body></html>')
 
 
 def _nkm_players(n: int = 22) -> list[str]:
@@ -268,3 +299,122 @@ def test_select_players_normalized_match_for_hyphenated_name():
     players = _select_players(log, "North Melbourne", current_year=2026, n=5,
                               confirmed=confirmed_from_footywire)
     assert "Luke Davies-Uniacke" in players   # matched via normalisation
+
+
+# --------------------------------------------------------------------------- #
+# FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART B2: section-aware parsing (kills
+# Emergencies/Ins/Outs leaking into the confirmed set)
+# --------------------------------------------------------------------------- #
+
+def test_parse_footywire_selections_keeps_interchange_excludes_emergencies_ins_outs():
+    html = _make_footywire_team_html(
+        "greater-western-sydney-giants",
+        grid=[f"grid-{i}" for i in range(18)],
+        interchange=["bench-1", "bench-2", "bench-3", "bench-4", "bench-5"],
+        emergencies=["jesse-hogan"],
+        ins=["new-in-1"],
+        outs=["cut-1"],
+    )
+    result = _parse_footywire_selections(html)
+    confirmed = result["Greater Western Sydney"]
+    assert len(confirmed) == 23                      # 18 grid + 5 interchange (incl. sub)
+    assert "Jesse Hogan" not in confirmed             # Emergencies excluded
+    assert "Cut 1" not in confirmed                   # Outs excluded even though linked
+    assert "Bench 1" in confirmed                     # Interchange kept
+
+
+def test_parse_footywire_selections_ins_not_double_counted_if_only_in_sidebar():
+    # An "Ins" entry not also in the grid/interchange must NOT be confirmed --
+    # it's informational only (the player's actual selection is the grid row).
+    html = _make_footywire_team_html(
+        "hawthorn", grid=[f"grid-{i}" for i in range(18)],
+        interchange=["bench-1"], ins=["sidebar-only-in"],
+    )
+    confirmed = _parse_footywire_selections(html)["Hawthorn"]
+    assert "Sidebar Only In" not in confirmed
+
+
+def test_fetch_lineup_warns_when_team_has_extended_squad(tmp_path, capsys):
+    # No Emergencies section posted yet -> 18 grid + 10 interchange = 28, >24.
+    html = _make_footywire_team_html(
+        "north-melbourne-kangaroos", grid=[f"grid-{i}" for i in range(18)],
+        interchange=[f"bench-{i}" for i in range(10)],
+    )
+    mock_resp = Mock()
+    mock_resp.text = html
+    mock_resp.raise_for_status = Mock()
+    with patch("afl_bot.data.lineups.requests.get", return_value=mock_resp):
+        fetch_lineup(2026, 16, cache_dir=tmp_path)
+    err = capsys.readouterr().err
+    assert "North Melbourne" in err and "28" in err and "WARNING" in err
+
+
+def test_fetch_lineup_no_warning_for_normal_squad_size(tmp_path, capsys):
+    html = _make_footywire_team_html(
+        "hawthorn", grid=[f"grid-{i}" for i in range(18)],
+        interchange=["bench-1", "bench-2", "bench-3", "bench-4", "bench-5"],
+    )
+    mock_resp = Mock()
+    mock_resp.text = html
+    mock_resp.raise_for_status = Mock()
+    with patch("afl_bot.data.lineups.requests.get", return_value=mock_resp):
+        fetch_lineup(2026, 16, cache_dir=tmp_path)
+    assert "WARNING" not in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------- #
+# FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART B1: manual outs override
+# --------------------------------------------------------------------------- #
+
+def test_load_outs_from_dedicated_file(tmp_path):
+    path = tmp_path / "outs.json"
+    path.write_text(json.dumps({"_outs": {"GWS": ["Jesse Hogan"]}}))
+    outs = load_outs(str(path))
+    assert outs == {"Greater Western Sydney": {"Jesse Hogan"}}
+
+
+def test_load_outs_embedded_in_lineup_file(tmp_path):
+    path = tmp_path / "lineup.json"
+    path.write_text(json.dumps({
+        "Hawthorn": ["Jai Newcombe"],
+        "_outs": {"Hawthorn": ["Some Cut Player"]},
+    }))
+    outs = load_outs(str(path))
+    assert outs == {"Hawthorn": {"Some Cut Player"}}
+
+
+def test_load_outs_none_path_returns_empty():
+    assert load_outs(None) == {}
+
+
+def test_load_outs_no_outs_key_returns_empty(tmp_path):
+    path = tmp_path / "lineup.json"
+    path.write_text(json.dumps({"Hawthorn": ["Jai Newcombe"]}))
+    assert load_outs(str(path)) == {}
+
+
+def test_load_outs_unknown_team_skipped(tmp_path):
+    path = tmp_path / "outs.json"
+    path.write_text(json.dumps({"_outs": {"Not A Team": ["X"]}}))
+    assert load_outs(str(path)) == {}
+
+
+def test_apply_outs_removes_named_player_normalised():
+    lineup = {"Greater Western Sydney": {"Jesse Hogan", "Lachie Whitfield"}}
+    outs = {"Greater Western Sydney": {"jesse-hogan"}}    # hyphen, still matches
+    new_lineup, n = apply_outs(lineup, outs)
+    assert new_lineup == {"Greater Western Sydney": {"Lachie Whitfield"}}
+    assert n == 1
+
+
+def test_apply_outs_team_not_in_lineup_is_noop():
+    lineup = {"Hawthorn": {"Jai Newcombe"}}
+    new_lineup, n = apply_outs(lineup, {"Richmond": {"X"}})
+    assert new_lineup == lineup
+    assert n == 0
+
+
+def test_apply_outs_does_not_mutate_input_lineup():
+    lineup = {"Hawthorn": {"Jai Newcombe", "Karl Amon"}}
+    apply_outs(lineup, {"Hawthorn": {"Karl Amon"}})
+    assert lineup == {"Hawthorn": {"Jai Newcombe", "Karl Amon"}}   # original untouched

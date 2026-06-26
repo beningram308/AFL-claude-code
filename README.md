@@ -932,6 +932,104 @@ contributes at most one model-only line per stat; the bottom rung reads
 ~$2.10–2.40 (never the old ~$1.50/$1.59 drift); and a rung's printed Fair odds
 is now guaranteed at or above its Band whenever a qualifying combo exists.
 
+### Real Sportsbet odds + final-22 lineup + model-vs-market ladder (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP)
+
+Ben's next-day review of `2026_r16_report.md` found three more honesty gaps,
+the first two only visible once you compare the report against the actual
+market: (1) every "Fair odds" in the report was the MODEL's own number — the
+Hawthorn/GWS bottom rung priced $2.38, but Sportsbet had the same legs at
+$1.53 real. (2) the $2.10 floor is a model construct (`0.78³`); the market
+prices genuine near-locks shorter than that, and Ben wants to see BOTH
+numbers, not just the model's. (3) Jesse Hogan (not actually playing for GWS
+that round) was still appearing in multis — the auto-lineup was parsing
+Footywire's EXTENDED SQUAD (26-30 names per team) as if it were the
+confirmed 22(+sub).
+
+**PART A — real Sportsbet odds, no paid API.** `afl_bot/data/sportsbet_odds.py`
+scrapes Sportsbet's own undocumented JSON API (no key, no login) — confirmed
+working from an AU IP only (everyone else gets a non-JSON block page, detected
+via `Content-Type` and handled as a clean `{}` fallback, never a retry-storm).
+`fetch_sportsbet_odds(event_urls_or_ids)` pulls each event's `SportCard`
+(market groupings) then `Markets` for five target groupings only (Top
+Markets, Pick Your Own Disposals/Goals, Player Marks, Player Tackles — one
+request per grouping, ~2 min cache per event) and reshapes the result into
+the exact leg-key format the report already uses:
+- `Head to Head` selections → `"<team> to win"` (team names normalised via
+  `normalize_team_name`, e.g. "GWS GIANTS" → "Greater Western Sydney").
+- `Total Game Points - Over/Under`, Over side → `"Total points <line>+"`.
+- Milestone markets (`"20+ Disposals"`, `"1+ Goal"`/`"2+ Goals"`, `"4+
+  Marks"`, `"3+ Tackles"` — Sportsbet's own bare-player-name markets, not the
+  Over/Under-with-handicap shape) → `"<player> <N>+ <stat>"` directly, one
+  regex (`r"^(\d+)\+\s*(Disposals?|Goals?|Marks?|Tackles?)$"`) covering all
+  four stats. Player names are taken as Sportsbet's own spelling (no
+  roster-based fuzzy matching — the module has no access to `player_log`
+  here); in practice these already match the bot's own naming almost always,
+  so a join miss is rare, not silent (the per-round leg-matched count prints
+  to stderr). New `--sportsbet` flag (`round_report`'s `use_sportsbet`) plus
+  `--sportsbet-urls PATH` (default `reports/<year>_r<round>_sportsbet_urls.json`
+  — Ben pastes 6-9 match URLs in once per round); merged into `odds_book`
+  ahead of the Odds API live feed, behind any manual `--odds` hand-fix.
+  **Validated live** against the actual round-16 Sportsbet events from this
+  AU-IP environment: 9008 legs scraped across 6 matches in under a minute.
+
+**PART B — final-22 lineup, not the extended squad.** Two independent fixes:
+1. *(B2, best-effort)* `data/lineups._parse_footywire_selections` rewritten
+   section-aware: the on-field position grid (`<tr class="lightcolor"|
+   "darkcolor">` rows) is always confirmed, but the sidebar list's
+   `<b>`-headed sections are now read in order and only **Interchange** (the
+   bench + medical sub) is kept — **Emergencies**/**Ins**/**Outs** (squad
+   cuts and week-to-week deltas, not this week's 22) are excluded. The old
+   parser blindly grabbed every `pp-` href on the page regardless of section,
+   inflating every team to 26-30 "confirmed" names. `fetch_lineup` now WARNs
+   (doesn't fail) when a team still resolves above 24 — some teams' sheets
+   hadn't posted Emergencies yet at fetch time, so they stay at their
+   extended-squad size; the warning makes that visible instead of silently
+   trusting it.
+2. *(B1, the dependable complement)* `load_outs`/`apply_outs` — a manual
+   override that ALWAYS removes a named player from the resolved lineup
+   (auto or manual), via a `"_outs": {team: [player, ...]}` key embedded in
+   a `--lineup` file or a dedicated `--outs PATH`. Independent of how good
+   B2's HTML parsing is.
+
+   *Verified live*: with B2 alone, Jesse Hogan (the motivating case) already
+   has zero Footywire grid/Interchange entries for GWS this round, AND zero
+   Sportsbet markets posted on him (PART B3's free cross-check — a player
+   not named gets no market) — both confirm independently he's correctly
+   excluded without needing B1's override this time.
+
+**PART C — model ladder AND a real-market ladder, side by side.** The
+existing $2.10/$3/$5 ladder is unchanged but re-headed **"Model ladder (model
+fair odds, no book)"** so it reads as a model number, not a promise. A new
+`search_market_sgms` (`afl_bot/build/report.py`) builds a SECOND ladder from
+the exact same leg pool, selected and priced on REAL book odds (the per-leg
+product, `combined_odds` — Sportsbet's own same-game-multi special prices its
+own correlation and isn't scraped, so the report says so explicitly) instead
+of the model's joint probability; same "land at-or-above the target, never
+short" rule and top-rung VALUE-by-edge promotion as the model ladder, just
+keyed on `book_odds`. Rendered as **"Sportsbet ladder (real prices)"** right
+under the model ladder, columns `Legs | Book odds (combo) | Model joint % |
+Model fair | Edge | Pick` — the model numbers stay attached so the two read
+side by side; only printed when at least one combo in that match is fully
+priced (silently absent otherwise, same as the existing model-only tags).
+
+*Verified live* on the real round-16 data: Hawthorn/GWS's bottom model rung
+priced $2.10 (band) vs the market's actual $2.10-banded real combo at $1.45 —
+real markets DO price these legs shorter than the model's 0.78-capped floor,
+confirming this is exactly the gap Ben wanted surfaced, not a bug to chase
+out of either ladder.
+
+**Why:** Ben's third same-day review in this lineage, and the first to
+compare the report against the live market rather than just its own
+internals — same investigate-first pattern, this time the "bug" (model vs
+market disagreement) is the actual product, not something to fix away.
+**How to apply:** `--sportsbet` only works from an Australian IP (this
+session's environment happens to be one) — if a future session reports
+"Sportsbet scrape unavailable" in the report's own note, check the
+environment's egress IP before assuming the scraper broke. `SGM_LADDER_LEG_
+PROB_MAX` doesn't exist; `_outs`/`--outs` is the dependable lineup fix,
+the section-aware HTML parse is best-effort and can still need it for a team
+whose sheet hasn't posted Emergencies yet.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

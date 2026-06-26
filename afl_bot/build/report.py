@@ -358,6 +358,70 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     return selected
 
 
+def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: int = 3,
+                       odds_book: dict, target_odds: tuple | None = None,
+                       min_joint_prob: float = 0.05,
+                       max_plausible_edge: float = 0.15) -> list[dict]:
+    """A same-game multi ladder selected and priced on REAL BOOK odds, not the
+    model's own joint probability (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C):
+    every leg in every returned rung has a real price in ``odds_book`` (from
+    ``--sportsbet`` or ``--odds``). This is the ladder Ben actually sees on
+    the bookmaker -- the model's own ``joint_prob``/``fair_odds``/``edge``
+    stay attached to each rung so the two can be read side by side (where the
+    model disagrees with the market is the real signal).
+
+    Built from the SAME candidate pool ``search_match_sgms`` searches
+    (``build_sgm_candidates``), restricted to combos where every leg is
+    priced (``"book_odds" in c``) -- returns ``[]`` if none qualify (no
+    Sportsbet/--odds prices this run, or none happen to cover a full combo).
+
+    Rung selection mirrors ``search_match_sgms``'s "land at-or-above the
+    target, never short" rule and its top-rung VALUE-by-edge promotion (see
+    its docstring), just keyed on ``book_odds`` (the naive product of each
+    leg's real price -- ``combined_odds``, NOT the book's own same-game-multi
+    special, which prices its own correlation and isn't scraped here) instead
+    of the model's ``fair_odds``. Real markets often price a near-lock combo
+    shorter than the model's 0.78-leg-capped floor (e.g. ~$1.50 vs the
+    model's ~$2.10) -- expected, not a bug; that gap IS the point of this
+    ladder. No haircut/calibrator transform is applied here: book odds are
+    already real prices, not a model estimate to correct.
+
+    Returned safest -> longest (by book odds)."""
+    target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
+    combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
+                                  odds_book=odds_book, min_joint_prob=min_joint_prob)
+    priced = [c for c in combos if "book_odds" in c]
+    if not priced:
+        return []
+
+    def _select_for_target(available: list[dict], target: float) -> dict:
+        reaches = [c for c in available if c["book_odds"] >= target]
+        if reaches:
+            return min(reaches, key=lambda c: c["book_odds"])
+        return max(available, key=lambda c: c["book_odds"])
+
+    selected: list[dict] = []
+    chosen: set[int] = set()
+    for i, target in enumerate(target_odds):
+        available = [c for c in priced if id(c) not in chosen] or list(priced)
+        is_top = (i == len(target_odds) - 1)
+        if is_top:
+            valued = [c for c in available if 0.0 < c["edge"] <= max_plausible_edge]
+            if valued:
+                pick = max(valued, key=lambda c: c["edge"])
+                pick["value_pick"] = True
+            else:
+                pick = _select_for_target(available, target)
+        else:
+            pick = _select_for_target(available, target)
+        pick["target_odds"] = target
+        chosen.add(id(pick))
+        selected.append(pick)
+
+    selected.sort(key=lambda c: c["book_odds"])
+    return selected
+
+
 def apply_multi_calibration(sgms: list[dict], calibrator) -> list[dict]:
     """Apply a selection-level ``IsotonicCalibrator`` (model-upgrade audit
     Phase 3.6, e.g. from `afl_bot.backtest.multis.load_or_fit_multi_calibrator`)
@@ -399,11 +463,18 @@ def _fmt_pct(p: float) -> str:
 
 def render_markdown(year: int, round_no: int, matches: list[dict], *,
                     has_odds: bool, multis_section: str = "", odds_note: str = "",
-                    proj_note: str = "", multis_only: bool = False) -> str:
+                    sportsbet_note: str = "", proj_note: str = "",
+                    multis_only: bool = False) -> str:
     """Render the round report to markdown. ``matches`` is a list of dicts from
-    ``afl_bot.cli.round_report`` (header, team projection rows, sgms).
+    ``afl_bot.cli.round_report`` (header, team projection rows, sgms,
+    market_sgms).
 
-    When ``multis_only`` is True only the match heading and same-game multi ladder
+    ``sportsbet_note`` (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART A6) states the
+    ACTUAL player-prop odds source this run -- live Sportsbet scrape, or why
+    not (not run from AU / blocked / not requested) -- distinct from
+    ``odds_note``'s existing live-h2h/totals-via-Odds-API note.
+
+    When ``multis_only`` is True only the match heading and same-game multi ladder(s)
     are emitted for each fixture — all player-projection tables, margin/win-prob
     bullets, and header notes are skipped."""
     out: list[str] = [f"# AFL Round Report - {year} Round {round_no}", ""]
@@ -416,6 +487,9 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
         if odds_note:
             out.append("")
             out.append(odds_note)
+        if sportsbet_note:
+            out.append("")
+            out.append(sportsbet_note)
         out.append("")
 
     for m in matches:
@@ -465,7 +539,7 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                     )
                 out.append("")
 
-        out.append("### Same-game multi ladder (3-leg, ~2.10 -> ~5.0; top rung = value pick)")
+        out.append("### Model ladder (model fair odds, no book)")
         if not m["sgms"]:
             n_legs = m.get("n_legs")
             if n_legs is not None and n_legs < 3:
@@ -500,6 +574,28 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                     line += "  |"
                 out.append(line)
         out.append("")
+
+        # FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C2/C4: only when this
+        # match has at least one fully-priced combo (real Sportsbet/--odds
+        # prices) -- otherwise stay silent, the model ladder above already
+        # carries the "(model-only — verify market exists)" tags.
+        market_sgms = m.get("market_sgms") or []
+        if market_sgms:
+            out.append("### Sportsbet ladder (real prices)")
+            out.append("_Sportsbet same-game multi specials are priced with the book's own "
+                       "correlation model and will differ from the leg-product shown here "
+                       "(only individual legs are scraped, not the SGM special itself) — "
+                       "use the per-leg book prices as the source of truth._")
+            out.append("")
+            out.append("| Legs | Book odds (combo) | Model joint % | Model fair | Edge | Pick |")
+            out.append("|---|--:|--:|--:|--:|---|")
+            for s in market_sgms:
+                line = (f"| {' + '.join(s['legs'])} | {s['book_odds']:.2f} "
+                        f"| {_fmt_pct(s['joint_prob'])} | {s['fair_odds']:.2f} "
+                        f"| {s['edge'] * 100:+.1f}% |")
+                line += " **VALUE PICK** |" if s.get("value_pick") else "  |"
+                out.append(line)
+            out.append("")
 
     if multis_section:
         out.append(multis_section)

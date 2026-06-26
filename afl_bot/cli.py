@@ -44,6 +44,7 @@ from afl_bot.build.report import (
     is_bookable_model_only_leg,
     projection_rows,
     render_markdown,
+    search_market_sgms,
     search_match_sgms,
     select_ladder_lines,
     top_n_players_by_stat,
@@ -79,8 +80,9 @@ from afl_bot.config import (
     WET_THRESHOLD_MM,
 )
 from afl_bot.data.odds import fetch_historical_odds
-from afl_bot.data.lineups import fetch_lineup, load_lineup, load_lineup_tog
+from afl_bot.data.lineups import apply_outs, fetch_lineup, load_lineup, load_lineup_tog, load_outs
 from afl_bot.data.live_odds import fetch_live_odds, fetch_live_props
+from afl_bot.data.sportsbet_odds import fetch_sportsbet_odds
 from afl_bot.data.player_stats import load_player_log
 from afl_bot.data.squiggle import SquiggleClient
 from afl_bot.data.stoppages import load_boundary_throwins
@@ -690,7 +692,9 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                  rain_mm: float | None = None, lineup_path: str | None = None,
                  use_live: bool = False, multis_only: bool = False,
                  auto_lineup: bool = False, multi_calibration: bool = False,
-                 corr_gain_haircut: float = CORR_GAIN_HAIRCUT) -> None:
+                 corr_gain_haircut: float = CORR_GAIN_HAIRCUT,
+                 use_sportsbet: bool = False, sportsbet_urls_path: str | None = None,
+                 outs_path: str | None = None) -> None:
     """The weekly deliverable (round-2 §10): per-match real-player projection
     tables + same-game multis ranked by joint sim probability, saved to
     reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log.
@@ -738,7 +742,25 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     loss 0.5757 -> 0.5650, high-bucket gap +0.110 -> +0.051). See the
     README's "corr_gain haircut" section for the closing writeup and the
     accepted, bounded ~+0.05 residual. Pass 1.0 via --corr-gain-haircut for
-    the raw/unhaircut sim joint_prob (diagnostics only)."""
+    the raw/unhaircut sim joint_prob (diagnostics only).
+
+    ``use_sportsbet`` (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART A, default
+    False, opt-in via ``--sportsbet``) -- scrapes REAL odds straight off
+    Sportsbet's own JSON API (no key, no paid tier) for every event in
+    ``sportsbet_urls_path`` (default ``reports/<year>_r<N>_sportsbet_urls.json``,
+    a plain JSON list of Sportsbet match URLs Ben pastes in once per round)
+    and merges them into ``odds_book`` (manual ``--odds`` still overrides,
+    for hand-fixes). AU-IP ONLY -- Sportsbet geo-blocks everyone else, so this
+    must run on Ben's own machine, never CI; a block/missing-file/network
+    failure degrades to an empty dict and the report says so. Every match
+    then gets a SECOND ladder (`search_market_sgms`) selected and priced on
+    these real prices, printed beside the existing model-only ladder.
+
+    ``outs_path`` (PART B1, default None, opt-in via ``--outs``) -- a manual
+    override that ALWAYS removes named players from the resolved lineup
+    (auto or manual), e.g. a Footywire squad cut that slipped through. Also
+    read directly off a ``--lineup`` file's own ``"_outs"`` key if present,
+    so one file can carry both. See `afl_bot.data.lineups.load_outs`."""
     client = SquiggleClient()
     history = pd.concat([client.get_completed_games(y) for y in _history_years(year)],
                         ignore_index=True)
@@ -810,12 +832,42 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     else:
         lineup = {}
         lineup_tog = {}
-    # Live h2h/totals + player props (The Odds API) merged with any --odds file;
-    # manual overrides live for hand-fixes (MULTI-CHANGES PART A).
+    # Manual outs override (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART B1) --
+    # always removes a named player regardless of what the lineup source
+    # said, e.g. a Footywire squad cut the section-aware parser (PART B2)
+    # still missed because that team's sheet hadn't separated out
+    # Emergencies yet. Read from a dedicated --outs file AND/OR a "_outs"
+    # key embedded directly in the --lineup file.
+    outs: dict[str, set[str]] = {}
+    if lineup_path:
+        for team, names in load_outs(lineup_path).items():
+            outs.setdefault(team, set()).update(names)
+    if outs_path:
+        for team, names in load_outs(outs_path).items():
+            outs.setdefault(team, set()).update(names)
+    n_outs_excluded = 0
+    if outs:
+        lineup, n_outs_excluded = apply_outs(lineup, outs)
+    # Live h2h/totals + player props (The Odds API) and/or real Sportsbet
+    # prices, merged with any --odds file; manual overrides everything for
+    # hand-fixes (MULTI-CHANGES PART A; FIX-REAL-SPORTSBET-ODDS-AND-LINEUP
+    # PART A6). Sportsbet is the richer, real source (props included, not
+    # just h2h/totals), so it sits ahead of the (already-live) Odds API feed.
     live = fetch_live_odds(round_no) if use_live else {}
     live_props = fetch_live_props(round_no) if use_live else {}
+    if use_sportsbet:
+        urls_path = sportsbet_urls_path or str(ROOT_DIR / "reports" /
+                                               f"{year}_r{round_no}_sportsbet_urls.json")
+        try:
+            sb_urls = json.loads(Path(urls_path).read_text())
+        except (OSError, json.JSONDecodeError):
+            print(f"Sportsbet: no URL file at {urls_path} -- skipping scrape.", file=sys.stderr)
+            sb_urls = []
+        sb = fetch_sportsbet_odds(sb_urls)
+    else:
+        sb = {}
     manual = json.loads(Path(odds_path).read_text()) if odds_path else {}
-    odds_book = {**live, **live_props, **manual}
+    odds_book = {**live, **live_props, **sb, **manual}
     odds_note = ""
     if use_live:
         prop_keys = [k for k in manual if not k.startswith("_")
@@ -828,10 +880,18 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             f"Player-prop legs are priced off {src}; rungs with no prop price show '-' for "
             f"Book/Edge and are NOT flagged VALUE. Edges shown are market-shrunk (capped)._")
 
+    sportsbet_note = ""
+    if use_sportsbet:
+        sportsbet_note = (
+            f"_Player-prop odds: live from Sportsbet (scraped, {len(sb)} leg(s) priced)._"
+            if sb else
+            "_Player-prop odds: Sportsbet scrape unavailable (not in AU / blocked / no URL "
+            "file for this round) — fell back to --odds file / model-only._")
+
     rng = make_rng()
     matches, odds_legs, predictions = [], [], []
     n_tog_overrides = 0
-    n_auto_excluded = 0
+    n_auto_excluded = n_outs_excluded
     # Every leg name this round COULD be priced for (model-upgrade audit Phase
     # 4 STEP 1.2) -- written to an odds template so hand-entry is copy-paste,
     # not guesswork. `known_input_keys` is the wider set used for the
@@ -1007,9 +1067,13 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
 
         sgms = search_match_sgms(match_legs, odds_book=odds_book,
                                  corr_gain_haircut=corr_gain_haircut, multi_calibrator=multi_cal)
+        # FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C: a second ladder selected
+        # and priced on REAL book odds (Sportsbet/--odds) from the same leg
+        # pool -- [] when nothing in this match is priced.
+        market_sgms = search_market_sgms(match_legs, odds_book=odds_book)
         matches.append({
             "header": header, "projections": projections,
-            "sgms": sgms, "priced_legs": priced_legs,
+            "sgms": sgms, "market_sgms": market_sgms, "priced_legs": priced_legs,
             "n_legs": len(match_legs),     # so the report can explain an empty ladder
         })
 
@@ -1044,7 +1108,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     )
     md = render_markdown(year, round_no, matches, has_odds=bool(odds_book),
                          multis_section=multis_section, odds_note=odds_note,
-                         proj_note=proj_note, multis_only=multis_only)
+                         sportsbet_note=sportsbet_note, proj_note=proj_note,
+                         multis_only=multis_only)
     out_dir = ROOT_DIR / "reports"
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / f"{year}_r{round_no}_report.md"
@@ -1482,6 +1547,18 @@ def main(argv: list[str] | None = None) -> None:
                             "joint_prob (0.0 = naive product only, the live default, "
                             "OOS-validated; 1.0 = raw/unhaircut sim joint_prob). See "
                             "README's 'corr_gain haircut' section.")
+    rep_p.add_argument("--sportsbet", action="store_true", dest="use_sportsbet",
+                       help="Scrape REAL odds from Sportsbet's own JSON API (no key, no "
+                            "paid tier) and price a second 'Sportsbet ladder' beside the "
+                            "model-only one. AU IP ONLY (Sportsbet geo-blocks elsewhere) -- "
+                            "run this on Ben's own machine, never CI.")
+    rep_p.add_argument("--sportsbet-urls", type=str, default=None, dest="sportsbet_urls_path",
+                       help="JSON list of Sportsbet match URLs for this round. Defaults to "
+                            "reports/<year>_r<round>_sportsbet_urls.json.")
+    rep_p.add_argument("--outs", type=str, default=None, dest="outs_path",
+                       help="JSON {'_outs': {team: [player, ...]}} of players to ALWAYS "
+                            "treat as not named, overriding the lineup source (auto or "
+                            "manual). Also read from a --lineup file's own '_outs' key.")
 
     grade_p = sub.add_parser("grade-round",
                              help="Score a completed round's saved predictions vs actuals.")
@@ -1557,7 +1634,8 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "round-report":
         round_report(args.year, args.round_no, args.odds, args.n_sims,
                      args.rain_mm, args.lineup_path, args.use_live, args.multis_only,
-                     args.auto_lineup, args.multi_calibration, args.corr_gain_haircut)
+                     args.auto_lineup, args.multi_calibration, args.corr_gain_haircut,
+                     args.use_sportsbet, args.sportsbet_urls_path, args.outs_path)
     elif args.command == "grade-round":
         grade_round(args.year, args.round_no)
     elif args.command == "grade-multis":

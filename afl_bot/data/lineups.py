@@ -78,29 +78,69 @@ def _slug_to_name(slug: str) -> str:
     return " ".join(parts)
 
 
+def _team_and_player(href: str) -> tuple[str, str] | None:
+    """``pp-{team-slug}--{player-slug}`` -> ``(canonical_team, player_name)``,
+    or ``None`` for an unrecognised team/malformed href."""
+    if not href.startswith("pp-") or "--" not in href:
+        return None
+    body = href[3:]
+    sep = body.index("--")
+    team_slug, player_slug = body[:sep], body[sep + 2:]
+    if not player_slug:
+        return None
+    try:
+        team_name = normalize_team_name(team_slug.replace("-", " "))
+    except KeyError:
+        return None
+    return team_name, _slug_to_name(player_slug)
+
+
 def _parse_footywire_selections(html: str) -> dict[str, set[str]]:
-    """Parse raw Footywire team-selections HTML into ``{canonical_team: {player_name}}``.
-    Uses ``pp-{team-slug}--{player-slug}`` hrefs; teams with fewer than
-    ``_MIN_PLAYERS_FOR_CONFIRMED_SHEET`` links are omitted (sheet not yet posted)."""
+    """Parse raw Footywire team-selections HTML into ``{canonical_team: {player_name}}``
+    -- the FINAL bettable 22(+sub), not the extended squad (FIX-REAL-SPORTSBET-
+    ODDS-AND-LINEUP PART B2).
+
+    Each team's selection block has an on-field position grid (``<tr
+    class="lightcolor"|"darkcolor">`` rows -- always confirmed, no section
+    concept) plus a sidebar list of named ``<b>`` headers in order:
+    Interchange (the bench, incl. the medical sub -- confirmed), then
+    Emergencies / Ins / Outs (NOT this week's 22 -- "Ins"/"Outs" are
+    informational week-to-week deltas, "Emergencies" are the cut squad
+    members). Blindly grabbing every ``pp-`` href on the page (the old
+    behaviour) pulled in Emergencies/Outs too, inflating a team to 26-30
+    "confirmed" names and letting an omitted player (e.g. a squad cut) slip
+    into the live ladder. Teams with fewer than
+    ``_MIN_PLAYERS_FOR_CONFIRMED_SHEET`` confirmed players are omitted (sheet
+    not yet posted) -- unchanged threshold/meaning, just measured on the
+    trimmed set now."""
     from bs4 import BeautifulSoup  # optional dep; already installed per requirements
     soup = BeautifulSoup(html, "html.parser")
     raw: dict[str, set[str]] = {}
-    for a in soup.find_all("a", href=True):
-        href = str(a["href"])
-        if not href.startswith("pp-") or "--" not in href:
-            continue
-        # strip "pp-"; split on first "--" to get team-slug and player-slug
-        body = href[3:]
-        sep = body.index("--")
-        team_slug = body[:sep]
-        player_slug = body[sep + 2:]
-        if not player_slug:
-            continue
-        try:
-            team_name = normalize_team_name(team_slug.replace("-", " "))
-        except KeyError:
-            continue
-        raw.setdefault(team_name, set()).add(_slug_to_name(player_slug))
+
+    def _add(href: str) -> None:
+        parsed = _team_and_player(str(href))
+        if parsed is not None:
+            team, player = parsed
+            raw.setdefault(team, set()).add(player)
+
+    # On-field grid: every pp- href inside a position-table row is always
+    # confirmed (no Emergencies/Outs concept exists in the grid).
+    for tr in soup.find_all("tr", class_=("lightcolor", "darkcolor")):
+        for a in tr.find_all("a", href=True):
+            _add(a["href"])
+
+    # Sidebar: walk each list in document order, tracking the current named
+    # section so only "Interchange" entries are kept.
+    for table in soup.find_all("table", attrs={"cellpadding": "2"}):
+        section: str | None = None
+        for tr in table.find_all("tr"):
+            header = tr.find("b")
+            if header is not None and tr.find("a", href=True) is None:
+                section = header.get_text(strip=True).lower()
+                continue
+            if section == "interchange":
+                for a in tr.find_all("a", href=True):
+                    _add(a["href"])
 
     # Only include teams whose selection sheet looks complete
     return {t: p for t, p in raw.items() if len(p) >= _MIN_PLAYERS_FOR_CONFIRMED_SHEET}
@@ -128,7 +168,9 @@ def fetch_lineup(year: int, round_no: int, *,
     if cache_path.exists() and (time.time() - cache_path.stat().st_mtime) < cache_seconds:
         try:
             data = json.loads(cache_path.read_text())
-            return {team: set(players) for team, players in data.items()}
+            lineup = {team: set(players) for team, players in data.items()}
+            _warn_extended_squads(lineup)
+            return lineup
         except (json.JSONDecodeError, OSError):
             pass
 
@@ -147,7 +189,24 @@ def fetch_lineup(year: int, round_no: int, *,
             cache_path.write_text(json.dumps({t: list(p) for t, p in lineup.items()}))
         except OSError:
             pass
+    _warn_extended_squads(lineup)
     return lineup
+
+
+_EXTENDED_SQUAD_WARN_THRESHOLD = 24  # FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART B2
+
+
+def _warn_extended_squads(lineup: dict[str, set[str]]) -> None:
+    """Best-effort: the section-aware parser above should trim every team to
+    ~22-23, but a team whose sheet hasn't separated out Emergencies yet
+    (an early "expected lineup" post) still resolves with everyone in
+    Interchange, landing above this threshold -- WARN so it's visible the
+    sheet isn't final, rather than silently trusting an inflated squad."""
+    for team, players in lineup.items():
+        if len(players) > _EXTENDED_SQUAD_WARN_THRESHOLD:
+            print(f"WARNING: {team} has {len(players)} named players "
+                  f"(>{_EXTENDED_SQUAD_WARN_THRESHOLD}) -- sheet may not be final/trimmed "
+                  f"yet (extended squad, no Emergencies posted).", file=sys.stderr)
 
 
 def load_lineup_tog(path: str | None) -> dict[str, float]:
@@ -183,3 +242,57 @@ def load_lineup_tog(path: str | None) -> dict[str, float]:
             elif entry.get("returning_from_injury") or entry.get("managed"):
                 tog_map[player_name] = TOG_RETURN_DEFAULT
     return tog_map
+
+
+def load_outs(path: str | None) -> dict[str, set[str]]:
+    """Load a manual outs override -- players to ALWAYS treat as not named,
+    regardless of what the lineup source (auto or manual) says (FIX-REAL-
+    SPORTSBET-ODDS-AND-LINEUP PART B1, the dependable complement to B2's
+    best-effort HTML-section fix). Reads a top-level ``"_outs"`` key:
+
+        {"_outs": {"Greater Western Sydney": ["Jesse Hogan"]}}
+
+    which can live in a dedicated ``--outs`` file or be embedded directly in
+    a ``--lineup`` file (one file, both purposes) -- this function just looks
+    for the key, so either works. Returns ``{}`` when no path is given or the
+    file has no ``"_outs"`` key. Unrecognised team names are skipped."""
+    if not path:
+        return {}
+
+    data = json.loads(Path(path).read_text())
+    outs: dict[str, set[str]] = {}
+    for team, players in data.get("_outs", {}).items():
+        try:
+            canonical = normalize_team_name(team)
+        except KeyError:
+            continue
+        outs[canonical] = {str(p).strip() for p in players}
+    return outs
+
+
+def _normalize_player_key(name: str) -> str:
+    """Same fuzzy-match key as ``afl_bot.cli._normalize_name`` (lowercase,
+    hyphens/apostrophes stripped) -- duplicated locally to avoid a
+    lineups<->cli import cycle (cli already imports from this module)."""
+    return name.lower().replace("-", " ").replace("'", "").strip()
+
+
+def apply_outs(lineup: dict[str, set[str]],
+               outs: dict[str, set[str]]) -> tuple[dict[str, set[str]], int]:
+    """Remove every player in ``outs`` from ``lineup``'s confirmed sets,
+    matched via the normalised key (handles the same Footywire
+    slug-vs-player-log spelling drift ``_select_players`` already tolerates,
+    e.g. a hyphen). Returns a NEW lineup dict (input untouched) plus the
+    total number of removals, so the caller can fold it into an existing
+    "excluded as not named" count."""
+    new_lineup = {team: set(players) for team, players in lineup.items()}
+    n_removed = 0
+    for team, names in outs.items():
+        if team not in new_lineup:
+            continue
+        norm_out = {_normalize_player_key(n) for n in names}
+        before = new_lineup[team]
+        kept = {p for p in before if _normalize_player_key(p) not in norm_out}
+        n_removed += len(before) - len(kept)
+        new_lineup[team] = kept
+    return new_lineup, n_removed

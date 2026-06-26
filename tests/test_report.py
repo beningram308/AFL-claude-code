@@ -10,6 +10,7 @@ from afl_bot.build.report import (
     is_bookable_model_only_leg,
     projection_rows,
     render_markdown,
+    search_market_sgms,
     search_match_sgms,
     select_ladder_lines,
     top_n_players_by_stat,
@@ -301,6 +302,79 @@ def test_search_match_sgms_lands_at_or_above_target_not_short_when_possible():
     assert out[0]["fair_odds"] >= target
 
 
+# --------------------------------------------------------------------------- #
+# search_market_sgms (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C): the ladder
+# selected/priced on REAL book odds, not the model's own joint probability.
+# --------------------------------------------------------------------------- #
+
+def test_search_market_sgms_empty_when_nothing_priced():
+    legs = _ladder_legs()
+    assert search_market_sgms(legs, odds_book={}) == []
+
+
+def test_search_market_sgms_only_fully_priced_combos():
+    legs = _ladder_legs()
+    priced_names = {legs[0].name, legs[1].name, legs[2].name, legs[3].name}   # 4 of 6 legs
+    odds_book = {leg.name: leg.market_odds for leg in legs if leg.name in priced_names}
+    out = search_market_sgms(legs, odds_book=odds_book)
+    assert out
+    for r in out:
+        assert all(name in priced_names for name in r["legs"])
+        assert {"book_odds", "edge", "joint_prob", "fair_odds"} <= set(r)
+
+
+def test_search_market_sgms_value_pick_is_real_edge_only():
+    legs = _ladder_legs(odds_mult=1.05)   # book ~5% above fair -> a modest, plausible edge
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book)
+    picks = [r for r in out if r.get("value_pick")]
+    assert len(picks) == 1
+    vp = picks[0]
+    assert 0.0 < vp["edge"] <= 0.15
+
+
+def test_search_market_sgms_implausible_edge_not_flagged_value():
+    legs = _ladder_legs(odds_mult=1.20)   # book way over fair -> shrunk edge blows past 15%
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book)
+    assert not any(r.get("value_pick") for r in out)
+
+
+def test_search_market_sgms_lands_at_or_above_book_target_not_short_when_possible():
+    # Book odds are a plain per-leg PRODUCT (no mask/correlation collapsing
+    # mixed combos the way joint_prob_from_masks does) -- six distinct prices
+    # mean every one of C(6,3)=20 combos is a genuinely different book price.
+    # The selection must still never land shorter than the target when SOME
+    # combo (pure or mixed) clears it, and must pick the closest one above.
+    import math
+    from itertools import combinations as _combos
+
+    prices = [1.15, 1.18, 1.21, 1.30, 1.33, 1.36]
+    mask = np.ones(50, dtype=bool)
+    legs = [_leg(f"P{i} 15+", 0.9, mask, f"P{i}", odds=p) for i, p in enumerate(prices)]
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    target = 2.0
+
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(target,), min_joint_prob=0.0)
+    assert out[0]["book_odds"] >= target
+    clearing = [math.prod(c) for c in _combos(prices, 3) if math.prod(c) >= target]
+    assert out[0]["book_odds"] == pytest.approx(min(clearing))
+
+
+def test_search_market_sgms_falls_back_to_closest_below_when_nothing_reaches():
+    # All three legs near-locks -> every combo's book price sits well under
+    # the target; with nothing reaching it, the fallback is the closest
+    # below (Ben's r16 finding: the real market can legitimately price a
+    # combo shorter than the model ladder's $2.10 floor -- not a bug).
+    mask = np.ones(100, dtype=bool)
+    legs = [_leg(f"N{i} 15+", 0.95, mask, f"N{i}", odds=1.05) for i in range(3)]
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(MULTI_TARGET_ODDS[0],),
+                             min_joint_prob=0.0)
+    assert out
+    assert out[0]["book_odds"] < MULTI_TARGET_ODDS[0]
+
+
 def test_select_ladder_lines_keeps_every_priced_line_plus_best_unpriced():
     # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 2.2: at most one UNPRICED line
     # per (player, stat) -- the highest-prob ("best line") -- survives into
@@ -424,6 +498,47 @@ def test_render_markdown_tags_model_only_rung_without_book_price():
     }]
     md = render_markdown(2026, 14, matches, has_odds=False)
     assert "model-only — verify market exists" in md
+
+
+def test_render_markdown_header_says_model_ladder_not_band_promise():
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": [], "n_legs": 0,
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=False)
+    assert "### Model ladder (model fair odds, no book)" in md
+
+
+def test_render_markdown_shows_sportsbet_ladder_with_honesty_note_when_priced():
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": [],
+        "market_sgms": [
+            {"legs": ["A 15+", "B 15+", "C 15+"], "book_odds": 1.53, "joint_prob": 0.46,
+             "fair_odds": 2.38, "edge": 0.04, "value_pick": True, "target_odds": 2.10},
+        ],
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=False, sportsbet_note="_Test note._")
+    assert "### Sportsbet ladder (real prices)" in md
+    assert "1.53" in md and "2.38" in md
+    assert "**VALUE PICK**" in md
+    assert "the book's own correlation model" in md
+    assert "_Test note._" in md
+
+
+def test_render_markdown_no_sportsbet_ladder_section_when_unpriced():
+    matches = [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False, "is_wet": False,
+                   "mu_margin": 5.0, "mu_total": 160.0, "p_home": 0.6, "p_away": 0.39,
+                   "p_draw": 0.0, "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": [], "market_sgms": [],
+    }]
+    md = render_markdown(2026, 14, matches, has_odds=False)
+    assert "Sportsbet ladder" not in md
 
 
 def test_build_odds_template_every_name_maps_to_null_plus_rules_stub():
