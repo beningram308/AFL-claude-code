@@ -445,9 +445,9 @@ _TEMPLATE = r"""<!DOCTYPE html>
   <h2>Closing Line Value</h2>
   <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
     CLV = (1/close_ref_odds) - (1/open_odds). Positive = you beat the closing line.<br>
-    Sharp reference: Betfair exchange (H2H) or de-vigged consensus &ge;2 books (props).<br>
-    <b>Currently unavailable</b> — add Betfair integration (H2H) or a 2nd odds scraper (props) to unlock.
-    Run <code>capture-close</code> near bounce to record line movements.
+    Sharp reference: de-vigged consensus across Sportsbet + TAB (props &amp; H2H).
+    Betfair exchange is the future upgrade for sharper H2H reference.<br>
+    Run <code>capture-close</code> near bounce to record closing prices.
   </p>
 
   {% if n_clv_pending > 0 %}
@@ -515,8 +515,9 @@ _TEMPLATE = r"""<!DOCTYPE html>
 
   {% else %}
   <div style="color:var(--muted);padding:30px 0;text-align:center">
-    No CLV data yet.<br>
-    H2H CLV: add Betfair integration &bull; Prop CLV: add a 2nd odds scraper (e.g. TAB/Ladbrokes).
+    No CLV data yet — run <code>capture-close</code> near bounce.<br>
+    Prop &amp; H2H CLV: active via Sportsbet + TAB consensus.<br>
+    H2H future upgrade: Betfair exchange reference.
   </div>
   {% endif %}
 </div>

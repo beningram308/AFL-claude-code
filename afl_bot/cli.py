@@ -1740,14 +1740,22 @@ def main(argv: list[str] | None = None) -> None:
                 sb_urls = json.loads(Path(args.sportsbet_urls_path).read_text())
             except (OSError, json.JSONDecodeError):
                 print(f"capture-close: could not read {args.sportsbet_urls_path}", file=sys.stderr)
+        # Auto-fetch TAB for consensus CLV reference (fails gracefully -> {})
+        tab_odds: dict[str, float] = {}
+        try:
+            from afl_bot.data.tab_odds import fetch_tab_odds as _fetch_tab
+            tab_odds = _fetch_tab()
+        except Exception as _exc:
+            print(f"capture-close: TAB fetch failed ({_exc}) — CLV consensus unavailable.",
+                  file=sys.stderr)
         result = _capture(ledger_path, year=args.year, round_no=args.round_no,
-                          sportsbet_urls=sb_urls)
+                          sportsbet_urls=sb_urls, tab_odds=tab_odds)
         print(f"capture-close: {result['n_updated']} bet(s) updated "
               f"({result['n_sharp']} sharp reference, "
               f"{result['n_soft_only']} soft-only / unavailable).")
-        if result["n_sharp"] == 0:
-            print("  CLV unavailable: add Betfair (H2H) or a 2nd book scraper (props) "
-                  "to unlock sharp CLV.")
+        if result["n_sharp"] == 0 and result["n_updated"] > 0:
+            print("  CLV unavailable: ensure Sportsbet + TAB both have prices for "
+                  "all legs, or add Betfair for H2H CLV.")
     elif args.command == "dashboard":
         from afl_bot.dashboard.app import run_dashboard
         run_dashboard(port=args.port, open_browser=not args.no_browser)

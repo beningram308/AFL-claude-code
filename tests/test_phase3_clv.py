@@ -9,6 +9,7 @@ from afl_bot.dashboard.clv import (
     clv_stats,
     compute_clv,
     devig_consensus,
+    devig_consensus_single_sided,
     min_detectable_edge,
 )
 from afl_bot.dashboard.ledger import add_bet, add_clv_snapshot, load_ledger
@@ -109,6 +110,39 @@ def test_devig_consensus_reference_is_not_soft_self():
     """Two different books give a consensus; a single Sportsbet price does not qualify."""
     with pytest.raises(ValueError):
         devig_consensus([(1.90, 2.05)])  # only 1 book
+
+
+# ── STEP 1: devig_consensus_single_sided ─────────────────────────────────────
+
+def test_devig_consensus_single_sided_requires_two_books():
+    with pytest.raises(ValueError, match=">=2 books"):
+        devig_consensus_single_sided([1.80])
+
+
+def test_devig_consensus_single_sided_two_equal_books():
+    """Two identical prices -> P = (1/odds) / overround, same both sides."""
+    from afl_bot.config import PROP_ASSUMED_OVERROUND
+    p = devig_consensus_single_sided([1.80, 1.80])
+    expected = (1.0 / 1.80) / PROP_ASSUMED_OVERROUND
+    assert p == pytest.approx(expected)
+
+
+def test_devig_consensus_single_sided_median_of_two():
+    """Two books with different prices -> median of the two de-vigged probs."""
+    from afl_bot.config import PROP_ASSUMED_OVERROUND
+    p1 = (1.0 / 1.80) / PROP_ASSUMED_OVERROUND
+    p2 = (1.0 / 1.75) / PROP_ASSUMED_OVERROUND
+    expected = (p1 + p2) / 2  # median of 2 values = their mean
+    assert devig_consensus_single_sided([1.80, 1.75]) == pytest.approx(expected)
+
+
+def test_devig_consensus_single_sided_three_books_median():
+    """Median of 3 books picks the middle value."""
+    from afl_bot.config import PROP_ASSUMED_OVERROUND
+    probs = [(1.0 / o) / PROP_ASSUMED_OVERROUND for o in [1.70, 1.80, 1.95]]
+    probs_sorted = sorted(probs)
+    expected = probs_sorted[1]  # middle value
+    assert devig_consensus_single_sided([1.70, 1.80, 1.95]) == pytest.approx(expected)
 
 
 # ── STEP 1: min_detectable_edge ───────────────────────────────────────────────
@@ -366,6 +400,99 @@ def test_clv_breakdown_groups_by_first_leg_market(tmp_path):
     assert "goals" in breakdown
     assert breakdown["disposals"]["n"] == 1
     assert breakdown["goals"]["n"] == 1
+
+
+# ── Consensus capture_close (two books) ──────────────────────────────────────
+
+def test_capture_close_two_books_sets_clv_available(tmp_path):
+    """When Sportsbet AND TAB both price every leg, clv_available=True."""
+    from unittest.mock import patch
+    from afl_bot.dashboard.capture_close import capture_close
+    ledger = tmp_path / "ledger.json"
+    add_bet(ledger, _multi_record(), 25.0, 3.10)
+
+    # Mock Sportsbet close prices
+    sb_prices = {
+        "A 20+ disposals": 1.70,
+        "B 20+ disposals": 1.60,
+        "C 20+ disposals": 2.00,
+    }
+    # TAB also has all three legs
+    tab_prices = {
+        "A 20+ disposals": 1.72,
+        "B 20+ disposals": 1.63,
+        "C 20+ disposals": 1.98,
+    }
+    with patch("afl_bot.data.sportsbet_odds.fetch_sportsbet_odds", return_value=sb_prices):
+        result = capture_close(ledger,
+                               sportsbet_urls=["https://example.com/event/1"],
+                               tab_odds=tab_prices)
+    assert result["n_sharp"] == 1
+    assert result["n_soft_only"] == 0
+    bets = load_ledger(ledger)
+    b = bets[0]
+    assert b["clv_available"] is True
+    assert b["close_ref_source"] == "consensus:sportsbet+tab"
+    assert b["close_ref_odds"] is not None
+    assert b["clv_pct"] is not None
+
+
+def test_capture_close_two_books_clv_pct_correct(tmp_path):
+    """clv_pct = compute_clv(open_odds, close_ref_odds) from consensus."""
+    import math
+    from unittest.mock import patch
+    from afl_bot.config import PROP_ASSUMED_OVERROUND
+    from afl_bot.dashboard.capture_close import capture_close
+    from afl_bot.dashboard.clv import compute_clv
+
+    ledger = tmp_path / "ledger.json"
+    add_bet(ledger, _multi_record(), 25.0, 3.10)
+
+    sb_prices = {"A 20+ disposals": 1.70, "B 20+ disposals": 1.60, "C 20+ disposals": 2.00}
+    tab_prices = {"A 20+ disposals": 1.72, "B 20+ disposals": 1.63, "C 20+ disposals": 1.98}
+
+    with patch("afl_bot.data.sportsbet_odds.fetch_sportsbet_odds", return_value=sb_prices):
+        capture_close(ledger,
+                      sportsbet_urls=["https://example.com/event/1"],
+                      tab_odds=tab_prices)
+    bets = load_ledger(ledger)
+    b = bets[0]
+
+    # Verify clv_pct is consistent with the stored close_ref_odds and open_odds
+    expected_clv = compute_clv(b["open_odds"], b["close_ref_odds"])
+    assert b["clv_pct"] == pytest.approx(expected_clv)
+
+
+def test_capture_close_one_book_clv_unavailable(tmp_path):
+    """When tab_odds is not provided (None), clv_available stays False."""
+    from afl_bot.dashboard.capture_close import capture_close
+    ledger = tmp_path / "ledger.json"
+    add_bet(ledger, _multi_record(), 25.0, 3.10)
+    result = capture_close(ledger, tab_odds=None)
+    assert result["n_sharp"] == 0
+    assert result["n_soft_only"] == 1
+    bets = load_ledger(ledger)
+    assert bets[0]["clv_available"] is False
+
+
+def test_capture_close_partial_tab_coverage_clv_unavailable(tmp_path):
+    """When TAB is missing one leg of the multi, clv_available stays False."""
+    from unittest.mock import patch
+    from afl_bot.dashboard.capture_close import capture_close
+    ledger = tmp_path / "ledger.json"
+    add_bet(ledger, _multi_record(), 25.0, 3.10)
+
+    sb_prices = {"A 20+ disposals": 1.70, "B 20+ disposals": 1.60, "C 20+ disposals": 2.00}
+    # TAB only has 2 of 3 legs
+    tab_prices = {"A 20+ disposals": 1.72, "B 20+ disposals": 1.63}
+
+    with patch("afl_bot.data.sportsbet_odds.fetch_sportsbet_odds", return_value=sb_prices):
+        result = capture_close(ledger,
+                               sportsbet_urls=["https://example.com/event/1"],
+                               tab_odds=tab_prices)
+    assert result["n_sharp"] == 0
+    bets = load_ledger(ledger)
+    assert bets[0]["clv_available"] is False
 
 
 # ── Dashboard CLV panel (end-to-end) ─────────────────────────────────────────

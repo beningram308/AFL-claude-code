@@ -1270,12 +1270,17 @@ con.sql("SELECT hteam, ateam, hscore, ascore FROM games_2025 LIMIT 5").show()
   `--synthetic-props` to the CLI to force the synthetic log.
   Reading Fryzigg's RDS file requires the optional `pyreadr` dependency.
   Pre-2012 history (different team names/eras) is out of scope for now.
-- **Live odds: h2h/totals only.** `round-report --live-odds` pulls live h2h +
+- **Live odds: h2h/totals only (live feed).** `round-report --live-odds` pulls live h2h +
   totals from The Odds API (`afl_bot/data/live_odds.py`, `ODDS_API_KEY` env
-  var). Player-**prop** odds are not on the free tier, so prop prices still come
-  from the `--odds` JSON (merged over live). `run-round` still takes odds from a
-  JSON file; `afl_bot/data/odds.py` covers *historical* h2h/totals for
-  backtesting (CLV). A live prop feed (paid add-on or scrape) is a future step.
+  var). Player-**prop** fill prices come from Sportsbet (`afl_bot/data/sportsbet_odds.py`).
+  `afl_bot/data/odds.py` covers *historical* h2h/totals for backtesting (CLV).
+- **CLV (Closing Line Value) active for prop bets.** `capture-close` (run near
+  bounce) fetches Sportsbet + TAB closing prices, de-vigs each, and records a
+  consensus reference (`source="consensus:sportsbet+tab"`). Prop bets where both
+  books have prices get `clv_available=True` and a real `clv_pct`. H2H CLV uses
+  the same 2-book consensus; Betfair exchange is the future upgrade for a sharper
+  H2H reference. Dashboard CLV tab shows rolling mean, t-stat, and MDE.
+  Second-book scraper: `afl_bot/data/tab_odds.py` (TAB AU, auto-discovers matches).
 - **Lineups not yet wired in.** `LegCandidate.confirmed` defaults to `True`;
   call `client.get_lineup(year, round)` and mark unconfirmed players'
   `confirmed=False` before building multis.

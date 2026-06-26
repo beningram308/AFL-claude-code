@@ -4,11 +4,11 @@ Formula: clv_pct = (1/close_ref_odds) - (1/open_odds)
   Positive = you beat the closing line (market moved in, confirming edge).
   Consistent with walkforward.py: clv = close_prob - open_prob.
 
-Sharp reference hierarchy (FIX-PHASE3-CLV.txt):
-  H2H/line  : Betfair exchange (not yet connected -> clv_available=False)
-  Props      : de-vigged consensus across >=2 books (needs 2nd scraper)
-  Currently  : all bets marked clv_available=False.
-               Adding Betfair (H2H) or a 2nd book scraper (props) is the unlock.
+Sharp reference hierarchy (FIX-PHASE3-CLV.txt / FIX-SECOND-BOOK-FOR-PROP-CLV.txt):
+  H2H/line  : 2-book consensus (Sportsbet + TAB) when both books price the leg.
+              Betfair exchange is the future upgrade for a sharper H2H reference.
+  Props      : de-vigged consensus across Sportsbet + TAB (now active).
+  Single-book: clv_available=False (soft-self comparison is meaningless).
 """
 from __future__ import annotations
 
@@ -78,6 +78,27 @@ def clv_stats(clv_values: list[float]) -> dict:
         "pct_positive": pct_positive,
         "min_detectable_edge": mde,
     }
+
+
+def devig_consensus_single_sided(
+    over_odds_list: list[float],
+    assumed_overround: float | None = None,
+) -> float:
+    """Median de-vigged P(over/favourite) from >=2 books (over side only).
+
+    Uses single-sided devig: P_fair = (1/odds) / assumed_overround per book,
+    then returns the median probability across books.
+
+    Raises ValueError when fewer than 2 books are supplied.
+    """
+    from afl_bot.config import PROP_ASSUMED_OVERROUND as _DEFAULT
+    _or = assumed_overround if assumed_overround is not None else _DEFAULT
+    if len(over_odds_list) < 2:
+        raise ValueError(
+            f"Need >=2 books for single-sided consensus; got {len(over_odds_list)}"
+        )
+    probs = [(1.0 / o) / _or for o in over_odds_list]
+    return float(np.median(probs))
 
 
 def clv_breakdown_by_market(bets: list[dict]) -> dict[str, dict]:
