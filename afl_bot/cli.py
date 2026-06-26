@@ -1684,6 +1684,18 @@ def main(argv: list[str] | None = None) -> None:
     settle_p.add_argument("--ledger", type=str, default=None, dest="ledger_path",
                           help="Path to bets ledger JSON (default: reports/bets_ledger.json).")
 
+    cap_p = sub.add_parser("capture-close",
+                           help="Snapshot closing reference prices for pending bets "
+                                "(run near bounce). Marks CLV unavailable until a "
+                                "sharp reference (Betfair / 2nd book) is connected.")
+    cap_p.add_argument("--year", type=int, default=None)
+    cap_p.add_argument("--round", type=int, default=None, dest="round_no")
+    cap_p.add_argument("--ledger", type=str, default=None, dest="ledger_path",
+                       help="Path to bets ledger JSON (default: reports/bets_ledger.json).")
+    cap_p.add_argument("--sportsbet-urls", type=str, default=None, dest="sportsbet_urls_path",
+                       help="JSON list of Sportsbet match URLs (for line-movement tracking). "
+                            "Same file as used by round-report --sportsbet.")
+
     dash_p = sub.add_parser("dashboard",
                              help="Launch the multis dashboard at http://127.0.0.1:8765 .")
     dash_p.add_argument("--port", type=int, default=8765)
@@ -1719,6 +1731,23 @@ def main(argv: list[str] | None = None) -> None:
         ledger_path = args.ledger_path or str(ROOT_DIR / "reports" / "bets_ledger.json")
         n = _settle(ledger_path, year=args.year, round_no=args.round_no)
         print(f"Settled {n} bet(s). Ledger: {ledger_path}")
+    elif args.command == "capture-close":
+        from afl_bot.dashboard.capture_close import capture_close as _capture
+        ledger_path = args.ledger_path or str(ROOT_DIR / "reports" / "bets_ledger.json")
+        sb_urls: list[str] | None = None
+        if args.sportsbet_urls_path:
+            try:
+                sb_urls = json.loads(Path(args.sportsbet_urls_path).read_text())
+            except (OSError, json.JSONDecodeError):
+                print(f"capture-close: could not read {args.sportsbet_urls_path}", file=sys.stderr)
+        result = _capture(ledger_path, year=args.year, round_no=args.round_no,
+                          sportsbet_urls=sb_urls)
+        print(f"capture-close: {result['n_updated']} bet(s) updated "
+              f"({result['n_sharp']} sharp reference, "
+              f"{result['n_soft_only']} soft-only / unavailable).")
+        if result["n_sharp"] == 0:
+            print("  CLV unavailable: add Betfair (H2H) or a 2nd book scraper (props) "
+                  "to unlock sharp CLV.")
     elif args.command == "dashboard":
         from afl_bot.dashboard.app import run_dashboard
         run_dashboard(port=args.port, open_browser=not args.no_browser)

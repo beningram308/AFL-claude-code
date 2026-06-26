@@ -1,4 +1,4 @@
-"""Flask dashboard for the AFL multis tracker (Stage 2D).
+"""Flask dashboard for the AFL multis tracker (Stage 2D + Phase 3 CLV).
 
 Launch: python -m afl_bot.cli dashboard
 Opens:  http://127.0.0.1:8765
@@ -7,6 +7,7 @@ Panels:
   1. Round View — per-game cards with Model + Sportsbet ladders; filter/sort controls.
   2. Place a Bet — "I placed this" form: stake + taken_odds -> appends to ledger.
   3. Tracker / P&L — open bets, settled bets, season summary + Chart.js cumulative profit.
+  4. CLV — rolling CLV stats, t-stat, min-detectable-edge, per-market breakdown.
   "Settle now" runs settle_bets for all completed pending rounds and refreshes.
 
 Data:
@@ -32,6 +33,7 @@ from afl_bot.dashboard.ledger import (
     pnl_summary,
     save_ledger,
 )
+from afl_bot.dashboard.clv import clv_breakdown_by_market, clv_stats
 from afl_bot.dashboard.settle import settle_bets
 
 REPORTS_DIR = ROOT_DIR / "reports"
@@ -90,11 +92,20 @@ def index():
     bets = load_ledger(LEDGER_PATH)
     summary = pnl_summary(bets)
     chart_data = cumulative_profit(bets)
+    clv_avail = [b for b in bets if b.get("clv_available")]
+    clv_all = clv_stats([b["clv_pct"] for b in clv_avail])
+    clv_by_mkt = clv_breakdown_by_market(bets)
+    n_clv_pending = sum(1 for b in bets
+                        if b["status"] == "pending" and not b.get("close_captured_at"))
+    n_clv_unavail = sum(1 for b in bets if b.get("close_captured_at")
+                        and not b.get("clv_available"))
     return render_template_string(
         _TEMPLATE,
         games=games, rounds=rounds, selected=selected,
         bets=bets, summary=summary, chart_data=json.dumps(chart_data),
         all_multis={r["id"]: r for r in records},
+        clv_all=clv_all, clv_by_mkt=clv_by_mkt,
+        n_clv_pending=n_clv_pending, n_clv_unavail=n_clv_unavail,
     )
 
 
@@ -212,6 +223,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
 <div class="tabs">
   <div class="tab active" onclick="showTab('rounds')">Round View</div>
   <div class="tab" onclick="showTab('tracker')" id="tab-tracker">Tracker / P&L</div>
+  <div class="tab" onclick="showTab('clv')" id="tab-clv">CLV</div>
 </div>
 
 <!-- ── ROUND VIEW ─────────────────────────────── -->
@@ -428,16 +440,98 @@ _TEMPLATE = r"""<!DOCTYPE html>
   {% endif %}
 </div>
 
+<!-- ── CLV ──────────────────────────────────────── -->
+<div class="panel" id="panel-clv">
+  <h2>Closing Line Value</h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+    CLV = (1/close_ref_odds) - (1/open_odds). Positive = you beat the closing line.<br>
+    Sharp reference: Betfair exchange (H2H) or de-vigged consensus &ge;2 books (props).<br>
+    <b>Currently unavailable</b> — add Betfair integration (H2H) or a 2nd odds scraper (props) to unlock.
+    Run <code>capture-close</code> near bounce to record line movements.
+  </p>
+
+  {% if n_clv_pending > 0 %}
+  <div class="card" style="border-color:var(--yellow)">
+    <span style="color:var(--yellow)">{{ n_clv_pending }} pending bet(s) not yet captured — run <code>capture-close</code> before bounce.</span>
+  </div>
+  {% endif %}
+
+  {% if n_clv_unavail > 0 %}
+  <div class="card" style="border-color:var(--muted)">
+    <span style="color:var(--muted)">{{ n_clv_unavail }} bet(s) captured but CLV unavailable (no sharp reference).</span>
+  </div>
+  {% endif %}
+
+  {% if clv_all.n > 0 %}
+  <div class="summary-grid">
+    <div class="stat-box">
+      <div class="val {{ 'value' if (clv_all.mean_clv or 0) > 0 else 'neg' }}">
+        {% if clv_all.mean_clv is not none %}{{ '%+.2f'|format(clv_all.mean_clv*100) }}pp{% else %}—{% endif %}
+      </div>
+      <div class="lbl">Mean CLV (n={{ clv_all.n }})</div>
+    </div>
+    <div class="stat-box">
+      <div class="val">
+        {% if clv_all.pct_positive is not none %}{{ '%.0f'|format(clv_all.pct_positive*100) }}%{% else %}—{% endif %}
+      </div>
+      <div class="lbl">% positive CLV</div>
+    </div>
+    <div class="stat-box">
+      <div class="val {{ 'value' if clv_all.significant else '' }}">
+        {% if clv_all.t_stat is not none %}{{ '%.2f'|format(clv_all.t_stat) }}{% else %}—{% endif %}
+        {% if clv_all.significant %}<span style="font-size:11px"> *</span>{% endif %}
+      </div>
+      <div class="lbl">t-stat (one-sided 5%)</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" style="color:var(--yellow)">
+        {% if clv_all.min_detectable_edge is not none %}{{ '%+.2f'|format(clv_all.min_detectable_edge*100) }}pp{% else %}—{% endif %}
+      </div>
+      <div class="lbl">Min detectable edge (80% power)</div>
+    </div>
+  </div>
+  {% if not clv_all.significant %}
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+    Too soon to tell — need ~{{ ((2.487 * (clv_all.sd_clv or 0.05) / (clv_all.mean_clv or 0.001)) ** 2) | int }} bets at current mean CLV for significance.
+  </p>
+  {% endif %}
+
+  {% if clv_by_mkt %}
+  <h3>By market type</h3>
+  <table>
+    <tr><th>Market</th><th>n</th><th>Mean CLV</th><th>t-stat</th><th>Sig?</th><th>MDE</th></tr>
+    {% for mkt, s in clv_by_mkt.items() %}
+    <tr>
+      <td>{{ mkt }}</td>
+      <td>{{ s.n }}</td>
+      <td>{% if s.mean_clv is not none %}<span class="{{ 'value' if s.mean_clv > 0 else 'neg' }}">{{ '%+.2f'|format(s.mean_clv*100) }}pp</span>{% else %}—{% endif %}</td>
+      <td>{% if s.t_stat is not none %}{{ '%.2f'|format(s.t_stat) }}{% else %}—{% endif %}</td>
+      <td>{% if s.significant %}<span class="value">yes *</span>{% else %}<span style="color:var(--muted)">no</span>{% endif %}</td>
+      <td>{% if s.min_detectable_edge is not none %}{{ '%+.2f'|format(s.min_detectable_edge*100) }}pp{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% else %}
+  <div style="color:var(--muted);padding:30px 0;text-align:center">
+    No CLV data yet.<br>
+    H2H CLV: add Betfair integration &bull; Prop CLV: add a 2nd odds scraper (e.g. TAB/Ladbrokes).
+  </div>
+  {% endif %}
+</div>
+
 <script>
 function showTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  const idx=['rounds','tracker'].indexOf(name);
+  const idx=['rounds','tracker','clv'].indexOf(name);
   document.querySelectorAll('.tab')[idx].classList.add('active');
   document.getElementById('panel-'+name).classList.add('active');
 }
 // Check URL hash on load
 if(location.hash==='#tracker') showTab('tracker');
+if(location.hash==='#clv') showTab('clv');
 
 function openPlace(multiId, game, defaultOdds){
   // Find the card containing this multi's Place button and open its form

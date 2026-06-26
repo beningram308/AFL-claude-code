@@ -1,19 +1,29 @@
 """Bets ledger — read/write reports/bets_ledger.json (Stage 2B).
 
 Schema per bet:
-  bet_id       uuid string
-  multi_id     links back to the multis.json record (stable id)
-  year, round  int
-  game         "Home vs Away"
-  ladder       "model" | "sportsbet"
-  legs         snapshot of legs at placement (list of dicts from multis.json)
-  stake        float (AUD)
-  taken_odds   float (odds Ben actually got)
-  placed_at    ISO-8601 with +10:00 / +11:00 (Australia/Melbourne)
-  status       "pending" | "won" | "lost" | "void"
-  settled_at   ISO-8601 or null
-  payout       float or null (stake*taken_odds on win, 0 on loss, stake on full void)
-  leg_results  list of {"name":..., "hit": bool|null} or null
+  bet_id            uuid string
+  multi_id          links back to the multis.json record (stable id)
+  year, round       int
+  game              "Home vs Away"
+  ladder            "model" | "sportsbet"
+  legs              snapshot of legs at placement (list of dicts from multis.json)
+  stake             float (AUD)
+  open_odds         float — fill odds at placement (CLV baseline)
+  taken_odds        float — same as open_odds; kept for backward compat
+  placed_at         ISO-8601 with +10:00 / +11:00 (Australia/Melbourne)
+  status            "pending" | "won" | "lost" | "void"
+  settled_at        ISO-8601 or null
+  payout            float or null (stake*taken_odds on win, 0 on loss, stake on full void)
+  leg_results       list of {"name":..., "hit": bool|null} or null
+  -- CLV fields (added by capture-close / add_clv_snapshot) --
+  open_odds         fill odds; CLV baseline (= taken_odds for bets placed at market price)
+  close_captured_at ISO-8601 or null
+  close_ref_odds    float or null  (sharp reference near bounce)
+  close_ref_source  "betfair"|"consensus-N"|"no-betfair"|"single-book" or null
+  close_implied_prob float or null (1/close_ref_odds)
+  clv_pct           float or null  (1/close_ref_odds - 1/open_odds)
+  clv_available     bool           (False until a sharp reference is connected)
+  close_legs        list of per-leg {name, open_odds, close_odds, line_move_flag}
 """
 
 from __future__ import annotations
@@ -58,12 +68,20 @@ def add_bet(ledger_path: str | Path, multi_record: dict,
         "ladder": multi_record["ladder"],
         "legs": copy.deepcopy(multi_record["legs"]),  # deep snapshot at placement
         "stake": float(stake),
+        "open_odds": float(taken_odds),  # CLV baseline = fill price at placement
         "taken_odds": float(taken_odds),
         "placed_at": _melbourne_now(),
         "status": "pending",
         "settled_at": None,
         "payout": None,
         "leg_results": None,
+        "close_captured_at": None,
+        "close_ref_odds": None,
+        "close_ref_source": None,
+        "close_implied_prob": None,
+        "clv_pct": None,
+        "clv_available": False,
+        "close_legs": None,
     }
     bets = load_ledger(ledger_path)
     bets.append(bet)
@@ -90,6 +108,41 @@ def pnl_summary(bets: list[dict]) -> dict:
         "n_settled": len(settled),
         "n_won": len(won),
     }
+
+
+def add_clv_snapshot(
+    ledger_path: str | Path,
+    bet_id: str,
+    *,
+    close_ref_odds: float | None,
+    close_ref_source: str,
+    clv_available: bool,
+    captured_at: str | None = None,
+) -> bool:
+    """Update an existing bet with CLV snapshot fields.
+
+    When clv_available=True and close_ref_odds is provided, clv_pct is
+    computed as (1/close_ref_odds) - (1/open_odds).
+    Returns True if bet_id was found, False otherwise.
+    """
+    from afl_bot.dashboard.clv import compute_clv
+    bets = load_ledger(ledger_path)
+    for bet in bets:
+        if bet["bet_id"] != bet_id:
+            continue
+        open_odds = bet.get("open_odds") or bet.get("taken_odds")
+        bet["close_ref_odds"] = close_ref_odds
+        bet["close_ref_source"] = close_ref_source
+        bet["close_implied_prob"] = (1.0 / close_ref_odds) if close_ref_odds else None
+        bet["clv_available"] = clv_available
+        if clv_available and close_ref_odds is not None and open_odds is not None:
+            bet["clv_pct"] = compute_clv(open_odds, close_ref_odds)
+        else:
+            bet["clv_pct"] = None
+        bet["close_captured_at"] = captured_at or _melbourne_now()
+        save_ledger(ledger_path, bets)
+        return True
+    return False
 
 
 def cumulative_profit(bets: list[dict]) -> list[dict]:
