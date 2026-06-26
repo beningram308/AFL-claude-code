@@ -114,7 +114,7 @@ def simulate_match(
     home_accuracy: float, away_accuracy: float, n: int,
     rng: np.random.Generator,
     score_correlation: float = SCORE_SHOT_CORRELATION,
-    is_wet: bool = False,
+    greasiness: float = 0.0,
     shot_dispersion: float = SHOT_DISPERSION,
 ) -> dict:
     """Vectorised Monte Carlo of n scorelines via the scoring-shots model
@@ -134,18 +134,21 @@ def simulate_match(
     NB marginal untouched, so means and per-team variance are unchanged from
     the independent case -- only the dependence (and hence the margin/total
     sigma split) changes. ``score_correlation=0`` recovers independence.
+
+    ``greasiness`` (0.0 = dry/warm, 1.0 = heavy-wet/cold) scales the wet-weather
+    effects continuously: fewer points and lower goal conversion (Phase 1).
     """
     if home_accuracy != home_accuracy:  # NaN check without importing math/np scalar
         home_accuracy = DEFAULT_SHOT_ACCURACY
     if away_accuracy != away_accuracy:
         away_accuracy = DEFAULT_SHOT_ACCURACY
 
-    # Wet weather (round-2 §4.1): fewer points overall and lower goal conversion
-    # (more behinds), so the total/margin/H2H markets move with the wet props.
-    if is_wet:
-        mu_total = mu_total * WET_TOTAL_MULTIPLIER
-        home_accuracy -= WET_ACCURACY_PENALTY
-        away_accuracy -= WET_ACCURACY_PENALTY
+    # Wet/greasy weather (round-2 §4.1, Phase 1): scale effect continuously with
+    # greasiness so a cold/dewy-but-dry night partially suppresses totals.
+    if greasiness > 0.0:
+        mu_total = mu_total * (1.0 - greasiness * (1.0 - WET_TOTAL_MULTIPLIER))
+        home_accuracy -= greasiness * WET_ACCURACY_PENALTY
+        away_accuracy -= greasiness * WET_ACCURACY_PENALTY
 
     mu_home_pts = max((mu_total + mu_margin) / 2.0, 0.0)
     mu_away_pts = max((mu_total - mu_margin) / 2.0, 0.0)

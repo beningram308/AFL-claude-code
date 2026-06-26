@@ -53,8 +53,8 @@ def test_simulate_boundary_throwins_mean_near_prior_and_negative_total_corr():
     assert (oob >= 0).all()
 
 
-def test_simulate_boundary_throwins_wet_lifts_count():
+def test_simulate_boundary_throwins_greasy_lifts_count():
     total = rng.normal(162, 31, 200_000).clip(60)
-    dry = simulate_boundary_throwins(36.0, total, rng, is_wet=False)
-    wet = simulate_boundary_throwins(36.0, total, rng, is_wet=True)
+    dry = simulate_boundary_throwins(36.0, total, rng, greasiness=0.0)
+    wet = simulate_boundary_throwins(36.0, total, rng, greasiness=1.0)
     assert wet.mean() > dry.mean() * 1.1                      # rain raises OOB

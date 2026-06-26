@@ -66,7 +66,7 @@ def test_attach_weather_network_failure_degrades_to_dry(tmp_path):
 def test_attach_weather_empty_games():
     out = attach_weather(pd.DataFrame())
     assert out.empty
-    assert {"rain_mm", "wind_kmh", "roofed", "is_wet"} <= set(out.columns)
+    assert {"rain_mm", "wind_kmh", "roofed", "is_wet", "greasiness"} <= set(out.columns)
 
 
 def test_fetch_forecast_rain_failure_returns_nan():

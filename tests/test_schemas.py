@@ -45,7 +45,7 @@ def test_weather_attach_schema():
         {"venue": "Adelaide Oval", "date": "2025-03-15", "rain_mm": 1.0, "wind_kmh": 10.0},
     ])
     out = attach_weather(GAMES, weather=weather)
-    assert {"rain_mm", "wind_kmh", "roofed", "is_wet"} <= set(out.columns)
+    assert {"rain_mm", "wind_kmh", "roofed", "is_wet", "greasiness"} <= set(out.columns)
     assert out["is_wet"].dtype == bool
 
 

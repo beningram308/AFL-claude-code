@@ -14,6 +14,15 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from afl_bot.config import (
+    GREASINESS_DEW_SPREAD_C,
+    GREASINESS_RAIN_MM_MAX,
+    GREASINESS_TEMP_COLD_C,
+    GREASINESS_TEMP_NEUTRAL_C,
+    GREASINESS_WEIGHTS,
+    GREASINESS_WIND_MAX_KMH,
+)
+
 # Direction & rough magnitude from AFL wet-weather research (plan §3.4):
 # disposals/marks/goals down, tackles up. These describe GENUINELY wet *play*.
 #
@@ -92,3 +101,62 @@ def rain_multiplier(stat: str, is_wet: bool, roofed: bool = False,
         return 1.0
     multipliers = multipliers or DEFAULT_RAIN_MULTIPLIERS
     return float(multipliers.get(stat, 1.0))
+
+
+def greasiness_factor(
+    rain_mm: float,
+    temp_c: float,
+    apparent_temp_c: float,
+    wind_kmh: float,
+    roofed: bool = False,
+) -> float:
+    """Continuous 0.0–1.0 greasiness score blending rain, cold, dew proximity,
+    and wind. Roofed venues always return 0.0. NaN inputs contribute 0 for their
+    component rather than crashing — a missing temperature reading doesn't force
+    a greasy classification.
+
+    Intended as the single greasiness signal flowing into ``greasiness_multiplier``
+    and ``simulate_match``; replaces the binary ``is_wet`` flag (Phase 1).
+    """
+    if roofed:
+        return 0.0
+
+    r = rain_mm if np.isfinite(rain_mm) else 0.0
+    w = wind_kmh if np.isfinite(wind_kmh) else 0.0
+
+    rain_g = min(1.0, r / GREASINESS_RAIN_MM_MAX)
+
+    if np.isfinite(temp_c):
+        span = GREASINESS_TEMP_NEUTRAL_C - GREASINESS_TEMP_COLD_C
+        cold_g = max(0.0, min(1.0, (GREASINESS_TEMP_NEUTRAL_C - temp_c) / span))
+    else:
+        cold_g = 0.0
+
+    # Dew/humidity slipperiness only matters in cold conditions; a warm night
+    # with minor wind chill doesn't make the ball greasy.
+    if np.isfinite(temp_c) and np.isfinite(apparent_temp_c) and temp_c < GREASINESS_TEMP_NEUTRAL_C:
+        spread = max(0.0, float(temp_c) - float(apparent_temp_c))
+        dew_g = min(1.0, spread / GREASINESS_DEW_SPREAD_C)
+    else:
+        dew_g = 0.0
+
+    wind_g = min(1.0, w / GREASINESS_WIND_MAX_KMH)
+
+    w_rain, w_cold, w_dew, w_wind = GREASINESS_WEIGHTS
+    return w_rain * rain_g + w_cold * cold_g + w_dew * dew_g + w_wind * wind_g
+
+
+def greasiness_multiplier(
+    stat: str,
+    greasiness: float,
+    roofed: bool = False,
+    multipliers: dict[str, float] | None = None,
+) -> float:
+    """Per-stat multiplier scaled continuously from 1.0 at greasiness=0.0 to the
+    heavy-wet endpoint (``DEFAULT_RAIN_MULTIPLIERS``) at greasiness=1.0. Roofed
+    venues and zero greasiness always return 1.0."""
+    if roofed or greasiness <= 0.0:
+        return 1.0
+    multipliers = multipliers or DEFAULT_RAIN_MULTIPLIERS
+    wet_end = float(multipliers.get(stat, 1.0))
+    return 1.0 + float(greasiness) * (wet_end - 1.0)

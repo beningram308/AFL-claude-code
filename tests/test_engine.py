@@ -84,8 +84,8 @@ def test_simulate_match_higher_total_increases_variance_heteroscedastic():
 def test_simulate_match_wet_lowers_total_and_goals_preserves_margin():
     rng = make_rng(seed=11)
     kw = dict(mu_margin=8.0, mu_total=170.0, home_accuracy=0.525, away_accuracy=0.525, n=N)
-    dry = simulate_match(Team("H", True), Team("A"), rng=rng, is_wet=False, **kw)
-    wet = simulate_match(Team("H", True), Team("A"), rng=rng, is_wet=True, **kw)
+    dry = simulate_match(Team("H", True), Team("A"), rng=rng, greasiness=0.0, **kw)
+    wet = simulate_match(Team("H", True), Team("A"), rng=rng, greasiness=1.0, **kw)
 
     dry_total = (dry["home_pts"] + dry["away_pts"]).mean()
     wet_total = (wet["home_pts"] + wet["away_pts"]).mean()

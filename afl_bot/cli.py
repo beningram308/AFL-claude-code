@@ -88,7 +88,7 @@ from afl_bot.data.player_stats import load_player_log
 from afl_bot.data.squiggle import SquiggleClient
 from afl_bot.data.stoppages import load_boundary_throwins
 from afl_bot.data.venues import is_roofed, venue_info
-from afl_bot.data.weather import forecast_game_rain
+from afl_bot.data.weather import forecast_game_conditions, forecast_game_rain
 from afl_bot.models.pace import PACE_STATS, league_stat_totals, team_stat_total_profiles
 from afl_bot.models.priors import (
     cba_role_multiplier,
@@ -106,7 +106,7 @@ from afl_bot.models.props import (
     player_rate_profile,
 )
 from afl_bot.models.stoppages import expected_oob, simulate_boundary_throwins
-from afl_bot.models.weather_effects import rain_multiplier
+from afl_bot.models.weather_effects import greasiness_factor, greasiness_multiplier
 from afl_bot.models.scoring import (
     expected_total,
     team_scoring_profiles,
@@ -183,20 +183,24 @@ def _fixture_hga(home: str, away: str, venue: str, team_hga: dict[str, float]) -
     return hga
 
 
-def _fixture_is_wet(fx, rain_mm: float | None, roofed: bool) -> bool:
-    """Wet flag for a fixture (round-2 §4.2): roofed -> always dry; an explicit
-    --rain-mm overrides; otherwise auto-fetch the Open-Meteo forecast at bounce
-    time (best-effort, dry on any failure / outside the forecast horizon)."""
+def _fixture_greasiness(fx, rain_mm: float | None, roofed: bool) -> float:
+    """Continuous 0.0-1.0 greasiness for a fixture (Phase 1): roofed -> 0.0;
+    an explicit --rain-mm override uses rain-only greasiness (no temperature);
+    otherwise auto-fetch forecast conditions from Open-Meteo (best-effort,
+    0.0 on any failure / outside the forecast horizon)."""
     if roofed:
-        return False
+        return 0.0
     if rain_mm is not None:
-        return rain_mm >= WET_THRESHOLD_MM
+        return greasiness_factor(rain_mm, float("nan"), float("nan"), float("nan"), roofed=False)
     info = venue_info(fx["venue"])
     if info is None:
-        return False
+        return 0.0
     when = fx["localtime"] if ("localtime" in fx and pd.notna(fx.get("localtime"))) else fx.get("date")
-    mm = forecast_game_rain(info["lat"], info["lon"], when)
-    return bool(np.isfinite(mm) and mm >= WET_THRESHOLD_MM)
+    cond = forecast_game_conditions(info["lat"], info["lon"], when)
+    return greasiness_factor(
+        cond["rain_mm"], cond["temp_c"], cond["apparent_temp_c"], cond["wind_kmh"],
+        roofed=False,
+    )
 
 
 def _select_players(player_log: pd.DataFrame, team: str, current_year: int, n: int,
@@ -242,20 +246,21 @@ def _select_players(player_log: pd.DataFrame, team: str, current_year: int, n: i
 
 def _team_player_samples(usage_players, team, opponent, is_home_team, match, pace,
                          player_log, roles, rate_priors, team_stat_profiles, league_totals,
-                         volume_stats, is_wet, roofed, n_sims, rng,
+                         volume_stats, greasiness, roofed, n_sims, rng,
                          lineup_tog: dict[str, float] | None = None,
                          team_stat_dispersion: float = TEAM_STAT_DISPERSION,
                          share_concentration: float = SHARE_CONCENTRATION):
     """Per-iteration stat samples for each priced player on one team: volume
-    stats via pace -> opponent/wet-adjusted team total -> role-shrunk Dirichlet
-    shares (§2.5/§3.1-3.3), goals via Multinomial on goal shares (§3.3).
-    Returns ``{player: {stat: samples}}``. Shared by run-round and round-report
-    so the two can't drift.
+    stats via pace -> opponent/greasy-weather-adjusted team total -> role-shrunk
+    Dirichlet shares (§2.5/§3.1-3.3), goals via Multinomial on goal shares
+    (§3.3). Returns ``{player: {stat: samples}}``. Shared by run-round and
+    round-report so the two can't drift.
 
-    ``lineup_tog`` maps player names to their projected TOG for this match
-    (from ``load_lineup_tog``). When supplied, it overrides the recent-form TOG
-    used as the projected TOG for that player (the historical baseline stays the
-    same — it is always the 40-game EWMA)."""
+    ``greasiness`` (0.0=dry, 1.0=heavy-wet/cold) scales per-stat multipliers
+    continuously (Phase 1). ``lineup_tog`` maps player names to their projected
+    TOG for this match (from ``load_lineup_tog``). When supplied, it overrides
+    the recent-form TOG used as the projected TOG for that player (the historical
+    baseline stays the same — it is always the 40-game EWMA)."""
     player_samples: dict[str, dict[str, np.ndarray]] = {p: {} for p in usage_players}
 
     # Role/minutes multipliers (plan §3.2).
@@ -275,7 +280,7 @@ def _team_player_samples(usage_players, team, opponent, is_home_team, match, pac
         if not np.isfinite(mu_team):
             continue
         mu_team *= opponent_matchup_multiplier(player_log, stat, opponent)
-        mu_team *= rain_multiplier(stat, is_wet, roofed)
+        mu_team *= greasiness_multiplier(stat, greasiness, roofed)
         team_total = simulate_team_stat_total(mu_team, pace, rng, dispersion=team_stat_dispersion)
 
         priced, shares = [], []
@@ -442,8 +447,9 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
         match_id = f"{year}_r{round_no}_{home_name}_v_{away_name}"
         venue = fx["venue"]
         roofed = is_roofed(venue)
-        is_wet = _fixture_is_wet(fx, rain_mm, roofed)
-        wx = " [WET]" if is_wet else (" [roof]" if roofed else "")
+        greasiness = _fixture_greasiness(fx, rain_mm, roofed)
+        is_wet = greasiness >= 0.5
+        wx = f" [WET g={greasiness:.2f}]" if is_wet else (f" [greasy g={greasiness:.2f}]" if greasiness > 0.1 else (" [roof]" if roofed else ""))
         print(f"--- {home_name} vs {away_name} ({venue}){wx} ---")
 
         home = Team(home_name, is_home=True)
@@ -461,7 +467,7 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
         home_accuracy = accuracy_profiles.get(home_name, float("nan"))
         away_accuracy = accuracy_profiles.get(away_name, float("nan"))
         match = simulate_match(home, away, mu_margin, mu_total, home_accuracy, away_accuracy,
-                               n_sims, rng, is_wet=is_wet)
+                               n_sims, rng, greasiness=greasiness)
         p_home_win = prob_event(match["home_win"] > 0)
         p_away_win = prob_event(match["away_win"] > 0)
         p_draw = prob_event(match["draw"] > 0)
@@ -520,7 +526,7 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
         # Boundary throw-ins (OOB) total market (plan §1.6c): coupled negatively
         # to this match's total draw, lifted in the wet. Prior-based until a real
         # boundary-throw-in feed is wired (afl_bot.data.stoppages).
-        oob_samples = simulate_boundary_throwins(mu_oob, total_pts, rng, is_wet=is_wet)
+        oob_samples = simulate_boundary_throwins(mu_oob, total_pts, rng, greasiness=greasiness)
         oob_line = round(mu_oob) + 0.5
         oob_mask = oob_samples >= oob_line
         p_oob_over = prob_event(oob_mask)
@@ -553,7 +559,7 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
             player_samples = _team_player_samples(
                 usage_players, team, opponent, is_home_team, match, pace,
                 player_log, roles, rate_priors, team_stat_profiles, league_totals,
-                volume_stats, is_wet, roofed, n_sims, rng, lineup_tog=lineup_tog)
+                volume_stats, greasiness, roofed, n_sims, rng, lineup_tog=lineup_tog)
 
             # Price every line from the per-player sample arrays.
             for player_name in usage_players:
@@ -951,7 +957,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         match_id = f"{year}_r{round_no}_{home_name}_v_{away_name}"
         venue = fx["venue"]
         roofed = is_roofed(venue)
-        is_wet = _fixture_is_wet(fx, rain_mm, roofed)
+        greasiness = _fixture_greasiness(fx, rain_mm, roofed)
+        is_wet = greasiness >= 0.5
 
         mu_margin = elo.expected_margin(home_name, away_name,
                                         hga=_fixture_hga(home_name, away_name, venue, team_hga))
@@ -962,14 +969,15 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         ha = accuracy_profiles.get(home_name, float("nan"))
         aa = accuracy_profiles.get(away_name, float("nan"))
         match = simulate_match(Team(home_name, True), Team(away_name), mu_margin, mu_total,
-                               ha, aa, n_sims, rng, is_wet=is_wet)
+                               ha, aa, n_sims, rng, greasiness=greasiness)
         total_pts = match["home_pts"] + match["away_pts"]
         total_line = round(mu_total / 5) * 5 + 0.5
         total_mask = total_pts >= total_line
 
         header = {
             "home": home_name, "away": away_name, "venue": venue,
-            "roofed": roofed, "is_wet": is_wet, "mu_margin": mu_margin, "mu_total": mu_total,
+            "roofed": roofed, "is_wet": is_wet, "greasiness": round(greasiness, 3),
+            "mu_margin": mu_margin, "mu_total": mu_total,
             "p_home": prob_event(match["home_win"] > 0), "p_away": prob_event(match["away_win"] > 0),
             "p_draw": prob_event(match["draw"] > 0),
             "total_line_name": f"Total {total_line}+", "p_total": prob_event(total_mask),
@@ -1022,7 +1030,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             n_tog_overrides += sum(1 for p in usage if p in lineup_tog)
             samples = _team_player_samples(
                 usage, team, opponent, is_home_team, match, pace, player_log, roles,
-                rate_priors, team_stat_profiles, league_totals, volume_stats, is_wet, roofed,
+                rate_priors, team_stat_profiles, league_totals, volume_stats, greasiness, roofed,
                 n_sims, rng, lineup_tog=lineup_tog)
             projections.append((team, projection_rows(samples, PROP_LINES, prop_calibrators)))
             # "Book menu" filter (FIX-BETTABLE-LEGS-AND-PRICING STEP 1): which

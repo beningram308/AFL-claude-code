@@ -44,7 +44,7 @@ def expected_oob(stoppage_log: pd.DataFrame | None = None,
 
 def simulate_boundary_throwins(
     mu_oob: float, total_points: np.ndarray, rng: np.random.Generator, *,
-    is_wet: bool = False, dispersion: float = OOB_DISPERSION,
+    greasiness: float = 0.0, dispersion: float = OOB_DISPERSION,
     total_coupling: float = OOB_TOTAL_COUPLING, rain_multiplier: float = OOB_RAIN_MULTIPLIER,
 ) -> np.ndarray:
     """Per-iteration boundary-throw-in count, coupled to the match sim's
@@ -52,17 +52,19 @@ def simulate_boundary_throwins(
 
     The per-iteration mean is ``mu_oob * (mean_total / total_iter)**total_coupling``
     (so a low-total, congested iteration carries more throw-ins — a negative
-    OOB/total correlation), times ``rain_multiplier`` when the game is wet, then
-    drawn as NB(mean, dispersion). ``total_points`` should be the array from
-    ``afl_bot.sim.engine.simulate_match`` (``home_pts + away_pts``).
+    OOB/total correlation), scaled by a wet/greasy multiplier that rises
+    continuously with ``greasiness`` (0.0=dry, 1.0=fully wet). ``total_points``
+    should be the array from ``afl_bot.sim.engine.simulate_match``
+    (``home_pts + away_pts``).
     """
     total_points = np.asarray(total_points, dtype=float)
     mean_total = total_points.mean()
     ratio = np.clip(mean_total / np.clip(total_points, 1.0, None), 0.5, 2.0)
 
     per_iter_mean = np.clip(mu_oob * ratio ** total_coupling, 1e-6, None)
-    if is_wet:
-        per_iter_mean = per_iter_mean * rain_multiplier
+    if greasiness > 0.0:
+        oob_mult = 1.0 + greasiness * (rain_multiplier - 1.0)
+        per_iter_mean = per_iter_mean * oob_mult
 
     r = float(dispersion)
     p = r / (r + per_iter_mean)

@@ -98,6 +98,16 @@ WET_THRESHOLD_MM = 5.0   # daily rainfall (mm) at/above which a game counts as "
 WET_TOTAL_MULTIPLIER = 0.93
 WET_ACCURACY_PENALTY = 0.02
 
+# Greasiness factor — continuous 0.0-1.0 wet/cold/slippery scale (Phase 1).
+# Replaces the binary is_wet trigger with a weighted blend of four components
+# that each saturate at 1.0; GREASINESS_WEIGHTS must sum to 1.0.
+GREASINESS_RAIN_MM_MAX = 10.0       # rain_mm at which rain component = 1.0
+GREASINESS_TEMP_COLD_C = 12.0       # temp_c at/below which cold component = 1.0
+GREASINESS_TEMP_NEUTRAL_C = 20.0    # temp_c at/above which cold component = 0.0
+GREASINESS_DEW_SPREAD_C = 4.0       # (temp_c - apparent_temp_c) at which dew component = 1.0
+GREASINESS_WIND_MAX_KMH = 50.0      # wind_kmh at which wind component = 1.0
+GREASINESS_WEIGHTS = (0.40, 0.20, 0.20, 0.20)  # (rain, cold, dew, wind)
+
 # ----------------------------------------------------------------------------- #
 # Hierarchical player priors & role adjustments — plan §3.1, §3.2
 # ----------------------------------------------------------------------------- #
