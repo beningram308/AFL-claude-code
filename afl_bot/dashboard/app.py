@@ -137,7 +137,7 @@ def api_ledger():
 
 def run_dashboard(port: int = 8765, open_browser: bool = True) -> None:
     REPORTS_DIR.mkdir(exist_ok=True)
-    print(f"AFL Multis Dashboard → http://127.0.0.1:{port}")
+    print(f"AFL Multis Dashboard -> http://127.0.0.1:{port}")
     if open_browser:
         webbrowser.open(f"http://127.0.0.1:{port}")
     app.run(host="127.0.0.1", port=port, debug=False)

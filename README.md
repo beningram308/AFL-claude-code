@@ -1075,6 +1075,13 @@ Place-a-Bet forms), **Tracker/P&L** (open + settled bets list, cumulative profit
 Chart.js), season summary stats, and a **Settle** button that calls `settle-bets` for the current
 round. No build step — single Jinja2 template, all state in JSON files.
 
+**Frozen per round.** The dashboard is a read-only view of the frozen `multis.json`. Opening
+(or refreshing) the dashboard never re-runs the sim, re-scrapes Sportsbet, or re-selects combos —
+it only reads the file. The multis shown are always exactly what `round-report` printed, and they
+stay locked until Ben deliberately re-runs `round-report` for that round. Ladder selection uses a
+stable tie-break (sorted leg names) so a re-run with identical Sportsbet prices produces
+byte-identical output.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

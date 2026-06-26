@@ -263,6 +263,11 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
     combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
+
+    # Stable tie-break key: sorted leg names guarantee the same combo always
+    # wins when two candidates score identically on the primary sort key.
+    def _leg_key(c: dict) -> tuple:
+        return tuple(sorted(c["legs"]))
     if not combos:
         return []
 
@@ -313,8 +318,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         if lcb_z <= 0.0:
             reaches_target = [c for c in available if c["_priced_joint"] <= 1.0 / target]
             if reaches_target:
-                return max(reaches_target, key=lambda c: (c["_priced_joint"], -_distance(c, target)))
-        return min(available, key=lambda c: (_distance(c, target), -_lcb_value(c)))
+                return max(reaches_target, key=lambda c: (c["_priced_joint"], -_distance(c, target), _leg_key(c)))
+        return min(available, key=lambda c: (_distance(c, target), -_lcb_value(c), _leg_key(c)))
 
     selected: list[dict] = []
     chosen: set[int] = set()
@@ -325,7 +330,7 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             valued = [c for c in available
                       if c.get("_priced_edge") is not None and 0.0 < c["_priced_edge"] <= max_plausible_edge]
             if valued:
-                valued.sort(key=lambda c: c["_priced_edge"], reverse=True)
+                valued.sort(key=lambda c: (c["_priced_edge"], _leg_key(c)), reverse=True)
                 pick = valued[0]
                 pick["value_pick"] = True
             else:
@@ -396,11 +401,14 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     if not priced:
         return []
 
+    def _leg_key(c: dict) -> tuple:
+        return tuple(sorted(c["legs"]))
+
     def _select_for_target(available: list[dict], target: float) -> dict:
         reaches = [c for c in available if c["book_odds"] >= target]
         if reaches:
-            return min(reaches, key=lambda c: c["book_odds"])
-        return max(available, key=lambda c: c["book_odds"])
+            return min(reaches, key=lambda c: (c["book_odds"], _leg_key(c)))
+        return max(available, key=lambda c: (c["book_odds"], _leg_key(c)))
 
     selected: list[dict] = []
     chosen: set[int] = set()
@@ -410,7 +418,7 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         if is_top:
             valued = [c for c in available if 0.0 < c["edge"] <= max_plausible_edge]
             if valued:
-                pick = max(valued, key=lambda c: c["edge"])
+                pick = max(valued, key=lambda c: (c["edge"], _leg_key(c)))
                 pick["value_pick"] = True
             else:
                 pick = _select_for_target(available, target)

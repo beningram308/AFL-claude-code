@@ -365,3 +365,106 @@ def test_settle_only_settles_matching_round(tmp_path):
     bets = {b["bet_id"]: b for b in load_ledger(ledger_path)}
     assert bets["r16"]["status"] == "won"
     assert bets["r17"]["status"] == "pending"
+
+
+# ── FIX-LOCK: frozen JSON / dashboard read-only / determinism ────────────────
+
+def test_multis_json_fields_identical_to_rung_objects():
+    """_rung_to_json faithfully transcribes every field render_markdown reads.
+
+    Both the .md and the JSON are built from the same sgms objects in
+    round_report; this test proves the transcription is lossless so the two
+    outputs are guaranteed to agree.
+    """
+    from afl_bot.build.report import search_match_sgms
+    legs = _make_legs()
+    leg_by_name = {l.name: l for l in legs}
+    odds_book = {l.name: l.market_odds for l in legs}
+    rungs = search_match_sgms(legs, odds_book=odds_book)
+    assert rungs, "need at least one rung"
+    for rung in rungs:
+        rec = _rung_to_json(rung, "model", 2026, 16, "Home", "Away",
+                            leg_by_name, odds_book)
+        # core numeric fields
+        assert rec["model_joint"] == pytest.approx(rung["joint_prob"])
+        assert rec["model_fair"] == pytest.approx(rung["fair_odds"])
+        assert rec["band"] == pytest.approx(rung["target_odds"])
+        assert rec["value_pick"] == bool(rung.get("value_pick", False))
+        # leg names in the same order
+        assert [l["name"] for l in rec["legs"]] == rung["legs"]
+        # edge/book_combo when priced
+        if "book_odds" in rung:
+            assert rec["book_combo"] == pytest.approx(rung["book_odds"])
+            assert rec["edge"] == pytest.approx(rung["edge"])
+
+
+def test_dashboard_index_reads_json_never_recomputes(tmp_path):
+    """Loading the dashboard index must NOT call the sim, search_match_sgms,
+    the Sportsbet scraper, or round_report — it reads the frozen JSON only."""
+    import json
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    # Write a minimal multis.json so the route has something to render.
+    (tmp_path / "2026_r16_multis.json").write_text(
+        json.dumps([_make_multi_record()]), encoding="utf-8")
+
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.build.report.search_match_sgms") as mock_sgms,
+        patch("afl_bot.build.report.search_market_sgms") as mock_mkt,
+        patch("afl_bot.build.report.build_sgm_candidates") as mock_build,
+        patch("afl_bot.data.sportsbet_odds.fetch_sportsbet_odds", create=True) as mock_sb,
+    ):
+        app.config["TESTING"] = True
+        client = app.test_client()
+        resp = client.get("/")
+
+    assert resp.status_code == 200
+    mock_sgms.assert_not_called()
+    mock_mkt.assert_not_called()
+    mock_build.assert_not_called()
+    mock_sb.assert_not_called()
+
+
+def test_loading_same_multis_json_twice_gives_identical_output(tmp_path):
+    """Reading the same multis.json twice produces byte-identical rung data —
+    the dashboard is purely a read-only view of the frozen JSON."""
+    import json
+    from afl_bot.dashboard.app import _load_multis_files, _group_by_game, REPORTS_DIR
+
+    records = [_make_multi_record(), _make_multi_record(ladder="sportsbet", band=2.75)]
+    jpath = tmp_path / "2026_r16_multis.json"
+    jpath.write_text(json.dumps(records), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        first  = _load_multis_files()
+        second = _load_multis_files()
+
+    assert first == second
+    # grouping is also stable
+    assert _group_by_game(first.get("2026_r16", [])) == _group_by_game(second.get("2026_r16", []))
+
+
+def test_selection_is_deterministic_under_equal_scoring(tmp_path):
+    """When two combos score identically on the primary key, the stable
+    leg-name tie-break guarantees the same combo is chosen on every call."""
+    from afl_bot.build.report import search_match_sgms
+
+    # Build a pool where multiple combos land very close to the same target
+    # so tie-breaking actually matters.
+    rng = np.random.default_rng(99)
+    n = 30_000
+    probs = {"A": 0.72, "B": 0.72, "C": 0.72, "D": 0.72, "E": 0.72}
+    same_legs = []
+    for name, p in probs.items():
+        mask = rng.random(n) < p
+        same_legs.append(LegCandidate(
+            f"{name} 20+ disposals", "m1", "player_disposals", name,
+            mask.mean(), 1 / mask.mean(), mask=mask))
+
+    result1 = search_match_sgms(same_legs)
+    result2 = search_match_sgms(same_legs)
+    assert len(result1) == len(result2)
+    for r1, r2 in zip(result1, result2):
+        assert r1["legs"] == r2["legs"]
+        assert r1["joint_prob"] == pytest.approx(r2["joint_prob"])

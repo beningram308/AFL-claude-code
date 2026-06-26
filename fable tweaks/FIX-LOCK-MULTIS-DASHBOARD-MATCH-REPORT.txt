@@ -1,0 +1,91 @@
+================================================================================
+FIX: LOCK THE MULTIS — DASHBOARD MUST MATCH THE REPORT AND NOT CHANGE ON OPEN
+================================================================================
+Date: 2026-06-26
+From: Ben
+
+PROBLEM (what Ben is seeing):
+  The multis in the dashboard/tracker are DIFFERENT from the ones in the report,
+  and they CHANGE every time the dashboard is opened.
+
+WHAT BEN WANTS:
+  Keep everything exactly as it is — the same layout, the best multi for each
+  price band, both ladders — but LOCK it. The dashboard should show the SAME best
+  multis every time it's opened, identical to the report. "The best multis for
+  each price just like it is", frozen.
+
+Do NOT change the sim/modelling, the leg/ladder selection logic, the band set, or
+the scrape. This is purely about FREEZING the result and making the dashboard
+read it instead of recomputing. Keep pytest green; one commit at the end.
+
+--------------------------------------------------------------------------------
+ROOT CAUSE (confirm in the code, then fix)
+--------------------------------------------------------------------------------
+The dashboard is almost certainly RE-GENERATING the multis when the round view
+loads — re-running round_report / search_match_sgms and/or RE-SCRAPING live
+Sportsbet prices — instead of reading the saved reports/{year}_r{round}_
+multis.json. Because live Sportsbet prices move between opens (and any re-run of
+selection can reshuffle equal-scoring combos), the rungs change each open and
+drift away from the .md the report wrote earlier. Find every code path the
+dashboard hits on load and confirm whether it recomputes vs reads the JSON.
+
+--------------------------------------------------------------------------------
+FIX
+--------------------------------------------------------------------------------
+1. SINGLE SOURCE OF TRUTH. round-report must write the .md AND
+   reports/{year}_r{round}_multis.json from the SAME in-memory selection in ONE
+   run, so they are always identical. The JSON must contain everything the
+   dashboard needs to render WITHOUT recomputing anything — including the per-leg
+   scraped Sportsbet prices and the combo/book odds AS THEY WERE at generation
+   time. Freeze those prices into the JSON; later price moves must not affect a
+   locked round.
+
+2. DASHBOARD IS READ-ONLY OVER THE FROZEN JSON. Opening (or refreshing the view
+   of) a round must ONLY load reports/{year}_r{round}_multis.json and render it.
+   On load it must NOT:
+       - re-run the Monte Carlo sim,
+       - re-run search_match_sgms / the ladder selection,
+       - re-scrape Sportsbet,
+       - or call round_report.
+   Remove/disable any such call on the load path. Same file in -> same multis out,
+   every time.
+
+3. LOCKED PER ROUND. The multis.json is the authoritative, locked set for that
+   round. It changes ONLY when Ben deliberately re-runs
+   `round-report --year Y --round N --sportsbet` (or clicks an explicit, clearly-
+   labelled "Regenerate this round" button that he knows overwrites the locked
+   set). Default behaviour on open = show the locked set unchanged. If a
+   "Refresh" button exists that silently re-runs on open, make it explicit and
+   off by default.
+
+4. DETERMINISM (belt-and-suspenders). Make the selection reproducible given the
+   same inputs so even a deliberate re-run doesn't needlessly reshuffle: keep
+   RNG_SEED fixed, and ensure any ranking/tie-break in the ladder selection uses
+   a STABLE sort with a fixed tie-break key (e.g. combo id / leg names), so two
+   equal-scoring combos always resolve the same way.
+
+5. BETS STAY CONSISTENT. Placed bets already snapshot their multi (ledger). Keep
+   that. Locking the source set means the tracker and the report now agree with
+   what was placed.
+
+--------------------------------------------------------------------------------
+VERIFY (Ben's acceptance)
+--------------------------------------------------------------------------------
+- Open the dashboard, note the multis, close it, open it again WITHOUT
+  regenerating -> identical multis (same legs, prices, order) both times.
+- The dashboard's multis for a round EXACTLY match that round's report .md.
+- Re-running round-report --sportsbet updates BOTH the .md and the multis.json
+  together; opening the dashboard then shows the new locked set (and only then).
+- Tests:
+    * one round-report run produces a .md and a multis.json whose rung data
+      (legs, band, odds, edge, value_pick) are identical,
+    * the dashboard round-view data loader reads the JSON and does NOT invoke the
+      sim / search_match_sgms / the scraper (assert via mock/spy that those
+      aren't called on load),
+    * loading the same multis.json twice yields byte-identical rendered rung data.
+- pytest -q green. Commit. Update README/memory: multis are FROZEN per round in
+  multis.json; the dashboard is a read-only view; regeneration is explicit only.
+
+ACCEPTANCE: the tracker shows the same best-per-band multis as the report, and
+they never change on open — only when Ben re-runs the round on purpose.
+================================================================================
