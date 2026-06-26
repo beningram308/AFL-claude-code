@@ -136,6 +136,8 @@ def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_leg
             legs_list = list(combo)
             if not _no_conflicts(legs_list):
                 continue
+            if len({leg.subject for leg in legs_list}) != len(legs_list):
+                continue
             joint = joint_prob_from_masks(legs_list)
             if joint < min_joint_prob:
                 continue

@@ -236,7 +236,7 @@ LEG_PROB_MAX = 0.78
 # bottom rung 1.75 -> 2.10, the honest 0.78^3 ~= $2.11 floor now that the
 # ladder pool is placeable-only -- see LEG_PROB_MAX above). Selection lands AT
 # OR LONGER than each target, never shorter (see search_match_sgms).
-MULTI_TARGET_ODDS = (2.10, 3.00, 5.00)
+MULTI_TARGET_ODDS = (2.10, 2.75, 3.50, 5.00, 8.00, 15.00)   # 6 rungs: safe -> longshot
 
 # Seasons of SELECTED-rung walk-forward backtest (the population actually
 # bet, `walk_forward_multi_predictions`) to fit the Phase 3.6 selection-level

@@ -1030,6 +1030,51 @@ PROB_MAX` doesn't exist; `_outs`/`--outs` is the dependable lineup fix,
 the section-aware HTML parse is best-effort and can still need it for a team
 whose sheet hasn't posted Emergencies yet.
 
+### One player per leg + 6-band ladder (DO-MULTIS-LADDER-FIX-AND-DASHBOARD Stage 1)
+
+**Distinct-subject rule.** `build_sgm_candidates` (the shared combo builder used by both the model
+and Sportsbet ladders) now rejects any combo where two legs share the same `subject` (player name).
+Previously a combo like "Will Day 20+ disposals + Will Day 4+ marks" could appear. The filter sits
+alongside `_no_conflicts` (which already blocks two legs for the same `(match_id, market, subject)`
+key), but is broader: it catches same-player combos across different markets.
+
+**6-band ladder.** `MULTI_TARGET_ODDS` widened from `(2.10, 3.00, 5.00)` to
+`(2.10, 2.75, 3.50, 5.00, 8.00, 15.00)` — six rungs from safe to longshot. Every match still
+guarantees a full ladder; the top rungs (3.50, 5.00, 8.00, 15.00) need a deep enough player pool to
+reach them (the Sportsbet ladder's real prices naturally reach further than the model-only floor).
+
+### Multis dashboard + bet tracker (DO-MULTIS-LADDER-FIX-AND-DASHBOARD Stage 2)
+
+**Multis JSON sidecar.** `round-report` now also writes `reports/{year}_r{round}_multis.json`
+alongside the `.md` — one record per rung per game, both model and Sportsbet ladders. Each record
+has a stable `id` (e.g. `2026-r16-Hawthorn-GWS-model-2.10`) so it can be referenced in the ledger
+without re-running the report.
+
+**Bets ledger.** Placed bets are stored in `reports/bets_ledger.json`. Each entry carries a UUID,
+the multi's id, a deep snapshot of the legs at placement time, stake, taken odds, status
+(`pending`/`won`/`lost`/`void`), and AEST timestamps for placement and settlement.
+
+**Auto-settlement.** Settle pending bets via:
+
+```
+python -m afl_bot.cli settle-bets [--year 2026] [--round 16]
+```
+
+Settlement reuses the `grade-round` actuals path (Fryzigg/DFS player stats + Squiggle H2H).
+Void rule: if a player has no stat entry (DNP), that leg is voided and the multi re-settles on the
+remaining legs. A multi where every leg is voided returns the full stake.
+
+**Dashboard.** Launch a local dark-mode dashboard at `http://127.0.0.1:8765` with:
+
+```
+python -m afl_bot.cli dashboard [--port 8765]
+```
+
+Four panels: **Round View** (all multis from the latest JSON, grouped by game, with inline
+Place-a-Bet forms), **Tracker/P&L** (open + settled bets list, cumulative profit chart via
+Chart.js), season summary stats, and a **Settle** button that calls `settle-bets` for the current
+round. No build step — single Jinja2 template, all state in JSON files.
+
 ### Staking & bankroll (plan §4.4)
 
 `afl_bot/build/staking.py` sizes bets by **capped fractional Kelly**:

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -688,6 +689,50 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
     print("Gambling Help Online: gamblinghelponline.org.au | 1800 858 858")
 
 
+def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
+                  home: str, away: str,
+                  leg_by_name: dict, odds_book: dict) -> dict:
+    """Convert one selected SGM rung to the multis-JSON schema (Stage 2A).
+    Both the .md and this JSON draw from the same rung dict, so they can never disagree."""
+    h = home.replace(" ", "_")
+    a = away.replace(" ", "_")
+    band = rung.get("target_odds") or rung.get("book_odds") or rung.get("fair_odds")
+    multi_id = f"{year}-r{round_no}-{h}-{a}-{ladder}-{band:.2f}"
+
+    legs_json = []
+    for name in rung["legs"]:
+        leg = leg_by_name.get(name)
+        if leg is None:
+            legs_json.append({"name": name})
+            continue
+        market_display = (leg.market.replace("player_", "")
+                          if leg.market.startswith("player_") else leg.market)
+        m = re.search(r"(\d+)\+", name)
+        line = int(m.group(1)) if m else None
+        legs_json.append({
+            "player": leg.subject,
+            "market": market_display,
+            "line": line,
+            "name": name,
+            "book_odds": odds_book.get(name),
+        })
+
+    return {
+        "id": multi_id,
+        "year": year,
+        "round": round_no,
+        "game": f"{home} vs {away}",
+        "ladder": ladder,
+        "band": band,
+        "legs": legs_json,
+        "model_joint": rung["joint_prob"],
+        "model_fair": rung["fair_odds"],
+        "book_combo": rung.get("book_odds"),
+        "edge": rung.get("edge"),
+        "value_pick": bool(rung.get("value_pick", False)),
+    }
+
+
 def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
                  rain_mm: float | None = None, lineup_path: str | None = None,
                  use_live: bool = False, multis_only: bool = False,
@@ -889,7 +934,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             "file for this round) — fell back to --odds file / model-only._")
 
     rng = make_rng()
-    matches, odds_legs, predictions = [], [], []
+    matches, odds_legs, predictions, multis_records = [], [], [], []
     n_tog_overrides = 0
     n_auto_excluded = n_outs_excluded
     # Every leg name this round COULD be priced for (model-upgrade audit Phase
@@ -1071,6 +1116,14 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         # and priced on REAL book odds (Sportsbet/--odds) from the same leg
         # pool -- [] when nothing in this match is priced.
         market_sgms = search_market_sgms(match_legs, odds_book=odds_book)
+        # Stage 2A: emit machine-readable multis JSON alongside the .md so the
+        # dashboard can render these rungs without re-parsing markdown.
+        leg_by_name = {l.name: l for l in match_legs}
+        for ladder_label, rungs in (("model", sgms), ("sportsbet", market_sgms)):
+            for r in rungs:
+                multis_records.append(_rung_to_json(
+                    r, ladder_label, year, round_no,
+                    home_name, away_name, leg_by_name, odds_book))
         matches.append({
             "header": header, "projections": projections,
             "sgms": sgms, "market_sgms": market_sgms, "priced_legs": priced_legs,
@@ -1117,6 +1170,9 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     # Machine-readable predictions sidecar so the round can be graded later (§10.5).
     pred_path = out_dir / f"{year}_r{round_no}_predictions.csv"
     pd.DataFrame(predictions).to_csv(pred_path, index=False)
+    # Stage 2A: machine-readable multis JSON for the dashboard.
+    multis_path = out_dir / f"{year}_r{round_no}_multis.json"
+    multis_path.write_text(json.dumps(multis_records, indent=2), encoding="utf-8")
     # Odds template (model-upgrade audit Phase 4 STEP 1.2): every priceable
     # leg's exact name -> null, copy-paste-able into a fresh --odds file.
     template_path = out_dir / f"{year}_r{round_no}_odds_template.json"
@@ -1133,7 +1189,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     print(md)
     snapshot_note = f" | odds snapshot: {odds_snapshot_path}" if odds_snapshot_path else ""
     print(f"\n[saved to {out_path} | predictions: {pred_path} | "
-          f"odds template: {template_path}{snapshot_note}]")
+          f"multis: {multis_path} | odds template: {template_path}{snapshot_note}]")
 
 
 def grade_round(year: int, round_no: int) -> None:
@@ -1626,6 +1682,22 @@ def main(argv: list[str] | None = None) -> None:
     fit_corr_p.add_argument("--through", type=int, required=True,
                             help="Fit on completed seasons up to and including this year.")
 
+    settle_p = sub.add_parser("settle-bets",
+                               help="Auto-settle pending bets in reports/bets_ledger.json "
+                                    "using completed-round actuals.")
+    settle_p.add_argument("--year", type=int, default=None,
+                          help="Limit to bets from this year (default: all pending).")
+    settle_p.add_argument("--round", type=int, default=None, dest="round_no",
+                          help="Limit to bets from this round (default: all pending).")
+    settle_p.add_argument("--ledger", type=str, default=None, dest="ledger_path",
+                          help="Path to bets ledger JSON (default: reports/bets_ledger.json).")
+
+    dash_p = sub.add_parser("dashboard",
+                             help="Launch the multis dashboard at http://127.0.0.1:8765 .")
+    dash_p.add_argument("--port", type=int, default=8765)
+    dash_p.add_argument("--no-browser", action="store_true", dest="no_browser",
+                        help="Don't auto-open the browser.")
+
     args = parser.parse_args(argv)
     if args.command == "run-round":
         run_round(args.year, args.round_no, args.odds, args.n_sims,
@@ -1650,6 +1722,14 @@ def main(argv: list[str] | None = None) -> None:
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":
         fit_correlations_command(args.through)
+    elif args.command == "settle-bets":
+        from afl_bot.dashboard.settle import settle_bets as _settle
+        ledger_path = args.ledger_path or str(ROOT_DIR / "reports" / "bets_ledger.json")
+        n = _settle(ledger_path, year=args.year, round_no=args.round_no)
+        print(f"Settled {n} bet(s). Ledger: {ledger_path}")
+    elif args.command == "dashboard":
+        from afl_bot.dashboard.app import run_dashboard
+        run_dashboard(port=args.port, open_browser=not args.no_browser)
 
 
 if __name__ == "__main__":

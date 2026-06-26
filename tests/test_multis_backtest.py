@@ -103,7 +103,8 @@ def test_walk_forward_multi_predictions_shape_and_bounds(synth_world):
     assert preds["joint_prob"].between(0.0, 1.0).all()
     assert set(preds["all_hit"].unique()) <= {0, 1}
     # Each graded match contributes at most one rung per target-odds band.
-    assert preds.groupby("match_id").size().max() <= 3
+    from afl_bot.config import MULTI_TARGET_ODDS
+    assert preds.groupby("match_id").size().max() <= len(MULTI_TARGET_ODDS)
 
 
 def test_walk_forward_multi_predictions_no_leakage_across_rounds(synth_world):

@@ -1,0 +1,69 @@
+================================================================================
+FIX: ONE LEG PER PLAYER IN A MULTI + MORE MULTIS PER GAME
+================================================================================
+Date: 2026-06-26
+From: Ben
+
+Small, contained change to ladder ASSEMBLY only. Do NOT touch the sim/modelling
+or the odds scrape. Tests stay green. Applies to BOTH ladders (the model ladder
+AND the Sportsbet real-price ladder) since they share the same combo builder.
+
+CONTEXT: r16 showed combos like "Karl Amon 20+ disposals + Karl Amon 5+ marks +
+Will Day 4+ marks" and "Will Day 15+ disp + Lachie Ash 25+ disp + Lachie Ash 7+
+marks" — the same player twice in one multi. Ben wants every multi to use a
+DIFFERENT player per leg, and wants more multi options per game.
+
+--------------------------------------------------------------------------------
+CHANGE 1 — one leg per player (and per team) in any single multi
+--------------------------------------------------------------------------------
+In afl_bot/build/report.py search_match_sgms, where candidate combos are formed
+(the itertools.combinations over the leg pool), REJECT any combo in which two
+legs share the same subject. Each LegCandidate already carries `subject` (the
+player name for props, the team name for h2h/totals — see cli.py: player legs
+are LegCandidate(..., player_name, ...), h2h legs LegCandidate(..., team, ...)).
+
+Rule: keep a combo only if
+        len({leg.subject for leg in combo}) == len(combo)
+i.e. all subjects distinct. This gives one leg per player automatically, and as
+a bonus stops two team/total legs on the same side. Apply it to the SHARED combo
+generation so both the model ladder and the Sportsbet ladder inherit it.
+
+Make sure the de-dup happens BEFORE rung selection so each band still gets the
+best DISTINCT-player combo (don't just drop the rung). The "every match gets a
+full ladder" guarantee stays.
+
+--------------------------------------------------------------------------------
+CHANGE 2 — more multis per game (expand the ladder)
+--------------------------------------------------------------------------------
+Today MULTI_TARGET_ODDS = (2.10, 3.00, 5.00) — only 3 rungs. Widen it to give a
+fuller spread of options from safe to longshot, e.g. in config.py:
+
+    MULTI_TARGET_ODDS = (2.10, 2.75, 3.50, 5.00, 8.00, 15.00)   # 6 rungs
+
+Both ladders should produce one rung per band as they do now (land at-or-longer
+than each target, never short; top band = the VALUE PICK by best positive edge).
+Keep one-combo-per-rung de-dup so the same combo can't fill two bands. If a band
+can't be reached with distinct-player legs, fall back to the closest remaining
+combo and tag it model-only as today.
+
+(These targets are config — Ben can widen/narrow later. If 6 rungs makes any
+single game's pool too thin to fill every band with distinct players, fill what
+you can and note the skipped band rather than repeating a combo.)
+
+--------------------------------------------------------------------------------
+TESTS + SHIP
+--------------------------------------------------------------------------------
+- Add a test: no selected rung (either ladder) contains two legs with the same
+  subject, across a pool that includes multiple lines for the same player.
+- Add/adjust a test for the wider MULTI_TARGET_ODDS: a match with a deep pool
+  yields up to 6 distinct rungs, each landing at/above its band.
+- Keep existing ladder tests green (update any that hard-coded 3 rungs).
+- Regenerate reports/2026_r16_report.md (on Ben's AU machine, --sportsbet) and
+  confirm: no player appears twice in any multi; ~6 rungs per game per ladder.
+- pytest -q green. Commit. Update README/memory (distinct-subject rule + 6-band
+  ladder).
+
+ACCEPTANCE: every multi in r16 uses a different player per leg, and each game
+shows more rungs (≈6) spanning safe → longshot, on both the model and Sportsbet
+ladders.
+================================================================================

@@ -269,12 +269,22 @@ def test_search_match_sgms_never_lands_short_after_calibration():
     # a rung's DISPLAYED fair odds below the band it was selected to clear --
     # the "never land shorter" guard must see the same final (haircut +
     # calibrated) number that ends up reported, not the pre-calibration one.
+    # Pool spans the full 6-band range so every band is reachable even after
+    # the 1.15x inflation (9 subjects A-I, p from 0.90 down to 0.32).
     class InflatingCalibrator:
         def predict(self, probs):
             return np.minimum(np.asarray(probs, dtype=float) * 1.15, 0.999)
 
-    legs = _ladder_legs()
-    out = search_match_sgms(legs, multi_calibrator=InflatingCalibrator())
+    rng = np.random.default_rng(5)
+    n = 40_000
+    probs9 = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55,
+              "F": 0.42, "G": 0.38, "H": 0.35, "I": 0.32}
+    wide_legs = []
+    for name, p in probs9.items():
+        mask = rng.random(n) < p
+        wide_legs.append(_leg(f"{name} 15+ disp", mask.mean(), mask, name))
+
+    out = search_match_sgms(wide_legs, multi_calibrator=InflatingCalibrator())
     for r in out:
         assert r["fair_odds"] >= r["target_odds"] - 1e-9
 
@@ -598,3 +608,49 @@ def test_render_markdown_explains_empty_ladder_with_leg_count():
     }]
     md = render_markdown(2026, 14, matches, has_odds=False)
     assert "Only 2 candidate legs" in md
+
+
+def test_build_sgm_candidates_rejects_same_subject_in_combo():
+    """Each player/team may appear in at most one leg per multi (distinct-subject rule)."""
+    rng = np.random.default_rng(99)
+    n = 40_000
+    from afl_bot.build.report import build_sgm_candidates
+    legs = []
+    for player in ("P1", "P2", "P3"):
+        for market, suffix in (("player_disposals", "disp"), ("player_marks", "marks")):
+            p = 0.55
+            mask = rng.random(n) < p
+            legs.append(LegCandidate(
+                f"{player} {suffix}", "m1", market, player, mask.mean(), 1 / mask.mean(), mask=mask))
+    # 3 players × 2 markets = 6 legs; without the subject filter we'd get combos
+    # like (P1-disp, P1-marks, P2-disp) where P1 appears twice.
+    candidates = build_sgm_candidates(legs)
+    leg_by_name = {leg.name: leg for leg in legs}
+    for c in candidates:
+        subjects = [leg_by_name[n].subject for n in c["legs"]]
+        assert len(set(subjects)) == len(subjects), f"Duplicate subject in combo: {c['legs']}"
+
+    out = search_match_sgms(legs)
+    for r in out:
+        subjects = [leg_by_name[n].subject for n in r["legs"]]
+        assert len(set(subjects)) == len(subjects), f"Duplicate subject in rung: {r['legs']}"
+
+
+def test_search_match_sgms_deep_pool_yields_up_to_6_distinct_rungs():
+    """A pool spanning safe→longshot produces up to 6 distinct rungs (one per band)."""
+    rng = np.random.default_rng(77)
+    n = 40_000
+    probs = {"A": 0.77, "B": 0.70, "C": 0.62, "D": 0.55, "E": 0.47,
+             "F": 0.41, "G": 0.36, "H": 0.33, "I": 0.30}
+    legs = []
+    for name, p in probs.items():
+        mask = rng.random(n) < p
+        legs.append(_leg(f"{name} 20+ disp", mask.mean(), mask, name))
+
+    out = search_match_sgms(legs)
+    assert len(out) == len(MULTI_TARGET_ODDS)   # one rung per target (6 bands)
+    all_leg_tuples = [tuple(sorted(r["legs"])) for r in out]
+    assert len(all_leg_tuples) == len(set(all_leg_tuples)), "Duplicate combos in ladder"
+    for r in out:
+        subjects = [n.split()[0] for n in r["legs"]]   # first word of each leg name = subject
+        assert len(set(subjects)) == len(subjects), f"Duplicate subject in rung: {r['legs']}"

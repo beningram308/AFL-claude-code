@@ -5,6 +5,7 @@ pyarrow
 requests
 openpyxl
 pytest
+flask
 
 # Optional: ad-hoc SQL over the parquet data cache (afl_bot.data.storage.duckdb_connection)
 duckdb
