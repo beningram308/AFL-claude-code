@@ -248,24 +248,30 @@ _TEMPLATE = r"""<!DOCTYPE html>
     {% if g.model %}
     <div class="section-label">Model ladder (fair odds)</div>
     <table>
-      <tr><th>Legs</th><th>Band</th><th>Joint%</th><th>Fair</th><th>Corr gain</th>
-        <th>Book combo</th><th>Edge</th><th>Pick</th><th></th></tr>
+      <tr><th>Legs</th><th>Band</th><th>Joint%</th><th>Fair</th>
+        <th>Book combo</th><th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
       {% for r in g.model %}
       <tr class="rung-row" data-ladder="model" data-value="{{ 'true' if r.value_pick else 'false' }}">
         <td>{{ r.legs | map(attribute='name') | join(' + ') }}</td>
         <td>${{ '%.2f'|format(r.band) }}</td>
         <td>{{ '%.0f'|format(r.model_joint * 100) }}%</td>
         <td>${{ '%.2f'|format(r.model_fair) }}</td>
-        <td>
-          {%- if r.model_joint and r.legs|length == 3 -%}
-          {#- we don't have corr_gain in JSON; show "-" -#}
-          —
-          {%- endif -%}
-        </td>
         <td>{% if r.book_combo %}${{ '%.2f'|format(r.book_combo) }}{% else %}—{% endif %}</td>
         <td>
           {% if r.edge is not none %}
           <span class="{{ 'value' if r.edge > 0 else 'neg' }}">{{ '%+.1f'|format(r.edge*100) }}%</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% set tev = r.get('total_ev') %}
+          {% if tev is not none %}
+          <span class="{{ 'value' if tev > 0 else 'neg' }}">{{ '%+.1f'|format(tev*100) }}%</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% set stk = r.get('suggested_stake') %}
+          {% if stk is not none %}
+          <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
           {% else %}—{% endif %}
         </td>
         <td>{% if r.value_pick %}<span class="value">★ VALUE</span>{% else %}—{% endif %}</td>
@@ -281,7 +287,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
     <div class="section-label" style="margin-top:12px">Sportsbet ladder (real prices)</div>
     <table>
       <tr><th>Legs</th><th>Band</th><th>Book combo</th><th>Model joint%</th><th>Model fair</th>
-        <th>Edge</th><th>Pick</th><th></th></tr>
+        <th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
       {% for r in g.sportsbet %}
       <tr class="rung-row" data-ladder="sportsbet" data-value="{{ 'true' if r.value_pick else 'false' }}">
         <td>{{ r.legs | map(attribute='name') | join(' + ') }}</td>
@@ -292,6 +298,18 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <td>
           {% if r.edge is not none %}
           <span class="{{ 'value' if r.edge > 0 else 'neg' }}">{{ '%+.1f'|format(r.edge*100) }}%</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% set tev = r.get('total_ev') %}
+          {% if tev is not none %}
+          <span class="{{ 'value' if tev > 0 else 'neg' }}">{{ '%+.1f'|format(tev*100) }}%</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% set stk = r.get('suggested_stake') %}
+          {% if stk is not none %}
+          <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
           {% else %}—{% endif %}
         </td>
         <td>{% if r.value_pick %}<span class="value">★ VALUE</span>{% else %}—{% endif %}</td>

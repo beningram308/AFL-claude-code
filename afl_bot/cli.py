@@ -735,6 +735,11 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
         "model_fair": rung["fair_odds"],
         "book_combo": rung.get("book_odds"),
         "edge": rung.get("edge"),
+        "p_all_win": rung.get("p_all_win"),
+        "p_one_loss": rung.get("p_one_loss"),
+        "promo_ev": rung.get("promo_ev"),
+        "total_ev": rung.get("total_ev"),
+        "suggested_stake": rung.get("suggested_stake"),
         "value_pick": bool(rung.get("value_pick", False)),
     }
 
@@ -940,7 +945,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             "file for this round) — fell back to --odds file / model-only._")
 
     rng = make_rng()
-    matches, odds_legs, predictions, multis_records = [], [], [], []
+    matches, predictions, multis_records = [], [], []
     n_tog_overrides = 0
     n_auto_excluded = n_outs_excluded
     # Every leg name this round COULD be priced for (model-upgrade audit Phase
@@ -1013,7 +1018,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             total_leg = LegCandidate(total_leg_name, match_id, "total_points", "total",
                                      header["p_total"], odds_book[total_leg_name], mask=total_mask)
             match_legs.append(total_leg)
-            odds_legs.append(total_leg)
 
         priced_legs: list[dict] = []   # this match's priced props, for the report table
         pace = draw_pace(n_sims, rng)
@@ -1102,8 +1106,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                                            over_odds if over_odds else fair_odds(blended_prob),
                                            confirmed=confirmed, mask=mask)
                         match_legs.append(leg)
-                        if name in odds_book:
-                            odds_legs.append(leg)
                         priceable_names.append(name)
                         known_input_keys.update([name, under_name])
                         if devig_prob is not None:
@@ -1113,10 +1115,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                                 "blended_prob": blended_prob,
                                 "edge_pct": leg.edge_pct, "classification": leg.classification,
                             })
-
-        for leg in match_legs[:2]:           # H2H legs with book odds feed cross-game multis
-            if leg.name in odds_book:
-                odds_legs.append(leg)
 
         sgms = search_match_sgms(match_legs, odds_book=odds_book,
                                  corr_gain_haircut=corr_gain_haircut, multi_calibrator=multi_cal)
@@ -1145,19 +1143,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         print(f"\nWARNING: {len(unmatched)} odds key(s) matched no priceable leg "
               f"(typo? player not in pool/lineup?): {', '.join(unmatched)}", file=sys.stderr)
 
-    multis_section = ""
-    if odds_legs:
-        promo = build_promo_multi(odds_legs, joint_prob_fn=joint_prob_from_masks)
-        lines = ["## Cross-game multis"]
-        if promo is not None:
-            lines.append(f"- **Promo multi**: {' + '.join(l.name for l in promo.legs)} "
-                         f"-> combined {promo.combined_fair_prob:.3f} @ book {promo.combined_market_odds:.2f} "
-                         f"(EV {promo.promo['ev_pct'] * 100:+.1f}%)")
-        for i, mm in enumerate(build_anchor_multis(odds_legs, joint_prob_fn=joint_prob_from_masks), 1):
-            lines.append(f"- Anchor multi {i}: {' + '.join(l.name for l in mm.legs)} "
-                         f"-> {mm.combined_fair_prob:.3f}")
-        multis_section = "\n".join(lines) + "\n"
-
     _lineup_note = (
         f" Lineup: {lineup_source} — {n_auto_excluded} player(s) excluded as not named to play."
         if lineup_source else ""
@@ -1168,9 +1153,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         f"{n_tog_overrides} player(s) had a lineup TOG override this run.{_lineup_note}_"
     )
     md = render_markdown(year, round_no, matches, has_odds=bool(odds_book),
-                         multis_section=multis_section, odds_note=odds_note,
-                         sportsbet_note=sportsbet_note, proj_note=proj_note,
-                         multis_only=multis_only)
+                         odds_note=odds_note, sportsbet_note=sportsbet_note,
+                         proj_note=proj_note, multis_only=multis_only)
     out_dir = ROOT_DIR / "reports"
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / f"{year}_r{round_no}_report.md"

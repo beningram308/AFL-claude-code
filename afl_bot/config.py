@@ -205,7 +205,8 @@ PROP_MARKET_BLEND_WEIGHT = 0.6
 # ----------------------------------------------------------------------------- #
 # Promo-aware EV — plan §4.4
 # ----------------------------------------------------------------------------- #
-BONUS_BET_FACTOR = 0.75   # value of a bonus bet vs cash
+BONUS_BET_FACTOR = 0.75   # value of a bonus bet vs cash (R in multi-outcome Kelly)
+PROMO_MIN_LEGS = 3         # minimum legs for a rung to qualify for promo EV
 DEFAULT_STAKE = 50.0
 
 # ----------------------------------------------------------------------------- #

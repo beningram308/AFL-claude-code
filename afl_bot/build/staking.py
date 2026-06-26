@@ -125,6 +125,58 @@ def simulate_bankroll_joint(bets: list[tuple[float, float]], masks: np.ndarray, 
     return {"terminal": bankroll, "max_drawdown": max_dd}
 
 
+def multi_outcome_kelly(
+    p_win: float,
+    p_one_loss: float,
+    p_dead: float,
+    multi_odds: float,
+    refund_factor: float,
+    fraction: float = KELLY_FRACTION,
+    cap: float = KELLY_PER_BET_CAP,
+) -> float:
+    """Capped fractional-Kelly stake fraction for a 3-outcome stake-back multi.
+
+    Three outcomes per $1 staked:
+      - all legs win  -> net +( M - 1 )
+      - exactly 1 leg fails -> net +( R - 1 )  (partial refund, R < 1 so still a loss)
+      - 2+ legs fail  -> net  -1
+
+    Maximises expected log-growth:
+      g(f) = p_win*ln(1+f*(M-1)) + p_one_loss*ln(1+f*(R-1)) + p_dead*ln(1-f)
+
+    Solves g'(f)=0 via scipy brentq on (0, 1), applies ``fraction`` and ``cap``.
+    Returns 0.0 when the promo-aware EV is non-positive (no stake warranted).
+    """
+    from scipy.optimize import brentq
+
+    M = float(multi_odds)
+    R = float(refund_factor)
+
+    def _gprime(f: float) -> float:
+        a = 1.0 + f * (M - 1.0)
+        b = 1.0 + f * (R - 1.0)   # = 1 - f*(1-R) > 0 for f < 1 when 0 < R < 1
+        c = 1.0 - f
+        if a <= 1e-15 or b <= 1e-15 or c <= 1e-15:
+            return float("-inf")
+        return (p_win * (M - 1.0) / a
+                + p_one_loss * (R - 1.0) / b
+                - p_dead / c)
+
+    # g'(0) = p_win*(M-1) + p_one_loss*(R-1) - p_dead
+    # No positive stake when total EV is non-positive at f=0.
+    if _gprime(0.0) <= 0.0:
+        return 0.0
+
+    # g'(f) -> -inf as f -> 1-, so a root exists in (0, 1) when g'(0) > 0.
+    try:
+        f_star = brentq(_gprime, 1e-9, 1.0 - 1e-9, maxiter=200)
+    except ValueError:
+        # No sign change in interval: g' stays positive -> optimal f_star -> inf, cap it.
+        f_star = 1.0
+
+    return min(fraction * f_star, cap)
+
+
 def bankroll_report(sim: dict, bankroll0: float) -> dict:
     """Summarise a ``simulate_bankroll`` result: terminal percentiles, P(profit),
     P(effective bust < 10% of start), and the drawdown distribution."""

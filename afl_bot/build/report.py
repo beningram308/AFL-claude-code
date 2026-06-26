@@ -14,15 +14,20 @@ from __future__ import annotations
 
 from itertools import combinations
 
+import numpy as np
+
 from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.build.multi import LegCandidate, _no_conflicts, combined_odds, joint_prob_from_masks
+from afl_bot.build.staking import multi_outcome_kelly
 from afl_bot.config import (
     BOOKABLE_MARKS_ROLES,
     BOOKABLE_PROP_MENU,
     BOOKABLE_TACKLES_ROLES,
     BOOKABLE_TOP_N_BY_STAT,
+    BONUS_BET_FACTOR,
     MULTI_MARKET_SHRINK,
     MULTI_TARGET_ODDS,
+    PROMO_MIN_LEGS,
 )
 from afl_bot.pricing.edge import fair_odds, market_anchored_prob, mc_standard_error
 
@@ -153,6 +158,10 @@ def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_leg
                 "fair_odds": fair_odds(joint),
                 "n_sims": len(legs_list[0].mask) if legs_list[0].mask is not None else None,
                 "value_pick": False,
+                "_leg_masks": (
+                    [leg.mask for leg in legs_list]
+                    if all(leg.mask is not None for leg in legs_list) else None
+                ),
             }
             if all(odds_book.get(leg.name) is not None for leg in legs_list):
                 book = combined_odds(legs_list)
@@ -288,6 +297,31 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             c["_priced_raw_edge"] = priced_joint * book - 1.0
             c["_priced_edge"] = market_anchored_prob(priced_joint, book, MULTI_MARKET_SHRINK) * book - 1.0
 
+    # PHASE 2 STEP 1: Compute promo branch probabilities from sim masks for every
+    # candidate, so VALUE PICK selection (below) can rank by Total EV.
+    for c in combos:
+        leg_masks = c.get("_leg_masks")
+        n_legs = len(c["legs"])
+        priced_edge = c.get("_priced_edge")
+        if leg_masks is not None and n_legs >= PROMO_MIN_LEGS:
+            masks_arr = np.vstack([np.asarray(m, dtype=bool) for m in leg_masks])
+            n_win = masks_arr.sum(axis=0)
+            p_all = float((n_win == n_legs).mean())
+            p_one = float((n_win == n_legs - 1).mean())
+            p_dead = max(0.0, 1.0 - p_all - p_one)
+            promo = p_one * BONUS_BET_FACTOR
+            c["_p_all_win"] = p_all
+            c["_p_one_loss"] = p_one
+            c["_p_two_plus_loss"] = p_dead
+            c["_promo_ev"] = promo
+            c["_total_ev"] = (priced_edge if priced_edge is not None else 0.0) + promo
+        else:
+            c["_p_all_win"] = None
+            c["_p_one_loss"] = None
+            c["_p_two_plus_loss"] = None
+            c["_promo_ev"] = None
+            c["_total_ev"] = priced_edge  # no promo: total EV = base edge
+
     def _lcb_value(c: dict) -> float:
         if lcb_z <= 0.0 or c["n_sims"] is None:
             return c["_priced_joint"]
@@ -327,10 +361,16 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         available = [c for c in combos if id(c) not in chosen] or list(combos)
         is_top = (i == len(target_odds) - 1)
         if is_top:
-            valued = [c for c in available
-                      if c.get("_priced_edge") is not None and 0.0 < c["_priced_edge"] <= max_plausible_edge]
+            # Sanity gate: base edge within plausible range; rank by total EV (promo-aware).
+            pool = [c for c in available
+                    if c.get("_priced_edge") is not None
+                    and c["_priced_edge"] <= max_plausible_edge]
+            def _tv(c: dict) -> float:
+                tv = c.get("_total_ev")
+                return tv if tv is not None else 0.0
+            valued = [c for c in pool if _tv(c) > 0.0]
             if valued:
-                valued.sort(key=lambda c: (c["_priced_edge"], _leg_key(c)), reverse=True)
+                valued.sort(key=lambda c: (_tv(c), _leg_key(c)), reverse=True)
                 pick = valued[0]
                 pick["value_pick"] = True
             else:
@@ -348,6 +388,22 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             pick["raw_edge"] = pick.pop("_priced_raw_edge")
             pick["edge"] = pick.pop("_priced_edge")
             pick["odds"] = pick["book_odds"]
+        # Rename promo stats (private -> public) and strip masks.
+        pick["p_all_win"] = pick.pop("_p_all_win", None)
+        pick["p_one_loss"] = pick.pop("_p_one_loss", None)
+        pick["p_two_plus_loss"] = pick.pop("_p_two_plus_loss", None)
+        pick["promo_ev"] = pick.pop("_promo_ev", None)
+        pick["total_ev"] = pick.pop("_total_ev", None)
+        pick.pop("_leg_masks", None)
+        # Suggested stake via multi-outcome Kelly (promo-eligible rungs only).
+        if (pick.get("p_all_win") is not None and pick.get("book_odds")
+                and pick.get("total_ev") is not None and pick["total_ev"] > 0):
+            pick["suggested_stake"] = multi_outcome_kelly(
+                pick["p_all_win"], pick["p_one_loss"], pick["p_two_plus_loss"],
+                pick["book_odds"], BONUS_BET_FACTOR,
+            )
+        else:
+            pick["suggested_stake"] = None
 
     if price_shrink > 0.0:
         for pick, target in zip(selected, target_odds):
@@ -410,6 +466,29 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
             return min(reaches, key=lambda c: (c["book_odds"], _leg_key(c)))
         return max(available, key=lambda c: (c["book_odds"], _leg_key(c)))
 
+    # PHASE 2 STEP 1: Compute promo branch probabilities from sim masks.
+    for c in priced:
+        leg_masks = c.get("_leg_masks")
+        n_legs = len(c["legs"])
+        if leg_masks is not None and n_legs >= PROMO_MIN_LEGS:
+            masks_arr = np.vstack([np.asarray(m, dtype=bool) for m in leg_masks])
+            n_win = masks_arr.sum(axis=0)
+            p_all = float((n_win == n_legs).mean())
+            p_one = float((n_win == n_legs - 1).mean())
+            p_dead = max(0.0, 1.0 - p_all - p_one)
+            promo = p_one * BONUS_BET_FACTOR
+            c["_p_all_win"] = p_all
+            c["_p_one_loss"] = p_one
+            c["_p_two_plus_loss"] = p_dead
+            c["_promo_ev"] = promo
+            c["_total_ev"] = c["edge"] + promo
+        else:
+            c["_p_all_win"] = None
+            c["_p_one_loss"] = None
+            c["_p_two_plus_loss"] = None
+            c["_promo_ev"] = None
+            c["_total_ev"] = c["edge"]
+
     selected: list[dict] = []
     chosen: set[int] = set()
     for i, target in enumerate(target_odds):
@@ -418,7 +497,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         if is_top:
             valued = [c for c in available if 0.0 < c["edge"] <= max_plausible_edge]
             if valued:
-                pick = max(valued, key=lambda c: (c["edge"], _leg_key(c)))
+                # Rank by total EV (promo-aware) rather than base edge alone.
+                pick = max(valued, key=lambda c: (c.get("_total_ev") or c["edge"], _leg_key(c)))
                 pick["value_pick"] = True
             else:
                 pick = _select_for_target(available, target)
@@ -427,6 +507,23 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         pick["target_odds"] = target
         chosen.add(id(pick))
         selected.append(pick)
+
+    # Rename promo stats (private -> public), strip masks, add suggested stakes.
+    for pick in selected:
+        pick["p_all_win"] = pick.pop("_p_all_win", None)
+        pick["p_one_loss"] = pick.pop("_p_one_loss", None)
+        pick["p_two_plus_loss"] = pick.pop("_p_two_plus_loss", None)
+        pick["promo_ev"] = pick.pop("_promo_ev", None)
+        pick["total_ev"] = pick.pop("_total_ev", None)
+        pick.pop("_leg_masks", None)
+        if (pick.get("p_all_win") is not None
+                and pick.get("total_ev") is not None and pick["total_ev"] > 0):
+            pick["suggested_stake"] = multi_outcome_kelly(
+                pick["p_all_win"], pick["p_one_loss"], pick["p_two_plus_loss"],
+                pick["book_odds"], BONUS_BET_FACTOR,
+            )
+        else:
+            pick["suggested_stake"] = None
 
     selected.sort(key=lambda c: c["book_odds"])
     return selected
@@ -561,8 +658,8 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             header = "| Legs | Band | Joint prob | Fair odds | Corr gain |"
             sep = "|---|--:|--:|--:|--:|"
             if has_odds:
-                header += " Book | Edge |"
-                sep += "--:|--:|"
+                header += " Book | Edge | Total EV | Stake |"
+                sep += "--:|--:|--:|--:|"
             header += " Pick |"
             sep += "---|"
             out.append(header)
@@ -573,9 +670,14 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                         f"| {s['fair_odds']:.2f} | {s['corr_gain'] * 100:+.1f}pp |")
                 if has_odds:
                     if "book_odds" in s:
-                        line += f" {s['book_odds']:.2f} | {s['edge'] * 100:+.1f}% |"
+                        tev = s.get("total_ev")
+                        tev_str = f"{tev * 100:+.1f}%" if tev is not None else "—"
+                        stk = s.get("suggested_stake")
+                        stk_str = f"{stk * 100:.1f}%" if stk is not None else "—"
+                        line += (f" {s['book_odds']:.2f} | {s['edge'] * 100:+.1f}%"
+                                 f" | {tev_str} | {stk_str} |")
                     else:
-                        line += " - | - |"
+                        line += " - | - | - | - |"
                 if s.get("value_pick"):
                     line += " **VALUE PICK** |"
                 elif "book_odds" not in s:
@@ -597,12 +699,16 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                        "(only individual legs are scraped, not the SGM special itself) — "
                        "use the per-leg book prices as the source of truth._")
             out.append("")
-            out.append("| Legs | Book odds (combo) | Model joint % | Model fair | Edge | Pick |")
-            out.append("|---|--:|--:|--:|--:|---|")
+            out.append("| Legs | Book odds (combo) | Model joint % | Model fair | Edge | Total EV | Stake | Pick |")
+            out.append("|---|--:|--:|--:|--:|--:|--:|---|")
             for s in market_sgms:
+                tev = s.get("total_ev")
+                tev_str = f"{tev * 100:+.1f}%" if tev is not None else "—"
+                stk = s.get("suggested_stake")
+                stk_str = f"{stk * 100:.1f}%" if stk is not None else "—"
                 line = (f"| {' + '.join(s['legs'])} | {s['book_odds']:.2f} "
                         f"| {_fmt_pct(s['joint_prob'])} | {s['fair_odds']:.2f} "
-                        f"| {s['edge'] * 100:+.1f}% |")
+                        f"| {s['edge'] * 100:+.1f}% | {tev_str} | {stk_str} |")
                 line += " **VALUE PICK** |" if s.get("value_pick") else "  |"
                 out.append(line)
             out.append("")
