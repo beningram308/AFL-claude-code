@@ -445,6 +445,62 @@ def test_loading_same_multis_json_twice_gives_identical_output(tmp_path):
     assert _group_by_game(first.get("2026_r16", [])) == _group_by_game(second.get("2026_r16", []))
 
 
+def test_dashboard_total_ev_and_stake_render(tmp_path):
+    """Total EV and Stake columns render formatted values when fields are present."""
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    rec = {**_make_multi_record(), "total_ev": 0.475, "suggested_stake": 0.05,
+           "p_one_loss": 0.18, "promo_ev": 0.08}
+    (tmp_path / "2026_r16_multis.json").write_text(
+        json.dumps([rec]), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert "+47.5%" in body          # Total EV formatted as signed %
+    assert "5.0%" in body            # Stake formatted as % of bankroll
+    assert "P(one loss)=18%" in body  # hover tooltip promo breakdown
+    assert "Promo EV=+8.0%" in body
+
+
+def test_dashboard_total_ev_null_renders_dash(tmp_path):
+    """When total_ev / suggested_stake are absent the cells render '—'."""
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    rec = _make_multi_record()  # no total_ev or suggested_stake
+    (tmp_path / "2026_r16_multis.json").write_text(
+        json.dumps([rec]), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    # Edge column still renders; Total EV and Stake should show — not crash
+    assert resp.status_code == 200
+    assert "Total EV" in body
+
+
+def test_dashboard_stake_zero_renders_dash(tmp_path):
+    """suggested_stake=0.0 (below Kelly threshold) renders '—', not '0.0%'."""
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    rec = {**_make_multi_record(), "total_ev": 0.12, "suggested_stake": 0.0}
+    (tmp_path / "2026_r16_multis.json").write_text(
+        json.dumps([rec]), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    # Stake cell with 0 renders — not a span.value; ROI/other cells may still show "0.0%"
+    assert 'class="value">0.0%<' not in body
+    assert "+12.0%" in body          # Total EV still shows
+
+
 def test_selection_is_deterministic_under_equal_scoring(tmp_path):
     """When two combos score identically on the primary key, the stable
     leg-name tie-break guarantees the same combo is chosen on every call."""

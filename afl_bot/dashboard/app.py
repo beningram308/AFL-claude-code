@@ -259,6 +259,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
 
     {% if g.model %}
     <div class="section-label">Model ladder (fair odds)</div>
+    <p style="font-size:11px;color:var(--muted);margin:4px 0 8px 0">
+      Edge = raw model vs book price. <strong>Total EV</strong> includes the stake-back
+      refund — that's the number to bet on. Stake = suggested % of bankroll (capped Kelly).
+    </p>
     <table>
       <tr><th>Legs</th><th>Band</th><th>Joint%</th><th>Fair</th>
         <th>Book combo</th><th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
@@ -277,12 +281,14 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <td>
           {% set tev = r.get('total_ev') %}
           {% if tev is not none %}
-          <span class="{{ 'value' if tev > 0 else 'neg' }}">{{ '%+.1f'|format(tev*100) }}%</span>
+          {% set p1l = r.get('p_one_loss') %}{% set pev = r.get('promo_ev') %}
+          <span class="{{ 'value' if tev > 0 else 'neg' }}"
+            {% if p1l is not none and pev is not none %}title="P(one loss)={{ '%.0f'|format(p1l*100) }}% · Promo EV={{ '%+.1f'|format(pev*100) }}%"{% endif %}>{{ '%+.1f'|format(tev*100) }}%</span>
           {% else %}—{% endif %}
         </td>
         <td>
           {% set stk = r.get('suggested_stake') %}
-          {% if stk is not none %}
+          {% if stk %}
           <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
           {% else %}—{% endif %}
         </td>
@@ -297,6 +303,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
 
     {% if g.sportsbet %}
     <div class="section-label" style="margin-top:12px">Sportsbet ladder (real prices)</div>
+    <p style="font-size:11px;color:var(--muted);margin:4px 0 8px 0">
+      Edge = raw model vs book price. <strong>Total EV</strong> includes the stake-back
+      refund — that's the number to bet on. Stake = suggested % of bankroll (capped Kelly).
+    </p>
     <table>
       <tr><th>Legs</th><th>Band</th><th>Book combo</th><th>Model joint%</th><th>Model fair</th>
         <th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
@@ -315,12 +325,14 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <td>
           {% set tev = r.get('total_ev') %}
           {% if tev is not none %}
-          <span class="{{ 'value' if tev > 0 else 'neg' }}">{{ '%+.1f'|format(tev*100) }}%</span>
+          {% set p1l = r.get('p_one_loss') %}{% set pev = r.get('promo_ev') %}
+          <span class="{{ 'value' if tev > 0 else 'neg' }}"
+            {% if p1l is not none and pev is not none %}title="P(one loss)={{ '%.0f'|format(p1l*100) }}% · Promo EV={{ '%+.1f'|format(pev*100) }}%"{% endif %}>{{ '%+.1f'|format(tev*100) }}%</span>
           {% else %}—{% endif %}
         </td>
         <td>
           {% set stk = r.get('suggested_stake') %}
-          {% if stk is not none %}
+          {% if stk %}
           <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
           {% else %}—{% endif %}
         </td>
