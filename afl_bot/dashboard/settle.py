@@ -4,14 +4,25 @@ Reuses the same actuals path as grade-round: player stats from Fryzigg/DFS
 and H2H/totals from Squiggle.  Called by `python -m afl_bot.cli settle-bets`
 and automatically when the dashboard loads / the "Settle now" button is pressed.
 
-Void rule: if a player did not play (no stat entry), void that leg and re-settle
-the remaining legs.  Won only if EVERY non-void leg hit.  A fully-voided multi
-returns the stake.
+Settlement rules (FIX-SETTLEMENT-NO-PHANTOM-WINS):
+  WON    = every leg HIT (True) — no exceptions.
+  LOST   = at least one leg a definite MISS (False); can settle immediately
+           even if other legs are still ungradeable (can never win).
+  PENDING = any leg is ungradeable (None — no data yet, player not found,
+           name mismatch, "other" market).  Never auto-settle over an
+           unresolved leg.  The ungradeable leg names are logged in
+           `ungradeable_legs` for diagnostics.
+
+  Void (full stake return) is NOT auto-generated.  Genuine did-not-play or
+  fully-cancelled multis are handled via the manual-settle control.
+
+1C re-grade: every call also scans existing won/void bets for any leg_result
+with hit=null and reverts them to PENDING (clears payout/settled_at) so
+previously-phantom wins disappear and re-settle correctly when data arrives.
 """
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -31,7 +42,6 @@ def _load_actuals(year: int, round_no: int) -> tuple[dict, dict, dict]:
     player_stat : {(player, stat): value}
     """
     from afl_bot.data.squiggle import SquiggleClient
-    from afl_bot.cli import _history_years
 
     client = SquiggleClient()
     games = client.get_completed_games(year)
@@ -50,8 +60,8 @@ def _load_actuals(year: int, round_no: int) -> tuple[dict, dict, dict]:
     player_stat: dict[tuple[str, str], float] = {}
     try:
         from afl_bot.data.fryzigg import fetch_fryzigg_player_stats
-        raw = fetch_fryzigg_player_stats()
         import pandas as pd
+        raw = fetch_fryzigg_player_stats()
         raw = raw.assign(
             _year=pd.to_datetime(raw["match_date"]).dt.year,
             _player=(raw["player_first_name"].str.strip() + " " +
@@ -82,56 +92,78 @@ def _load_actuals(year: int, round_no: int) -> tuple[dict, dict, dict]:
 
 def _settle_leg(leg: dict, h2h_actual: dict, total_actual: dict,
                 player_stat: dict, year: int, round_no: int) -> bool | None:
-    """Return True (hit), False (miss), or None (void — player didn't play / no data)."""
+    """Return True (hit), False (miss), or None (ungradeable).
+
+    None means: no data for this leg yet, player not found, market is "other",
+    or any other reason we cannot confirm the outcome.  The caller treats None
+    as "whole bet stays PENDING" — we never settle over an unresolved leg.
+    """
     market = leg.get("market", "")
     player = leg.get("player", "")
     line = leg.get("line")
     name = leg.get("name", "")
 
+    if market == "other":
+        return None   # manual market — requires explicit win/loss/void from Ben
+
     if market == "h2h":
         val = h2h_actual.get(player)
         return bool(val) if val is not None else None
+
     elif market == "total_points" or name.startswith("Total points"):
         import re
         m = re.search(r"([\d.]+)\+", name)
         if m is None:
             return None
         threshold = float(m.group(1))
-        # match_id reconstruction: we don't have it in the leg, so scan total_actual
+        game = leg.get("game", "")
         for mid, tot in total_actual.items():
-            # Check if the game is this match (game string is "Home vs Away")
-            game = leg.get("game", "")
             if game:
                 home, _, away = game.partition(" vs ")
                 if home in mid and away in mid:
                     return tot >= threshold
         return None
+
     else:
-        # Player prop: market is the stat name (e.g. "disposals")
+        # Player prop: market is the stat name (e.g. "disposals", "player_disposals")
+        stat = market.replace("player_", "") if market.startswith("player_") else market
         if line is None or not player:
             return None
-        val = player_stat.get((player, market))
+        val = player_stat.get((player, stat))
         if val is None:
-            return None   # void — player didn't play / no data
+            return None   # ungradeable: data not published yet or name mismatch
         return val >= line
 
 
 def settle_bets(ledger_path: str | Path, year: int | None = None,
                 round_no: int | None = None) -> int:
     """Settle PENDING bets for the given round (or all pending rounds if None).
-    Returns the number of bets settled."""
+
+    FIX-SETTLEMENT-NO-PHANTOM-WINS: A bet is settled WON only when every single
+    leg is a definite hit.  Any unresolved leg (None) keeps the whole bet
+    PENDING — we log the ungradeable leg names.  A definite miss on any leg
+    settles LOST immediately even if others are still ungradeable (can never win).
+
+    1C re-grade: also scans existing won/void bets; any that have a leg_result
+    with hit=null are reverted to PENDING so previous phantom wins disappear.
+
+    Returns the number of bets newly settled this call.
+    """
     bets = load_ledger(ledger_path)
+
+    # ── 1C: re-grade phantom wins / voids that slipped through old logic ──────
+    for bet in bets:
+        if bet.get("status") in ("won", "void") and bet.get("leg_results"):
+            if any(lr.get("hit") is None for lr in bet["leg_results"]):
+                bet["status"] = "pending"
+                bet["payout"] = None
+                bet["settled_at"] = None
+                # keep leg_results for diagnostic display
+
     pending = [b for b in bets if b["status"] == "pending"]
     if not pending:
+        save_ledger(ledger_path, bets)
         return 0
-
-    # Group by (year, round) so we load actuals once per round
-    rounds_to_check: set[tuple[int, int]] = set()
-    for b in pending:
-        y, r = b.get("year"), b.get("round")
-        if y and r:
-            if (year is None or y == year) and (round_no is None or r == round_no):
-                rounds_to_check.add((y, r))
 
     actuals_cache: dict[tuple[int, int], tuple] = {}
     n_settled = 0
@@ -143,6 +175,23 @@ def settle_bets(ledger_path: str | Path, year: int | None = None,
         if not y or not r:
             continue
         if (year is not None and y != year) or (round_no is not None and r != round_no):
+            continue
+
+        # Manual result override (Part 3C): if Ben has already forced win/loss/void,
+        # honour it and skip auto-grading entirely.
+        manual = bet.get("manual_result")
+        if manual in ("won", "lost", "void"):
+            if manual == "won":
+                bet["status"] = "won"
+                bet["payout"] = round(bet["stake"] * bet["taken_odds"], 2)
+            elif manual == "lost":
+                bet["status"] = "lost"
+                bet["payout"] = 0.0
+            else:
+                bet["status"] = "void"
+                bet["payout"] = bet["stake"]
+            bet["settled_at"] = _melbourne_now()
+            n_settled += 1
             continue
 
         key = (y, r)
@@ -160,22 +209,30 @@ def settle_bets(ledger_path: str | Path, year: int | None = None,
             hit = _settle_leg(leg_with_game, h2h_actual, total_actual, player_stat, y, r)
             leg_results.append({"name": leg.get("name", ""), "hit": hit})
 
-        non_void = [lr for lr in leg_results if lr["hit"] is not None]
-        all_void = len(non_void) == 0
+        # NEW RULES: never settle over an unresolved leg.
+        has_miss = any(lr["hit"] is False for lr in leg_results)
+        has_ungradeable = any(lr["hit"] is None for lr in leg_results)
 
-        if all_void:
-            bet["status"] = "void"
-            bet["payout"] = bet["stake"]
-        elif all(lr["hit"] for lr in non_void):
-            bet["status"] = "won"
-            bet["payout"] = round(bet["stake"] * bet["taken_odds"], 2)
-        else:
+        if has_miss:
+            # Definite loss — at least one leg failed; can never win regardless
+            # of the ungradeable ones.
             bet["status"] = "lost"
             bet["payout"] = 0.0
-
-        bet["settled_at"] = _melbourne_now()
-        bet["leg_results"] = leg_results
-        n_settled += 1
+            bet["settled_at"] = _melbourne_now()
+            bet["leg_results"] = leg_results
+            n_settled += 1
+        elif has_ungradeable:
+            # Cannot confirm the outcome yet — log which legs are pending.
+            bet["ungradeable_legs"] = [lr["name"] for lr in leg_results if lr["hit"] is None]
+            bet["leg_results"] = leg_results
+            # Stay PENDING — no settled_at, no payout.
+        else:
+            # All legs are definite hits.
+            bet["status"] = "won"
+            bet["payout"] = round(bet["stake"] * bet["taken_odds"], 2)
+            bet["settled_at"] = _melbourne_now()
+            bet["leg_results"] = leg_results
+            n_settled += 1
 
     save_ledger(ledger_path, bets)
     return n_settled

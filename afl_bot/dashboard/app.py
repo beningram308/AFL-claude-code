@@ -28,8 +28,10 @@ from flask import Flask, jsonify, redirect, render_template_string, request, url
 from afl_bot.config import ROOT_DIR
 from afl_bot.dashboard.ledger import (
     add_bet,
+    add_manual_bet,
     cumulative_profit,
     load_ledger,
+    manual_settle_bet,
     pnl_summary,
     save_ledger,
 )
@@ -136,6 +138,99 @@ def settle():
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
+@app.route("/add-manual-bet", methods=["POST"])
+def add_manual_bet_route():
+    round_key = request.form.get("round_key", "")
+    try:
+        year = int(request.form.get("manual_year", 0))
+        round_no = int(request.form.get("manual_round", 0))
+        game = request.form.get("manual_game", "").strip()
+        stake = float(request.form.get("manual_stake", 0))
+        taken_odds = float(request.form.get("manual_odds", 0))
+        label = request.form.get("manual_label", "").strip()
+    except (ValueError, TypeError):
+        return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+    if not year or not round_no or not game or not stake or not taken_odds:
+        return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+    # Build legs from the dynamic repeating form fields.
+    # Each leg is submitted as leg_type_N, leg_player_N, leg_stat_N, leg_line_N, leg_text_N.
+    legs = []
+    for i in range(1, 8):   # support up to 7 legs
+        leg_type = request.form.get(f"leg_type_{i}", "")
+        if not leg_type:
+            break
+        if leg_type == "prop":
+            player = request.form.get(f"leg_player_{i}", "").strip()
+            stat = request.form.get(f"leg_stat_{i}", "disposals")
+            try:
+                line = int(request.form.get(f"leg_line_{i}", 0))
+            except (ValueError, TypeError):
+                line = 0
+            if player and line:
+                legs.append({
+                    "player": player,
+                    "market": f"player_{stat}",
+                    "line": line,
+                    "name": f"{player} {line}+ {stat}",
+                    "book_odds": None,
+                })
+        elif leg_type == "h2h":
+            team = request.form.get(f"leg_player_{i}", "").strip()
+            if team:
+                legs.append({
+                    "player": team,
+                    "market": "h2h",
+                    "line": None,
+                    "name": f"{team} to win",
+                    "book_odds": None,
+                })
+        elif leg_type == "total":
+            try:
+                line = float(request.form.get(f"leg_line_{i}", 0))
+            except (ValueError, TypeError):
+                line = 0
+            if line:
+                legs.append({
+                    "player": "total",
+                    "market": "total_points",
+                    "line": line,
+                    "name": f"Total points {line}+",
+                    "book_odds": None,
+                })
+        elif leg_type == "other":
+            text = request.form.get(f"leg_text_{i}", "").strip()
+            if text:
+                legs.append({
+                    "player": "",
+                    "market": "other",
+                    "line": None,
+                    "name": text,
+                    "book_odds": None,
+                })
+
+    if not legs:
+        return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+    LEDGER_PATH.parent.mkdir(exist_ok=True)
+    add_manual_bet(LEDGER_PATH, year=year, round_no=round_no, game=game,
+                   stake=stake, taken_odds=taken_odds, legs=legs,
+                   label=label or None)
+    return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+
+@app.route("/manual-settle", methods=["POST"])
+def manual_settle():
+    bet_id = request.form.get("bet_id", "")
+    outcome = request.form.get("outcome", "")
+    round_key = request.form.get("round_key", "")
+    if bet_id and outcome in ("won", "lost", "void"):
+        LEDGER_PATH.parent.mkdir(exist_ok=True)
+        manual_settle_bet(LEDGER_PATH, bet_id, outcome=outcome)
+    return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+
 @app.route("/api/multis")
 def api_multis():
     all_files = _load_multis_files()
@@ -216,6 +311,14 @@ _TEMPLATE = r"""<!DOCTYPE html>
     letter-spacing:.05em;color:var(--muted);margin:10px 0 4px}
   .filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
   #no-data{color:var(--muted);padding:30px 0;text-align:center}
+  .badge-manual{background:#1a2a3a;color:#79c0ff}
+  .manual-form{display:none;padding:14px;background:#0d1117;border:1px solid var(--border);
+    border-radius:var(--radius);margin-bottom:14px}
+  .manual-form.open{display:block}
+  .leg-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;
+    padding:8px;background:var(--card);border:1px solid var(--border);border-radius:4px}
+  .leg-row select,.leg-row input{font-size:12px;padding:4px 7px}
+  .settle-controls{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -383,6 +486,42 @@ _TEMPLATE = r"""<!DOCTYPE html>
       <input type="hidden" name="round_key" value="{{ selected }}">
       <button class="btn btn-settle">⟳ Settle now</button>
     </form>
+    <button class="btn btn-primary btn-sm" onclick="toggleManualForm()">+ Add my own bet</button>
+    <span style="color:var(--muted);font-size:12px;margin-left:10px">Filter:</span>
+    <select id="source-filter" onchange="applySourceFilter()">
+      <option value="all">All bets</option>
+      <option value="bot">Bot only</option>
+      <option value="manual">Manual only</option>
+    </select>
+  </div>
+
+  <!-- ── Add my own bet form ── -->
+  <div class="manual-form" id="manual-form">
+    <b style="font-size:13px;color:var(--accent)">Add my own bet</b>
+    <form method="post" action="/add-manual-bet" id="manual-bet-form">
+      <input type="hidden" name="round_key" value="{{ selected }}">
+      <div class="form-row" style="margin-top:10px">
+        <label>Year</label>
+        <input type="number" name="manual_year" value="{{ selected[:4] if selected else '2026' }}" style="width:72px" required>
+        <label>Round</label>
+        <input type="number" name="manual_round" value="{{ selected.split('_r')[1] if selected and '_r' in selected else '' }}" style="width:60px" required>
+        <label>Game</label>
+        <input type="text" name="manual_game" placeholder="Home vs Away" style="width:200px" required>
+        <label>Stake ($)</label>
+        <input type="number" name="manual_stake" min="0.01" step="0.50" value="25" style="width:80px" required>
+        <label>Odds</label>
+        <input type="number" name="manual_odds" min="1.01" step="0.01" style="width:80px" required>
+        <label>Label</label>
+        <input type="text" name="manual_label" placeholder="optional" style="width:120px">
+      </div>
+      <div style="margin-top:10px;margin-bottom:6px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Legs</div>
+      <div id="leg-rows"></div>
+      <div class="form-row" style="margin-top:8px">
+        <button type="button" class="btn btn-sm" style="background:var(--border)" onclick="addLeg()">+ Add leg</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save bet</button>
+        <button type="button" class="btn btn-sm" style="background:var(--border)" onclick="toggleManualForm()">Cancel</button>
+      </div>
+    </form>
   </div>
 
   <h2>Season Summary</h2>
@@ -406,18 +545,55 @@ _TEMPLATE = r"""<!DOCTYPE html>
   {% if open_bets %}
   <h2>Open bets ({{ open_bets|length }})</h2>
   {% for b in open_bets %}
-  <div class="card">
+  {% set is_manual = b.get('source') == 'manual' %}
+  {% set has_other = b.legs | selectattr('market','eq','other') | list | length > 0 %}
+  {% set ungradeable = b.get('ungradeable_legs', []) %}
+  {% set needs_manual_settle = is_manual or has_other or ungradeable | length > 0 %}
+  <div class="card" data-source="{{ b.get('source','bot') }}">
     <div style="display:flex;justify-content:space-between;align-items:start">
       <div>
-        <b>{{ b.game }}</b> — {{ b.ladder }} ladder<br>
+        <b>{{ b.game }}</b>
+        {% if is_manual %} — <span style="color:#79c0ff">manual</span>{% else %} — {{ b.ladder }} ladder{% endif %}
+        {% if b.get('label') %}<span style="color:var(--muted);font-size:11px;margin-left:6px">[{{ b.label }}]</span>{% endif %}
+        <br>
         <span style="color:var(--muted);font-size:12px">{{ b.legs|map(attribute='name')|join(' + ') }}</span>
       </div>
-      <span class="badge badge-pending">pending</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        {% if is_manual %}<span class="badge badge-manual">manual</span>{% endif %}
+        <span class="badge badge-pending">pending</span>
+      </div>
     </div>
     <div style="margin-top:6px;color:var(--muted);font-size:12px">
       Stake ${{ '%.2f'|format(b.stake) }} @ {{ '%.2f'|format(b.taken_odds) }}
       · placed {{ b.placed_at[:16] }}
     </div>
+    {% if ungradeable %}
+    <div style="margin-top:5px;font-size:11px;color:var(--yellow)">
+      Ungradeable: {{ ungradeable | join(', ') }}
+    </div>
+    {% endif %}
+    {% if b.leg_results %}
+    <div style="margin-top:5px;font-size:11px;color:var(--muted)">
+      {% for lr in b.leg_results %}
+      <span style="margin-right:8px">
+        {% if lr.hit is none %}⬜{% elif lr.hit %}✅{% else %}❌{% endif %}
+        {{ lr.name }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if needs_manual_settle %}
+    <div class="settle-controls">
+      <span style="font-size:11px;color:var(--muted)">Manual settle:</span>
+      <form method="post" action="/manual-settle" style="display:contents">
+        <input type="hidden" name="bet_id" value="{{ b.bet_id }}">
+        <input type="hidden" name="round_key" value="{{ selected }}">
+        <button name="outcome" value="won" class="btn btn-sm" style="background:#1a3a2a;color:var(--green);border:1px solid var(--green)">Won</button>
+        <button name="outcome" value="lost" class="btn btn-sm" style="background:#3a1a1a;color:var(--red);border:1px solid var(--red)">Lost</button>
+        <button name="outcome" value="void" class="btn btn-sm" style="background:var(--border);color:var(--muted)">Void</button>
+      </form>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
   {% endif %}
@@ -426,13 +602,20 @@ _TEMPLATE = r"""<!DOCTYPE html>
   {% if settled_bets %}
   <h2>Settled bets</h2>
   {% for b in settled_bets | sort(attribute='settled_at', reverse=True) %}
-  <div class="card">
+  {% set is_manual = b.get('source') == 'manual' %}
+  <div class="card" data-source="{{ b.get('source','bot') }}">
     <div style="display:flex;justify-content:space-between;align-items:start">
       <div>
-        <b>{{ b.game }}</b> — {{ b.ladder }} ladder<br>
+        <b>{{ b.game }}</b>
+        {% if is_manual %} — <span style="color:#79c0ff">manual</span>{% else %} — {{ b.ladder }} ladder{% endif %}
+        {% if b.get('label') %}<span style="color:var(--muted);font-size:11px;margin-left:6px">[{{ b.label }}]</span>{% endif %}
+        <br>
         <span style="color:var(--muted);font-size:12px">{{ b.legs|map(attribute='name')|join(' + ') }}</span>
       </div>
-      <span class="badge badge-{{ b.status }}">{{ b.status }}</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        {% if is_manual %}<span class="badge badge-manual">manual</span>{% endif %}
+        <span class="badge badge-{{ b.status }}">{{ b.status }}</span>
+      </div>
     </div>
     <div style="margin-top:6px;font-size:12px;color:var(--muted)">
       Stake ${{ '%.2f'|format(b.stake) }} @ {{ '%.2f'|format(b.taken_odds) }}
@@ -459,7 +642,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
   {% endfor %}
   {% endif %}
   {% if not open_bets and not settled_bets %}
-  <div style="color:var(--muted);padding:30px 0;text-align:center">No bets recorded yet. Use the Place button in Round View.</div>
+  <div style="color:var(--muted);padding:30px 0;text-align:center">No bets recorded yet. Use the Place button in Round View or Add my own bet.</div>
   {% endif %}
 </div>
 
@@ -558,9 +741,7 @@ if(location.hash==='#tracker') showTab('tracker');
 if(location.hash==='#clv') showTab('clv');
 
 function openPlace(multiId, game, defaultOdds){
-  // Find the card containing this multi's Place button and open its form
   document.querySelectorAll('.place-form').forEach(f=>{f.classList.remove('open')});
-  // Find matching form by iterating cards
   const btns = document.querySelectorAll('[onclick*="'+multiId+'"]');
   if(!btns.length) return;
   const card = btns[0].closest('.card');
@@ -587,6 +768,94 @@ function applyFilter(){
     const showLadder=(ladder==='all'||ld===ladder);
     const showValue=(!valueOnly||vp);
     row.style.display=(showLadder&&showValue)?'':'none';
+  });
+}
+
+// ── Manual bet form ──────────────────────────────────────────────────────────
+function toggleManualForm(){
+  const f=document.getElementById('manual-form');
+  f.classList.toggle('open');
+  if(f.classList.contains('open')&&document.getElementById('leg-rows').children.length===0){
+    addLeg(); // start with one leg row
+  }
+}
+
+let _legCount=0;
+function addLeg(){
+  _legCount++;
+  const n=_legCount;
+  const wrap=document.createElement('div');
+  wrap.className='leg-row';
+  wrap.id='leg-row-'+n;
+  wrap.innerHTML=`
+    <input type="hidden" name="leg_type_${n}" id="lt_${n}" value="prop">
+    <select onchange="changeLegType(${n},this.value)" style="width:120px">
+      <option value="prop">Player prop</option>
+      <option value="h2h">Team to win</option>
+      <option value="total">Total points</option>
+      <option value="other">Other</option>
+    </select>
+    <span id="lf_${n}">
+      <input type="text" name="leg_player_${n}" placeholder="Player name" style="width:140px">
+      <select name="leg_stat_${n}" style="width:100px">
+        <option value="disposals">Disposals</option>
+        <option value="goals">Goals</option>
+        <option value="marks">Marks</option>
+        <option value="tackles">Tackles</option>
+      </select>
+      <input type="number" name="leg_line_${n}" placeholder="Line" min="1" style="width:60px">
+    </span>
+    <span id="lf_other_${n}" style="display:none">
+      <input type="text" name="leg_text_${n}" placeholder="Free text description" style="width:260px">
+    </span>
+    <button type="button" class="btn btn-sm" style="background:var(--border);color:var(--red)" onclick="removeLeg(${n})">✕</button>
+  `;
+  document.getElementById('leg-rows').appendChild(wrap);
+}
+
+function changeLegType(n,val){
+  document.getElementById('lt_'+n).value=val;
+  const stdFields=document.getElementById('lf_'+n);
+  const otherFields=document.getElementById('lf_other_'+n);
+  // rebuild the standard fields area depending on type
+  if(val==='prop'){
+    stdFields.style.display='';
+    stdFields.innerHTML=`
+      <input type="text" name="leg_player_${n}" placeholder="Player name" style="width:140px">
+      <select name="leg_stat_${n}" style="width:100px">
+        <option value="disposals">Disposals</option>
+        <option value="goals">Goals</option>
+        <option value="marks">Marks</option>
+        <option value="tackles">Tackles</option>
+      </select>
+      <input type="number" name="leg_line_${n}" placeholder="Line" min="1" style="width:60px">
+    `;
+    otherFields.style.display='none';
+  } else if(val==='h2h'){
+    stdFields.style.display='';
+    stdFields.innerHTML=`<input type="text" name="leg_player_${n}" placeholder="Team name" style="width:180px">`;
+    otherFields.style.display='none';
+  } else if(val==='total'){
+    stdFields.style.display='';
+    stdFields.innerHTML=`<input type="number" name="leg_line_${n}" placeholder="Total line" min="1" step="0.5" style="width:100px">`;
+    otherFields.style.display='none';
+  } else {
+    stdFields.style.display='none';
+    otherFields.style.display='';
+  }
+}
+
+function removeLeg(n){
+  const row=document.getElementById('leg-row-'+n);
+  if(row) row.remove();
+}
+
+// ── Source filter (manual / bot) ─────────────────────────────────────────────
+function applySourceFilter(){
+  const src=document.getElementById('source-filter').value;
+  document.querySelectorAll('.card[data-source]').forEach(card=>{
+    const cs=card.dataset.source||'bot';
+    card.style.display=(src==='all'||cs===src)?'':'none';
   });
 }
 

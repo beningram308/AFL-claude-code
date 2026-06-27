@@ -15,8 +15,10 @@ from afl_bot.build.report import search_match_sgms
 from afl_bot.cli import _rung_to_json
 from afl_bot.dashboard.ledger import (
     add_bet,
+    add_manual_bet,
     cumulative_profit,
     load_ledger,
+    manual_settle_bet,
     pnl_summary,
     save_ledger,
 )
@@ -282,8 +284,8 @@ def test_settle_one_leg_miss_marks_lost(tmp_path):
     assert miss[0]["name"] == "Karl Amon 15+ disposals"
 
 
-def test_settle_non_playing_player_voids_leg(tmp_path):
-    """If a player has no stat entry, that leg is voided; re-settle remaining legs."""
+def test_settle_missing_player_stays_pending(tmp_path):
+    """A player with no stat entry is ungradeable → whole bet stays PENDING (no phantom win)."""
     ledger_path = tmp_path / "bets_ledger.json"
     legs = [
         {"player": "Injured Player", "market": "disposals", "line": 15,
@@ -294,7 +296,7 @@ def test_settle_non_playing_player_voids_leg(tmp_path):
          "name": "Jack Gunston 1+ goals", "book_odds": 1.38},
     ]
     player_stat = {
-        # "Injured Player" missing → void that leg
+        # "Injured Player" absent → ungradeable leg
         ("Will Day", "disposals"): 22,
         ("Jack Gunston", "goals"): 1,
     }
@@ -306,14 +308,15 @@ def test_settle_non_playing_player_voids_leg(tmp_path):
         settle_bets(ledger_path, year=2026, round_no=16)
 
     bets = load_ledger(ledger_path)
-    void_legs = [lr for lr in bets[0]["leg_results"] if lr["hit"] is None]
-    assert len(void_legs) == 1
-    # Non-void legs all hit → won
-    assert bets[0]["status"] == "won"
+    # No phantom win: bet must stay pending because one leg is ungradeable
+    assert bets[0]["status"] == "pending"
+    assert bets[0]["payout"] is None
+    assert "Injured Player 15+ disposals" in bets[0].get("ungradeable_legs", [])
 
 
-def test_settle_all_legs_void_returns_stake(tmp_path):
-    """If every leg is void, the bet is void and stake is returned."""
+def test_settle_round_stats_not_published_stays_pending(tmp_path):
+    """If player stats are not yet published (empty dict but h2h complete),
+    all prop legs are ungradeable and the bet stays PENDING — not void."""
     ledger_path = tmp_path / "bets_ledger.json"
     legs = [
         {"player": "P1", "market": "disposals", "line": 20,
@@ -326,15 +329,16 @@ def test_settle_all_legs_void_returns_stake(tmp_path):
     bet = _make_bet("b4", 2026, 16, legs, stake=25.0, taken_odds=2.80)
     save_ledger(ledger_path, [bet])
 
-    # h2h populated → round is complete; player_stat empty → all legs void
+    # h2h populated → round complete; player_stat empty → stats not published
     h2h = {"Home": 1, "Away": 0}
     with patch("afl_bot.dashboard.settle._load_actuals",
                return_value=_mock_actuals(h2h=h2h, player={})):
         settle_bets(ledger_path, year=2026, round_no=16)
 
     bets = load_ledger(ledger_path)
-    assert bets[0]["status"] == "void"
-    assert bets[0]["payout"] == pytest.approx(25.0)
+    # Must stay pending — stats not published yet ≠ void
+    assert bets[0]["status"] == "pending"
+    assert bets[0]["payout"] is None
 
 
 def test_settle_no_data_leaves_pending(tmp_path):
@@ -551,6 +555,306 @@ def test_dashboard_renders_dash_when_hit_prob_missing(tmp_path):
     body = resp.data.decode()
     assert resp.status_code == 200
     assert "(—)" in body   # missing hit_prob shows dash
+
+
+# ── Part 1 settlement regression tests ──────────────────────────────────────
+
+def test_settle_h2h_hit_plus_no_data_props_stays_pending(tmp_path):
+    """H2H leg hits but prop legs have no data → PENDING, NOT WON (phantom-win regression)."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Carlton", "market": "h2h", "line": None,
+         "name": "Carlton to win", "book_odds": 1.80},
+        {"player": "Charlie Curnow", "market": "disposals", "line": 20,
+         "name": "Charlie Curnow 20+ disposals", "book_odds": 1.50},
+        {"player": "Patrick Cripps", "market": "goals", "line": 1,
+         "name": "Patrick Cripps 1+ goals", "book_odds": 1.60},
+    ]
+    bet = _make_bet("phantom", 2026, 16, legs, stake=25.0, taken_odds=4.50)
+    save_ledger(ledger_path, [bet])
+
+    # H2H populated (Carlton won), but no prop data yet
+    h2h = {"Carlton": 1, "Essendon": 0}
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals(h2h=h2h, player={})):
+        settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    # This was the phantom-win bug: bet must NOT be won when prop legs are ungradeable
+    assert bets[0]["status"] == "pending", "phantom win must not occur"
+    assert bets[0]["payout"] is None
+
+
+def test_settle_definite_miss_settles_lost_even_with_ungradeable_legs(tmp_path):
+    """If one leg is a definite miss, the multi is LOST even if other legs are still ungradeable."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Will Day", "market": "disposals", "line": 20,
+         "name": "Will Day 20+ disposals", "book_odds": 1.42},
+        {"player": "Missing Player", "market": "disposals", "line": 20,
+         "name": "Missing Player 20+ disposals", "book_odds": 1.50},
+    ]
+    player_stat = {("Will Day", "disposals"): 10}   # definite miss; Missing Player absent
+    bet = _make_bet("miss+ungradeable", 2026, 16, legs, stake=25.0, taken_odds=2.50)
+    save_ledger(ledger_path, [bet])
+
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals(player=player_stat)):
+        settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "lost"
+    assert bets[0]["payout"] == 0.0
+
+
+def test_settle_regrade_reverts_phantom_won_to_pending(tmp_path):
+    """1C re-grade: a bet currently won but with null leg_results is reverted to pending."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    # Simulate a previously phantom-won bet: status=won but leg_results has hit=null
+    phantom_bet = {
+        "bet_id": "phantom-old",
+        "multi_id": "multi-phantom-old",
+        "year": 2026, "round": 16,
+        "game": "Home vs Away",
+        "ladder": "model",
+        "legs": _LEGS_ALL_HIT,
+        "stake": 25.0,
+        "taken_odds": 3.10,
+        "placed_at": "2026-06-20T12:00:00+10:00",
+        "status": "won",   # was incorrectly settled
+        "settled_at": "2026-06-21T10:00:00+10:00",
+        "payout": 77.5,
+        "leg_results": [
+            {"name": "Will Day 20+ disposals", "hit": True},
+            {"name": "Karl Amon 15+ disposals", "hit": None},  # ungradeable → phantom
+            {"name": "Jack Gunston 1+ goals", "hit": True},
+        ],
+    }
+    save_ledger(ledger_path, [phantom_bet])
+
+    # Any settle call triggers the 1C re-grade pass
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals()):   # no data available this call
+        settle_bets(ledger_path)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "pending", "phantom won must be reverted to pending"
+    assert bets[0]["payout"] is None
+    assert bets[0]["settled_at"] is None
+
+
+def test_settle_other_market_leg_keeps_bet_pending(tmp_path):
+    """A leg with market='other' is always ungradeable; bet stays pending."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Will Day", "market": "disposals", "line": 20,
+         "name": "Will Day 20+ disposals", "book_odds": 1.42},
+        {"player": "", "market": "other", "line": None,
+         "name": "First goal scorer any team", "book_odds": None},
+    ]
+    player_stat = {("Will Day", "disposals"): 25}
+    bet = _make_bet("other-leg", 2026, 16, legs, stake=25.0, taken_odds=5.0)
+    save_ledger(ledger_path, [bet])
+
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals(player=player_stat)):
+        settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "pending"   # "other" leg blocks auto-settlement
+
+
+# ── Part 3 manual bets tests ─────────────────────────────────────────────────
+
+def test_add_manual_bet_appends_pending_record(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Charlie Curnow", "market": "player_goals", "line": 2,
+         "name": "Charlie Curnow 2+ goals", "book_odds": None},
+        {"player": "Carlton", "market": "h2h", "line": None,
+         "name": "Carlton to win", "book_odds": None},
+    ]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="Carlton vs Essendon",
+                         stake=20.0, taken_odds=5.50,
+                         legs=legs, label="Own punt")
+    assert bet["status"] == "pending"
+    assert bet["source"] == "manual"
+    assert bet["ladder"] == "manual"
+    assert bet["stake"] == 20.0
+    assert bet["taken_odds"] == 5.50
+    assert bet["label"] == "Own punt"
+    assert bet["payout"] is None
+    assert bet["manual_result"] is None
+    assert bet["multi_id"].startswith("manual-")
+    # persisted
+    saved = load_ledger(ledger_path)
+    assert len(saved) == 1
+    assert saved[0]["bet_id"] == bet["bet_id"]
+
+
+def test_manual_bet_gradeable_legs_auto_settle_won(tmp_path):
+    """Manual bet with only gradeable legs (no 'other') settles under Part 1 rules."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Charlie Curnow", "market": "player_goals", "line": 2,
+         "name": "Charlie Curnow 2+ goals", "book_odds": None},
+        {"player": "Will Day", "market": "player_disposals", "line": 20,
+         "name": "Will Day 20+ disposals", "book_odds": None},
+    ]
+    add_manual_bet(ledger_path, year=2026, round_no=16,
+                   game="Carlton vs Hawthorn",
+                   stake=20.0, taken_odds=4.0, legs=legs)
+    player_stat = {
+        ("Charlie Curnow", "goals"): 3,
+        ("Will Day", "disposals"): 25,
+    }
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals(player=player_stat)):
+        n = settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    assert n == 1
+    assert bets[0]["status"] == "won"
+    assert bets[0]["payout"] == pytest.approx(20.0 * 4.0)
+
+
+def test_manual_bet_other_leg_stays_pending_until_manual(tmp_path):
+    """Manual bet with an 'other' leg cannot auto-settle; stays pending."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Will Day", "market": "player_disposals", "line": 20,
+         "name": "Will Day 20+ disposals", "book_odds": None},
+        {"player": "", "market": "other", "line": None,
+         "name": "Anytime Goal Scorer Bonus", "book_odds": None},
+    ]
+    add_manual_bet(ledger_path, year=2026, round_no=16,
+                   game="Hawthorn vs GWS", stake=15.0, taken_odds=6.0, legs=legs)
+    player_stat = {("Will Day", "disposals"): 28}
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals(player=player_stat)):
+        settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "pending"   # "other" leg still ungradeable
+
+
+def test_manual_settle_bet_forces_won(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
+    found = manual_settle_bet(ledger_path, bet["bet_id"], outcome="won")
+    assert found is True
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "won"
+    assert bets[0]["payout"] == pytest.approx(30.0)
+    assert bets[0]["manual_result"] == "won"
+    assert bets[0]["settled_at"] is not None
+
+
+def test_manual_settle_bet_forces_lost(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
+    manual_settle_bet(ledger_path, bet["bet_id"], outcome="lost")
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "lost"
+    assert bets[0]["payout"] == 0.0
+
+
+def test_manual_settle_bet_forces_void(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
+    manual_settle_bet(ledger_path, bet["bet_id"], outcome="void")
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "void"
+    assert bets[0]["payout"] == pytest.approx(10.0)
+
+
+def test_manual_settle_unknown_bet_id_returns_false(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    save_ledger(ledger_path, [])
+    assert manual_settle_bet(ledger_path, "nonexistent-id", outcome="won") is False
+
+
+def test_manual_result_honoured_by_settle_bets(tmp_path):
+    """settle_bets honours manual_result and does not attempt auto-grading."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "Exotic bet", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
+    # Set manual_result directly in ledger (simulating prior manual_settle_bet call)
+    bets = load_ledger(ledger_path)
+    bets[0]["manual_result"] = "won"
+    save_ledger(ledger_path, bets)
+
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals()):
+        settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "won"
+    assert bets[0]["payout"] == pytest.approx(30.0)
+
+
+def test_pnl_includes_manual_bets(tmp_path):
+    """pnl_summary counts both bot and manual bets in the season summary."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "Will Day", "market": "player_disposals", "line": 20,
+             "name": "Will Day 20+ disposals", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="Hawthorn vs GWS", stake=20.0, taken_odds=2.0, legs=legs)
+    manual_settle_bet(ledger_path, bet["bet_id"], outcome="won")
+
+    bets = load_ledger(ledger_path)
+    s = pnl_summary(bets)
+    assert s["n_settled"] == 1
+    assert s["n_won"] == 1
+    assert s["total_staked"] == pytest.approx(20.0)
+    assert s["total_returned"] == pytest.approx(40.0)
+    assert s["net_profit"] == pytest.approx(20.0)
+
+
+def test_add_bet_has_source_field(tmp_path):
+    """add_bet stores source='bot' by default."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    multi = _make_multi_record()
+    bet = add_bet(ledger_path, multi, stake=25.0, taken_odds=3.10)
+    assert bet["source"] == "bot"
+    assert bet["manual_result"] is None
+
+
+def test_dashboard_shows_manual_badge(tmp_path):
+    """Dashboard renders the 'manual' badge and label for manual bets."""
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    legs = [{"player": "Will Day", "market": "player_disposals", "line": 20,
+             "name": "Will Day 20+ disposals", "book_odds": None}]
+    ledger_path = tmp_path / "bets_ledger.json"
+    add_manual_bet(ledger_path, year=2026, round_no=16,
+                   game="Hawthorn vs GWS", stake=20.0, taken_odds=5.0,
+                   legs=legs, label="Test punt")
+    (tmp_path / "2026_r16_multis.json").write_text(json.dumps([]), encoding="utf-8")
+
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert "badge-manual" in body
+    assert "Test punt" in body
 
 
 def test_selection_is_deterministic_under_equal_scoring(tmp_path):

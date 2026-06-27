@@ -57,7 +57,8 @@ def save_ledger(ledger_path: str | Path, bets: list[dict]) -> None:
 
 
 def add_bet(ledger_path: str | Path, multi_record: dict,
-            stake: float, taken_odds: float) -> dict:
+            stake: float, taken_odds: float,
+            source: str = "bot") -> dict:
     """Append a new pending bet to the ledger and return the bet record."""
     bet = {
         "bet_id": str(uuid.uuid4()),
@@ -75,6 +76,8 @@ def add_bet(ledger_path: str | Path, multi_record: dict,
         "settled_at": None,
         "payout": None,
         "leg_results": None,
+        "source": source,
+        "manual_result": None,
         "close_captured_at": None,
         "close_ref_odds": None,
         "close_ref_source": None,
@@ -87,6 +90,92 @@ def add_bet(ledger_path: str | Path, multi_record: dict,
     bets.append(bet)
     save_ledger(ledger_path, bets)
     return bet
+
+
+def add_manual_bet(
+    ledger_path: str | Path,
+    *,
+    year: int,
+    round_no: int,
+    game: str,
+    stake: float,
+    taken_odds: float,
+    legs: list[dict],
+    label: str | None = None,
+) -> dict:
+    """Append a manually-entered bet to the ledger.
+
+    ``legs`` is a list of dicts already in the standard leg schema:
+    ``{player, market, line, name, book_odds}``.  Callers build them from
+    the form fields (player prop / team to win / total points / other).
+    """
+    bet_id = str(uuid.uuid4())
+    multi_id = f"manual-{year}-r{round_no}-{bet_id[:8]}"
+    bet = {
+        "bet_id": bet_id,
+        "multi_id": multi_id,
+        "year": year,
+        "round": round_no,
+        "game": game,
+        "ladder": "manual",
+        "legs": copy.deepcopy(legs),
+        "stake": float(stake),
+        "open_odds": float(taken_odds),
+        "taken_odds": float(taken_odds),
+        "placed_at": _melbourne_now(),
+        "status": "pending",
+        "settled_at": None,
+        "payout": None,
+        "leg_results": None,
+        "source": "manual",
+        "manual_result": None,
+        "label": label or "",
+        "close_captured_at": None,
+        "close_ref_odds": None,
+        "close_ref_source": None,
+        "close_implied_prob": None,
+        "clv_pct": None,
+        "clv_available": False,
+        "close_legs": None,
+    }
+    bets = load_ledger(ledger_path)
+    bets.append(bet)
+    save_ledger(ledger_path, bets)
+    return bet
+
+
+def manual_settle_bet(
+    ledger_path: str | Path,
+    bet_id: str,
+    *,
+    outcome: str,
+) -> bool:
+    """Manually force the outcome of a bet to ``outcome`` ("won"/"lost"/"void").
+
+    Sets ``manual_result`` so ``settle_bets`` will honour it on the next pass
+    (or this write immediately applies it if the ledger is then re-read).
+    Returns True if the bet was found, False otherwise.
+    """
+    if outcome not in ("won", "lost", "void"):
+        raise ValueError(f"outcome must be won/lost/void, got {outcome!r}")
+    bets = load_ledger(ledger_path)
+    for bet in bets:
+        if bet["bet_id"] != bet_id:
+            continue
+        bet["manual_result"] = outcome
+        if outcome == "won":
+            bet["status"] = "won"
+            bet["payout"] = round(bet["stake"] * bet["taken_odds"], 2)
+        elif outcome == "lost":
+            bet["status"] = "lost"
+            bet["payout"] = 0.0
+        else:
+            bet["status"] = "void"
+            bet["payout"] = bet["stake"]
+        bet["settled_at"] = _melbourne_now()
+        save_ledger(ledger_path, bets)
+        return True
+    return False
 
 
 def pnl_summary(bets: list[dict]) -> dict:
