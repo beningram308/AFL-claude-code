@@ -721,3 +721,58 @@ def test_final_rungs_have_no_internal_pref_fields():
     for r in out:
         assert "_pref_score" not in r
         assert "_n_model_marks" not in r
+
+
+# --------------------------------------------------------------------------- #
+# Total-points legs excluded from multis (FIX-TOTAL-POINTS-LEGS)
+# --------------------------------------------------------------------------- #
+
+def _total_leg(name="Total points 160.5+", prob=0.55):
+    return LegCandidate(name=name, match_id="m1", market="total_points",
+                        subject="total", fair_prob=prob, market_odds=1.0 / prob, mask=None)
+
+
+def test_allow_total_points_in_multi_defaults_to_false():
+    from afl_bot.config import ALLOW_TOTAL_POINTS_IN_MULTI
+    assert ALLOW_TOTAL_POINTS_IN_MULTI is False
+
+
+def test_total_points_excluded_when_flag_false():
+    # Simulate cli.py's filter: strip total_points legs before handing to ladder.
+    raw_pool = _ladder_legs() + [_total_leg()]
+    filtered = [l for l in raw_pool if l.market != "total_points"]
+    out = search_match_sgms(filtered, min_joint_prob=0.0)
+    assert out
+    for r in out:
+        assert not any("Total points" in name for name in r["legs"])
+
+
+def test_total_points_allowed_when_flag_true():
+    # With flag True the cli.py passes match_legs unchanged; the total_points
+    # leg is eligible to enter a combo if it forms a valid 3-leg combination.
+    # Use 2 disp legs + 1 total leg; joint is naive product (no masks), all combos
+    # are the single 3-leg combo.
+    disp_a = _leg("DA 20+ disp", 0.60, None, "DA")
+    disp_b = _leg("DB 20+ disp", 0.55, None, "DB")
+    total = _total_leg(prob=0.55)
+    # No filtering (ALLOW_TOTAL_POINTS_IN_MULTI=True path in cli.py).
+    pool = [disp_a, disp_b, total]
+    out = search_match_sgms(pool, target_odds=(2.10,), min_joint_prob=0.0)
+    assert len(out) == 1
+    assert any("Total points" in name for name in out[0]["legs"])
+
+
+def test_total_points_excluded_from_market_sgms_when_flag_false():
+    # search_market_sgms uses the same ladder_legs pool in cli.py.
+    total = _total_leg(prob=0.55)
+    total_with_odds = LegCandidate(
+        name=total.name, match_id=total.match_id, market=total.market,
+        subject=total.subject, fair_prob=total.fair_prob,
+        market_odds=total.market_odds, mask=None)
+    raw_pool = _ladder_legs(odds_mult=1.0) + [total_with_odds]
+    odds_book = {l.name: l.market_odds for l in raw_pool}
+    # CLI filter — remove total_points before passing to search_market_sgms.
+    filtered = [l for l in raw_pool if l.market != "total_points"]
+    out = search_market_sgms(filtered, odds_book=odds_book, min_joint_prob=0.0)
+    for r in out:
+        assert not any("Total points" in name for name in r["legs"])

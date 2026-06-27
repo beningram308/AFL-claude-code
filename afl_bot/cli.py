@@ -57,6 +57,7 @@ from afl_bot.build.staking import (
     stake_bets,
 )
 from afl_bot.config import (
+    ALLOW_TOTAL_POINTS_IN_MULTI,
     ANCHOR_MIN_PROB,
     BOOKABLE_TOP_N_BY_STAT,
     CACHE_DIR,
@@ -1117,12 +1118,17 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                                 "edge_pct": leg.edge_pct, "classification": leg.classification,
                             })
 
-        sgms = search_match_sgms(match_legs, odds_book=odds_book,
+        # FIX-TOTAL-POINTS-LEGS: strip total-points legs from the SGM pool
+        # (ALLOW_TOTAL_POINTS_IN_MULTI=True restores them). The match header,
+        # predictions CSV, and odds template are unaffected.
+        ladder_legs = (match_legs if ALLOW_TOTAL_POINTS_IN_MULTI
+                       else [l for l in match_legs if l.market != "total_points"])
+        sgms = search_match_sgms(ladder_legs, odds_book=odds_book,
                                  corr_gain_haircut=corr_gain_haircut, multi_calibrator=multi_cal)
         # FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C: a second ladder selected
         # and priced on REAL book odds (Sportsbet/--odds) from the same leg
         # pool -- [] when nothing in this match is priced.
-        market_sgms = search_market_sgms(match_legs, odds_book=odds_book)
+        market_sgms = search_market_sgms(ladder_legs, odds_book=odds_book)
         # Stage 2A: emit machine-readable multis JSON alongside the .md so the
         # dashboard can render these rungs without re-parsing markdown.
         leg_by_name = {l.name: l for l in match_legs}
