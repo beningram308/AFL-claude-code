@@ -21,6 +21,7 @@ from afl_bot.config import (
     GREASINESS_TEMP_NEUTRAL_C,
     GREASINESS_WEIGHTS,
     GREASINESS_WIND_MAX_KMH,
+    WET_MARKS_MULTIPLIER,
 )
 
 # Direction & rough magnitude from AFL wet-weather research (plan §3.4):
@@ -35,7 +36,7 @@ from afl_bot.config import (
 # ``--rain-mm`` flag), rather than the attenuated daily-rainfall fit.
 DEFAULT_RAIN_MULTIPLIERS: dict[str, float] = {
     "disposals": 0.93,
-    "marks": 0.85,
+    "marks": WET_MARKS_MULTIPLIER,
     "tackles": 1.08,
     "goals": 0.92,
 }

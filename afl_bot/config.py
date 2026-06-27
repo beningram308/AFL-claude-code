@@ -97,6 +97,11 @@ WET_THRESHOLD_MM = 5.0   # daily rainfall (mm) at/above which a game counts as "
 # double-count — together they reproduce the ~0.92 wet goal ratio.
 WET_TOTAL_MULTIPLIER = 0.93
 WET_ACCURACY_PENALTY = 0.02
+# Marks wet-play multiplier: how far marks drop at greasiness=1.0.
+# Stronger than the other stats because marks are especially impacted by
+# a greasy ball. Tune here; 0.78 chosen to reflect the research direction
+# (daily-rain fit was ~0.96, genuinely-wet play is expected to be lower).
+WET_MARKS_MULTIPLIER = 0.78
 
 # Greasiness factor — continuous 0.0-1.0 wet/cold/slippery scale (Phase 1).
 # Replaces the binary is_wet trigger with a weighted blend of four components

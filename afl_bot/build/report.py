@@ -172,17 +172,17 @@ def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_leg
                 entry["raw_edge"] = joint * book - 1.0
                 entry["edge"] = shrunk * book - 1.0
             entry["odds"] = entry.get("book_odds", entry["fair_odds"])
-            # Preference score (secondary sort key) and model-only marks count.
+            # Preference score (secondary sort key) and total marks leg count.
             pref = 0.0
-            n_model_marks = 0
+            n_marks = 0
             for leg in legs_list:
                 mstat = (leg.market.replace("player_", "")
                          if leg.market.startswith("player_") else leg.market)
                 pref += STAT_PREFERENCE.get(mstat, 0.5)
-                if mstat == "marks" and odds_book.get(leg.name) is None:
-                    n_model_marks += 1
+                if mstat == "marks":
+                    n_marks += 1
             entry["_pref_score"] = pref
-            entry["_n_model_marks"] = n_model_marks
+            entry["_n_marks"] = n_marks
             combos.append(entry)
     return combos
 
@@ -285,8 +285,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
     combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
-    # Drop combos with too many model-only marks legs (priced marks are exempt).
-    combos = [c for c in combos if c.get("_n_model_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
+    # Drop combos exceeding the marks cap (ALL marks legs count, priced or not).
+    combos = [c for c in combos if c.get("_n_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
 
     # Stable tie-break key: sorted leg names guarantee the same combo always
     # wins when two candidates score identically on the primary sort key.
@@ -419,7 +419,7 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         pick["total_ev"] = pick.pop("_total_ev", None)
         pick.pop("_leg_masks", None)
         pick.pop("_pref_score", None)
-        pick.pop("_n_model_marks", None)
+        pick.pop("_n_marks", None)
         # Suggested stake via multi-outcome Kelly (promo-eligible rungs only).
         if (pick.get("p_all_win") is not None and pick.get("book_odds")
                 and pick.get("total_ev") is not None and pick["total_ev"] > 0):
@@ -478,8 +478,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
     combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
-    # Drop combos with too many model-only marks legs (priced marks are exempt).
-    combos = [c for c in combos if c.get("_n_model_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
+    # Drop combos exceeding the marks cap (ALL marks legs count, priced or not).
+    combos = [c for c in combos if c.get("_n_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
     priced = [c for c in combos if "book_odds" in c]
     if not priced:
         return []
@@ -544,7 +544,7 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         pick["total_ev"] = pick.pop("_total_ev", None)
         pick.pop("_leg_masks", None)
         pick.pop("_pref_score", None)
-        pick.pop("_n_model_marks", None)
+        pick.pop("_n_marks", None)
         if (pick.get("p_all_win") is not None
                 and pick.get("total_ev") is not None and pick["total_ev"] > 0):
             pick["suggested_stake"] = multi_outcome_kelly(

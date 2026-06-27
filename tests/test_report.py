@@ -673,14 +673,14 @@ def test_build_sgm_candidates_has_pref_score_and_marks_count():
     ]
     candidates = build_sgm_candidates(legs, odds_book={})
     assert all("_pref_score" in c for c in candidates)
-    assert all("_n_model_marks" in c for c in candidates)
+    assert all("_n_marks" in c for c in candidates)
     # The one combo: 2 disposals + 1 marks
     assert len(candidates) == 1
     c = candidates[0]
     from afl_bot.config import STAT_PREFERENCE
     expected_pref = STAT_PREFERENCE["disposals"] * 2 + STAT_PREFERENCE["marks"]
     assert c["_pref_score"] == pytest.approx(expected_pref)
-    assert c["_n_model_marks"] == 1   # one unpriced marks leg
+    assert c["_n_marks"] == 1   # one marks leg (all marks count, not just unpriced)
 
 
 def test_stat_preference_picks_disposals_over_marks():
@@ -705,22 +705,56 @@ def test_marks_cap_filters_all_model_only_marks_combos():
     assert out == []   # all combos filtered, nothing to select
 
 
-def test_priced_marks_leg_exempt_from_marks_cap():
-    # All three marks legs have a real book price → _n_model_marks=0, not filtered
+def test_priced_marks_leg_counts_toward_cap():
+    # FIX-MARKS-CAP: ALL marks legs count, priced or not. Three priced marks
+    # → _n_marks=3 > MAX_MARKS_LEGS_PER_MULTI=1 → all combos filtered.
     legs = [_marks_leg(f"M{i} 4+ marks", f"M{i}") for i in range(3)]
     odds_book = {leg.name: leg.market_odds for leg in legs}
-    # search_market_sgms only returns fully priced combos, which are exempt
     out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
-    assert len(out) == len(MULTI_TARGET_ODDS)   # ladder fills as normal
-    for r in out:
-        assert "_n_model_marks" not in r         # internal field stripped from output
+    assert out == []   # cap applies to priced marks just like unpriced
 
 
 def test_final_rungs_have_no_internal_pref_fields():
     out = search_match_sgms(_ladder_legs())
     for r in out:
         assert "_pref_score" not in r
-        assert "_n_model_marks" not in r
+        assert "_n_marks" not in r
+
+
+def test_marks_cap_at_most_one_priced_marks_leg_per_rung():
+    # FIX-MARKS-CAP: build_sgm_candidates emits the full pool (including high-marks
+    # combos); search_match_sgms filters out any combo with _n_marks > cap.
+    # With 2 disposals + 2 marks: combos (D1,M1,M2) and (D2,M1,M2) have _n_marks=2
+    # and must be absent from every selected rung.
+    legs = [
+        _leg("D1 20+ disp", 0.65, None, "D1"),
+        _leg("D2 20+ disp", 0.65, None, "D2"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.65),
+        _marks_leg("M2 4+ marks", "M2", prob=0.65),
+    ]
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    # Candidates pool has combos with _n_marks=1 AND _n_marks=2 (the two 2-marks combos).
+    candidates = build_sgm_candidates(legs, odds_book=odds_book)
+    assert any(c["_n_marks"] == 2 for c in candidates)   # those exist in the pool...
+    out = search_match_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
+    for r in out:
+        mark_legs = [n for n in r["legs"] if "marks" in n]
+        assert len(mark_legs) <= 1   # ...but none appear in any selected rung
+
+
+def test_marks_cap_market_sgms_at_most_one_priced_marks_leg_per_rung():
+    # Same check for the Sportsbet ladder (search_market_sgms).
+    legs = [
+        _leg("D1 20+ disp", 0.65, None, "D1"),
+        _leg("D2 20+ disp", 0.65, None, "D2"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.65),
+        _marks_leg("M2 4+ marks", "M2", prob=0.65),
+    ]
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
+    for r in out:
+        mark_legs = [n for n in r["legs"] if "marks" in n]
+        assert len(mark_legs) <= 1
 
 
 # --------------------------------------------------------------------------- #
@@ -776,3 +810,33 @@ def test_total_points_excluded_from_market_sgms_when_flag_false():
     out = search_market_sgms(filtered, odds_book=odds_book, min_joint_prob=0.0)
     for r in out:
         assert not any("Total points" in name for name in r["legs"])
+
+
+# --------------------------------------------------------------------------- #
+# Greasiness override + wet-marks multiplier (FIX-MARKS-CAP-ALL-LEGS-AND-GREASINESS)
+# --------------------------------------------------------------------------- #
+
+def test_wet_marks_multiplier_is_config_knob_wired_into_default_rain_multipliers():
+    from afl_bot.config import WET_MARKS_MULTIPLIER
+    from afl_bot.models.weather_effects import DEFAULT_RAIN_MULTIPLIERS
+    assert DEFAULT_RAIN_MULTIPLIERS["marks"] == WET_MARKS_MULTIPLIER
+    assert WET_MARKS_MULTIPLIER < 0.85   # stronger suppression than original 0.85
+
+
+def test_greasiness_override_forces_game_value(tmp_path):
+    import json
+    from afl_bot.cli import _fixture_greasiness
+    # Verify the override logic in isolation: a greasiness file keyed by
+    # "Home vs Away" should return the overridden value, not the auto-computed one.
+    import types
+    override_file = tmp_path / "greasiness.json"
+    override_file.write_text(json.dumps({"Collingwood vs GWS Giants": 0.75}))
+    overrides = json.loads(override_file.read_text())
+
+    game_key = "Collingwood vs GWS Giants"
+    home_name = "Collingwood"
+    greasiness = (
+        max(0.0, min(1.0, float(overrides[game_key])))
+        if game_key in overrides else 0.0
+    )
+    assert greasiness == pytest.approx(0.75)

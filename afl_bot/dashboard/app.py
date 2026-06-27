@@ -72,7 +72,8 @@ def _group_by_game(records: list[dict]) -> list[dict]:
     for r in records:
         gid = r["game"]
         if gid not in games:
-            games[gid] = {"game": gid, "model": [], "sportsbet": []}
+            games[gid] = {"game": gid, "model": [], "sportsbet": [],
+                          "greasiness": r.get("greasiness", 0.0)}
         games[gid][r["ladder"]].append(r)
     for g in games.values():
         g["model"].sort(key=lambda r: r["band"])
@@ -255,7 +256,17 @@ _TEMPLATE = r"""<!DOCTYPE html>
 
   {% for g in games %}
   <div class="card" data-game="{{ g.game }}">
-    <div class="game-title">{{ g.game }}</div>
+    <div class="game-title">
+      {{ g.game }}
+      {% set gv = g.greasiness if g.greasiness is not none else 0.0 %}
+      {% if gv >= 0.5 %}
+        <span style="margin-left:10px;color:var(--red);font-size:12px;font-weight:400">WET g={{ '%.2f'|format(gv) }}</span>
+      {% elif gv > 0.1 %}
+        <span style="margin-left:10px;color:var(--yellow);font-size:12px;font-weight:400">greasy g={{ '%.2f'|format(gv) }}</span>
+      {% else %}
+        <span style="margin-left:10px;color:var(--muted);font-size:12px;font-weight:400">dry g={{ '%.2f'|format(gv) }}</span>
+      {% endif %}
+    </div>
 
     {% if g.model %}
     <div class="section-label">Model ladder (fair odds)</div>

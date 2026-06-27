@@ -699,7 +699,8 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
 
 def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
                   home: str, away: str,
-                  leg_by_name: dict, odds_book: dict) -> dict:
+                  leg_by_name: dict, odds_book: dict,
+                  greasiness: float = 0.0) -> dict:
     """Convert one selected SGM rung to the multis-JSON schema (Stage 2A).
     Both the .md and this JSON draw from the same rung dict, so they can never disagree."""
     h = home.replace(" ", "_")
@@ -744,6 +745,7 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
         "total_ev": rung.get("total_ev"),
         "suggested_stake": rung.get("suggested_stake"),
         "value_pick": bool(rung.get("value_pick", False)),
+        "greasiness": round(greasiness, 3),
     }
 
 
@@ -753,7 +755,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                  auto_lineup: bool = False, multi_calibration: bool = False,
                  corr_gain_haircut: float = CORR_GAIN_HAIRCUT,
                  use_sportsbet: bool = False, sportsbet_urls_path: str | None = None,
-                 outs_path: str | None = None) -> None:
+                 outs_path: str | None = None,
+                 greasiness_overrides_path: str | None = None) -> None:
     """The weekly deliverable (round-2 §10): per-match real-player projection
     tables + same-game multis ranked by joint sim probability, saved to
     reports/<year>_r<N>_report.md. REAL players only — refuses a synthetic log.
@@ -947,6 +950,15 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             "_Player-prop odds: Sportsbet scrape unavailable (not in AU / blocked / no URL "
             "file for this round) — fell back to --odds file / model-only._")
 
+    # Per-game greasiness overrides (Step 3 FIX-MARKS-CAP-ALL-LEGS-AND-GREASINESS).
+    # JSON file: {"Home vs Away": 0.75} or {"HomeTeam": 0.75}, float in [0,1].
+    greasiness_overrides: dict[str, float] = {}
+    if greasiness_overrides_path:
+        try:
+            greasiness_overrides = json.loads(Path(greasiness_overrides_path).read_text())
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"WARNING: could not load greasiness overrides: {e}", file=sys.stderr)
+
     rng = make_rng()
     matches, predictions, multis_records = [], [], []
     n_tog_overrides = 0
@@ -965,7 +977,13 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         match_id = f"{year}_r{round_no}_{home_name}_v_{away_name}"
         venue = fx["venue"]
         roofed = is_roofed(venue)
-        greasiness = _fixture_greasiness(fx, rain_mm, roofed)
+        game_key = f"{home_name} vs {away_name}"
+        if game_key in greasiness_overrides:
+            greasiness = max(0.0, min(1.0, float(greasiness_overrides[game_key])))
+        elif home_name in greasiness_overrides:
+            greasiness = max(0.0, min(1.0, float(greasiness_overrides[home_name])))
+        else:
+            greasiness = _fixture_greasiness(fx, rain_mm, roofed)
         is_wet = greasiness >= 0.5
 
         mu_margin = elo.expected_margin(home_name, away_name,
@@ -1137,7 +1155,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             for r in rungs:
                 multis_records.append(_rung_to_json(
                     r, ladder_label, year, round_no,
-                    home_name, away_name, leg_by_name, odds_book))
+                    home_name, away_name, leg_by_name, odds_book,
+                    greasiness=greasiness))
         matches.append({
             "header": header, "projections": projections,
             "sgms": sgms, "market_sgms": market_sgms, "priced_legs": priced_legs,
@@ -1685,6 +1704,11 @@ def main(argv: list[str] | None = None) -> None:
                        help="JSON {'_outs': {team: [player, ...]}} of players to ALWAYS "
                             "treat as not named, overriding the lineup source (auto or "
                             "manual). Also read from a --lineup file's own '_outs' key.")
+    rep_p.add_argument("--greasiness-file", type=str, default=None, dest="greasiness_file",
+                       help="JSON {'Home vs Away': 0.75} or {'HomeTeam': 0.75} of per-game "
+                            "greasiness overrides (0.0=dry, 1.0=fully wet). Overrides the "
+                            "auto forecast for named games; useful when the forecast under-"
+                            "calls a slippery ground (e.g. MCG dew/cold night).")
 
     grade_p = sub.add_parser("grade-round",
                              help="Score a completed round's saved predictions vs actuals.")
@@ -1807,7 +1831,8 @@ def main(argv: list[str] | None = None) -> None:
         round_report(args.year, args.round_no, args.odds, args.n_sims,
                      args.rain_mm, args.lineup_path, args.use_live, args.multis_only,
                      args.auto_lineup, args.multi_calibration, args.corr_gain_haircut,
-                     args.use_sportsbet, args.sportsbet_urls_path, args.outs_path)
+                     args.use_sportsbet, args.sportsbet_urls_path, args.outs_path,
+                     greasiness_overrides_path=args.greasiness_file)
     elif args.command == "grade-round":
         grade_round(args.year, args.round_no)
     elif args.command == "grade-multis":
