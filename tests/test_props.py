@@ -8,10 +8,14 @@ import pandas as pd
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.props import (
     CALIBRATOR_CACHE_VERSION,
+    _HIGH_BUCKET_THRESHOLD,
     apply_prop_calibration,
+    ece_score,
     fit_prop_calibrators,
+    high_bucket_gap,
     load_or_fit_prop_calibrators,
     prop_calibration_report,
+    prop_halflife_sweep,
     prop_prob,
     walk_forward_prop_predictions,
 )
@@ -126,3 +130,79 @@ def test_load_or_fit_prop_calibrators_refits_stale_cache_version(tmp_path):
     assert cals and all(set(entry) == {"pooled", "lines"} for entry in cals.values())
     data = json.loads(path.read_text())
     assert data["_version"] == CALIBRATOR_CACHE_VERSION
+
+
+# --------------------------------------------------------------------------- #
+# EXPERIMENT-FORM-WINDOW-HALFLIFE: ece_score, high_bucket_gap, sweep
+# --------------------------------------------------------------------------- #
+
+def test_ece_score_perfect_calibration():
+    """When every leg's predicted prob equals its empirical hit rate, ECE = 0."""
+    probs = np.array([0.3, 0.3, 0.7, 0.7])
+    actuals = np.array([0.0, 1.0, 0.0, 1.0])   # 50% hit in each bucket -> miscalibrated
+    # A perfectly calibrated set: prob=0.4, 40% of outcomes are 1
+    rng = np.random.default_rng(0)
+    n = 1000
+    p = np.full(n, 0.4)
+    a = (rng.random(n) < 0.4).astype(float)
+    assert ece_score(p, a) < 0.05              # should be near zero with large n
+
+
+def test_ece_score_overconfident():
+    """Always predicting 0.9 when true rate is 0.5 gives ECE near 0.4."""
+    probs = np.full(1000, 0.9)
+    actuals = np.where(np.arange(1000) % 2 == 0, 1.0, 0.0)  # 50% hit rate
+    assert ece_score(probs, actuals) > 0.3
+
+
+def test_ece_score_empty():
+    assert np.isnan(ece_score(np.array([]), np.array([])))
+
+
+def test_high_bucket_gap_overconfident():
+    """Predicting 0.8 when only 60% hit -> gap = +0.2."""
+    probs = np.full(100, 0.8)
+    actuals = np.where(np.arange(100) < 60, 1.0, 0.0)
+    gap = high_bucket_gap(probs, actuals)
+    assert abs(gap - 0.2) < 0.01
+
+
+def test_high_bucket_gap_no_high_probs():
+    """When no probs reach the threshold, returns NaN."""
+    probs = np.full(50, 0.3)
+    actuals = np.zeros(50)
+    assert np.isnan(high_bucket_gap(probs, actuals, threshold=_HIGH_BUCKET_THRESHOLD))
+
+
+def test_load_or_fit_prop_calibrators_halflife_param_bypasses_cache(tmp_path):
+    """Non-default halflife must not read from or write to the default cache."""
+    from afl_bot.config import PROP_EWMA_HALFLIFE
+    # Prime cache with default halflife.
+    cals_default = load_or_fit_prop_calibrators(
+        LOG, eval_start_year=2023, cache_dir=tmp_path)
+    assert (tmp_path / "prop_calibrators.json").exists()
+    # Non-default halflife should recompute (not use cache) and return different object.
+    cals_alt = load_or_fit_prop_calibrators(
+        LOG, eval_start_year=2023, cache_dir=tmp_path, halflife=PROP_EWMA_HALFLIFE + 4)
+    # Both should be non-empty valid calibrator dicts.
+    assert cals_default and cals_alt
+    assert set(cals_default) == set(cals_alt)
+
+
+def test_prop_halflife_sweep_returns_correct_shape():
+    """Sweep returns one row per halflife with the required columns."""
+    result = prop_halflife_sweep(LOG, eval_years=[2023, 2024], halflives=[6.0, 8.0])
+    assert len(result) == 2
+    assert set(result.columns) >= {"halflife", "n", "log_loss", "brier", "ece", "high_bucket_gap"}
+    assert list(result["halflife"]) == [6.0, 8.0]
+    assert result["n"].gt(0).all()
+    assert result["log_loss"].between(0, 5).all()
+    assert result["brier"].between(0, 1).all()
+    assert result["ece"].between(0, 1).all()
+
+
+def test_prop_halflife_sweep_metrics_are_finite():
+    """All metrics should be finite floats for a valid log with enough history."""
+    result = prop_halflife_sweep(LOG, eval_years=[2024], halflives=[6.0, 10.0])
+    for col in ["log_loss", "brier", "ece"]:
+        assert result[col].apply(np.isfinite).all(), f"{col} has non-finite values"

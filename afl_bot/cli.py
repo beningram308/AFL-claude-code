@@ -70,6 +70,7 @@ from afl_bot.config import (
     MULTI_MARKET_SHRINK,
     PLAYER_FORM_WINDOW,
     PROP_CALIBRATION_LOOKBACK,
+    PROP_EWMA_HALFLIFE,
     PROP_KELLY_MULTIPLIER,
     PROP_LINES,
     PROP_MARKET_BLEND_WEIGHT,
@@ -1297,7 +1298,8 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                  with_calibration: bool = True, calibration_source: str = "proxy",
                  all_candidates: bool = False, lcb_z: float = 0.0, price_shrink: float = 0.0,
                  multi_calibration: bool = False, corr_gain_diag: bool = False,
-                 corr_gain_haircut: float = CORR_GAIN_HAIRCUT) -> None:
+                 corr_gain_haircut: float = CORR_GAIN_HAIRCUT,
+                 prop_halflife: float = PROP_EWMA_HALFLIFE) -> None:
     """Walk-forward backtest of the 3-leg same-game-multi ladder actually bet
     (model-upgrade audit Phase 1.1, expanded by Phase 2.5 steps 2-3 and Phase
     3.1's calibration-source choice): for each completed round across every
@@ -1417,7 +1419,8 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
                 prior_log = player_log[player_log["year"] < year]
                 prop_calibrators = load_or_fit_prop_calibrators(
                     prior_log, eval_start_year=eval_start_year,
-                    cache_dir=backtest_cal_cache, force_refresh=True) or None
+                    cache_dir=backtest_cal_cache, force_refresh=True,
+                    halflife=prop_halflife) or None
         preds = walk_forward_multi_predictions(
             games, player_log, eval_year=year, rounds=rounds, n_sims=n_sims,
             prop_calibrators=prop_calibrators, lcb_z=lcb_z, price_shrink=price_shrink,
@@ -1499,6 +1502,74 @@ def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,
             for _, row in multi_reliability_curve(cand_preds).iterrows():
                 print(f"    {row['bucket']}: pred {row['mean_pred']:.3f} | actual {row['actual_rate']:.3f} "
                       f"| n={int(row['n'])}")
+
+
+def sweep_halflife_command(years: list[int], halflives: list[float],
+                           cal_lookback: int = 4) -> None:
+    """Diagnostic sweep of PROP_EWMA_HALFLIFE candidates (EXPERIMENT-FORM-WINDOW-HALFLIFE).
+
+    For each halflife value, runs a fully OOS prop walk-forward on ``years``
+    and reports calibrated log loss / Brier / ECE / high-bucket gap. No sim
+    is run; this uses the fast closed-form NB marginal. The winner from this
+    table should then be verified with ``grade-multis --halflife <HL>`` before
+    updating ``PROP_EWMA_HALFLIFE`` in config.py.
+
+    Decision rule: adopt a new halflife only when it improves BOTH prop log
+    loss AND calibration (ECE / high-bucket gap), consistently across all
+    ``years``. A tiny improvement in one season is not enough — keep HL=6."""
+    from afl_bot.backtest.props import prop_halflife_sweep
+
+    client = SquiggleClient()
+    fetch_years = sorted(set(_history_years(min(years), lookback=7)) | set(years))
+    games = pd.concat([client.get_completed_games(y) for y in fetch_years], ignore_index=True)
+    games = games[games["year"] <= max(years)]
+    if games.empty:
+        print("No historical data available.", file=sys.stderr)
+        return
+    player_log = load_player_log(games, prefer_real=True)
+
+    print(f"PROP_EWMA_HALFLIFE sweep — halflives {halflives} on years {years}")
+    print(f"(calibrators fit on {cal_lookback}-season lookback; each eval year is strictly OOS)\n")
+
+    result = prop_halflife_sweep(
+        player_log, eval_years=years, halflives=halflives, cal_lookback=cal_lookback)
+    if result.empty:
+        print("No predictions generated — check data availability.", file=sys.stderr)
+        return
+
+    default_hl = float(PROP_EWMA_HALFLIFE)
+    hdr = f"{'HL':>4} | {'n':>7} | {'log_loss':>8} | {'brier':>6} | {'ECE':>6} | {'hi_gap':>8}"
+    print(hdr)
+    print("-" * len(hdr))
+    for _, r in result.iterrows():
+        marker = "  <- CURRENT" if r["halflife"] == default_hl else ""
+        hi_gap = f"{r['high_bucket_gap']:+.4f}" if not np.isnan(r["high_bucket_gap"]) else "   nan"
+        print(f"{int(r['halflife']):>4} | {int(r['n']):>7} | {r['log_loss']:>8.4f} | "
+              f"{r['brier']:>6.4f} | {r['ece']:>6.4f} | {hi_gap:>8}{marker}")
+
+    best_row = result.loc[result["log_loss"].idxmin()]
+    best_hl = best_row["halflife"]
+    current_row = result[result["halflife"] == default_hl]
+    current_ll = float(current_row["log_loss"].iloc[0]) if not current_row.empty else float("nan")
+    best_ll = float(best_row["log_loss"])
+    delta = current_ll - best_ll
+
+    print(f"\nBest log loss: HL={int(best_hl)} ({best_ll:.4f}, "
+          f"delta vs HL={int(default_hl)}: {delta:+.4f})")
+    if best_hl == default_hl:
+        print(f"FINDING: HL={int(default_hl)} is already optimal — no change needed.")
+    elif delta < 0.001:
+        print(f"FINDING: improvement too small (delta={delta:.4f}) for both-year consistency — "
+              f"keep HL={int(default_hl)}.")
+    else:
+        print(f"CANDIDATE: HL={int(best_hl)} shows delta={delta:.4f} improvement in prop log loss.")
+        print(f"  Next step: verify with grade-multis to confirm no regression:")
+        ys = ",".join(str(y) for y in years)
+        print(f"    python -m afl_bot grade-multis --year {ys} --halflife {int(best_hl)}")
+        print(f"    python -m afl_bot grade-multis --year {ys}  # baseline (HL={int(default_hl)})")
+        print(f"  Adopt only if multi log loss does not worsen on BOTH years.")
+    print(f"\nReactivity caveat: longer half-life = steadier projections, "
+          f"but slower to catch a genuine role change (e.g. Duursma-at-HF).")
 
 
 def fit_correlations_command(through: int) -> None:
@@ -1667,6 +1738,24 @@ def main(argv: list[str] | None = None) -> None:
                                "joint_prob (0.0 = naive product only, the live default, "
                                "mirrors round-report; 1.0 = raw/unhaircut sim joint_prob, "
                                "for baseline comparison).")
+    multis_p.add_argument("--halflife", type=float, default=PROP_EWMA_HALFLIFE,
+                          dest="prop_halflife",
+                          help="PROP_EWMA_HALFLIFE override for the proxy-calibration pass "
+                               "(calibration-source=proxy only). Use this to verify a halflife "
+                               "candidate from sweep-halflife at the multi level. "
+                               f"Default: {PROP_EWMA_HALFLIFE} (config default).")
+
+    sweep_p = sub.add_parser("sweep-halflife",
+                             help="Diagnostic sweep: compare PROP_EWMA_HALFLIFE candidates "
+                                  "[6,8,10,12] on OOS prop log loss / Brier / ECE / "
+                                  "high-bucket gap. Fast (no sim — closed-form NB marginal).")
+    sweep_p.add_argument("--years", type=str, default="2024,2025",
+                         help="Comma-separated eval years (default: 2024,2025).")
+    sweep_p.add_argument("--halflives", type=str, default="6,8,10,12",
+                         help="Comma-separated halflife candidates (default: 6,8,10,12).")
+    sweep_p.add_argument("--cal-lookback", type=int, default=4, dest="cal_lookback",
+                         help="Seasons of walk-forward history used to fit calibrators "
+                              "for each eval year (default: 4).")
 
     fit_p = sub.add_parser("fit", help="Re-tune Elo and write a versioned params artifact.")
     fit_p.add_argument("--through", type=int, required=True,
@@ -1728,7 +1817,11 @@ def main(argv: list[str] | None = None) -> None:
                     calibration_source=args.calibration_source, all_candidates=args.all_candidates,
                     lcb_z=args.lcb_z, price_shrink=args.price_shrink,
                     multi_calibration=args.multi_calibration, corr_gain_diag=args.corr_gain_diag,
-                    corr_gain_haircut=args.corr_gain_haircut)
+                    corr_gain_haircut=args.corr_gain_haircut, prop_halflife=args.prop_halflife)
+    elif args.command == "sweep-halflife":
+        years = [int(y) for y in args.years.split(",")]
+        halflives = [float(h) for h in args.halflives.split(",")]
+        sweep_halflife_command(years, halflives, args.cal_lookback)
     elif args.command == "fit":
         fit_command(args.through, args.use_optuna, args.n_trials)
     elif args.command == "fit-correlations":
