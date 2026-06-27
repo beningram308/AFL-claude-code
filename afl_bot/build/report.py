@@ -25,9 +25,11 @@ from afl_bot.config import (
     BOOKABLE_TACKLES_ROLES,
     BOOKABLE_TOP_N_BY_STAT,
     BONUS_BET_FACTOR,
+    MAX_MARKS_LEGS_PER_MULTI,
     MULTI_MARKET_SHRINK,
     MULTI_TARGET_ODDS,
     PROMO_MIN_LEGS,
+    STAT_PREFERENCE,
 )
 from afl_bot.pricing.edge import fair_odds, market_anchored_prob, mc_standard_error
 
@@ -170,6 +172,17 @@ def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_leg
                 entry["raw_edge"] = joint * book - 1.0
                 entry["edge"] = shrunk * book - 1.0
             entry["odds"] = entry.get("book_odds", entry["fair_odds"])
+            # Preference score (secondary sort key) and model-only marks count.
+            pref = 0.0
+            n_model_marks = 0
+            for leg in legs_list:
+                mstat = (leg.market.replace("player_", "")
+                         if leg.market.startswith("player_") else leg.market)
+                pref += STAT_PREFERENCE.get(mstat, 0.5)
+                if mstat == "marks" and odds_book.get(leg.name) is None:
+                    n_model_marks += 1
+            entry["_pref_score"] = pref
+            entry["_n_model_marks"] = n_model_marks
             combos.append(entry)
     return combos
 
@@ -272,6 +285,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
     combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
+    # Drop combos with too many model-only marks legs (priced marks are exempt).
+    combos = [c for c in combos if c.get("_n_model_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
 
     # Stable tie-break key: sorted leg names guarantee the same combo always
     # wins when two candidates score identically on the primary sort key.
@@ -349,11 +364,17 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         # diagnostic whose whole point is to flip the pick via the
         # lcb-adjusted distance, which this "land at/above" preference would
         # short-circuit.
+        # PREF: preference score is a SECONDARY key — only breaks ties within
+        # the closest-to-target primary rule (disposals > marks).
         if lcb_z <= 0.0:
             reaches_target = [c for c in available if c["_priced_joint"] <= 1.0 / target]
             if reaches_target:
-                return max(reaches_target, key=lambda c: (c["_priced_joint"], -_distance(c, target), _leg_key(c)))
-        return min(available, key=lambda c: (_distance(c, target), -_lcb_value(c), _leg_key(c)))
+                return max(reaches_target, key=lambda c: (
+                    c["_priced_joint"], c.get("_pref_score", 0.0),
+                    -_distance(c, target), _leg_key(c)))
+        return min(available, key=lambda c: (
+            _distance(c, target), -c.get("_pref_score", 0.0),
+            -_lcb_value(c), _leg_key(c)))
 
     selected: list[dict] = []
     chosen: set[int] = set()
@@ -382,6 +403,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         selected.append(pick)
 
     for pick in selected:
+        if "_priced_joint" not in pick:
+            continue  # reused combo (pool exhausted, filled from list(combos)) — already cleaned
         pick["joint_prob"] = pick.pop("_priced_joint")
         pick["fair_odds"] = pick.pop("_priced_fair_odds")
         if "book_odds" in pick:
@@ -395,6 +418,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         pick["promo_ev"] = pick.pop("_promo_ev", None)
         pick["total_ev"] = pick.pop("_total_ev", None)
         pick.pop("_leg_masks", None)
+        pick.pop("_pref_score", None)
+        pick.pop("_n_model_marks", None)
         # Suggested stake via multi-outcome Kelly (promo-eligible rungs only).
         if (pick.get("p_all_win") is not None and pick.get("book_odds")
                 and pick.get("total_ev") is not None and pick["total_ev"] > 0):
@@ -453,6 +478,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
     combos = build_sgm_candidates(legs, min_legs=min_legs, max_legs=max_legs,
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
+    # Drop combos with too many model-only marks legs (priced marks are exempt).
+    combos = [c for c in combos if c.get("_n_model_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
     priced = [c for c in combos if "book_odds" in c]
     if not priced:
         return []
@@ -463,8 +490,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     def _select_for_target(available: list[dict], target: float) -> dict:
         reaches = [c for c in available if c["book_odds"] >= target]
         if reaches:
-            return min(reaches, key=lambda c: (c["book_odds"], _leg_key(c)))
-        return max(available, key=lambda c: (c["book_odds"], _leg_key(c)))
+            return min(reaches, key=lambda c: (c["book_odds"], -c.get("_pref_score", 0.0), _leg_key(c)))
+        return max(available, key=lambda c: (c["book_odds"], c.get("_pref_score", 0.0), _leg_key(c)))
 
     # PHASE 2 STEP 1: Compute promo branch probabilities from sim masks.
     for c in priced:
@@ -516,6 +543,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         pick["promo_ev"] = pick.pop("_promo_ev", None)
         pick["total_ev"] = pick.pop("_total_ev", None)
         pick.pop("_leg_masks", None)
+        pick.pop("_pref_score", None)
+        pick.pop("_n_model_marks", None)
         if (pick.get("p_all_win") is not None
                 and pick.get("total_ev") is not None and pick["total_ev"] > 0):
             pick["suggested_stake"] = multi_outcome_kelly(

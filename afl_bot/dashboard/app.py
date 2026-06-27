@@ -268,7 +268,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <th>Book combo</th><th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
       {% for r in g.model %}
       <tr class="rung-row" data-ladder="model" data-value="{{ 'true' if r.value_pick else 'false' }}">
-        <td>{{ r.legs | map(attribute='name') | join(' + ') }}</td>
+        <td>{% for leg in r.legs %}{{ leg.name }}{% if leg.hit_prob %} <span style="color:var(--muted);font-size:11px">({{ '%.0f'|format(leg.hit_prob * 100) }}%)</span>{% else %} <span style="color:var(--muted);font-size:11px">(—)</span>{% endif %}{% if not loop.last %} + {% endif %}{% endfor %}</td>
         <td>${{ '%.2f'|format(r.band) }}</td>
         <td>{{ '%.0f'|format(r.model_joint * 100) }}%</td>
         <td>${{ '%.2f'|format(r.model_fair) }}</td>
@@ -312,7 +312,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
       {% for r in g.sportsbet %}
       <tr class="rung-row" data-ladder="sportsbet" data-value="{{ 'true' if r.value_pick else 'false' }}">
-        <td>{{ r.legs | map(attribute='name') | join(' + ') }}</td>
+        <td>{% for leg in r.legs %}{{ leg.name }}{% if leg.hit_prob %} <span style="color:var(--muted);font-size:11px">({{ '%.0f'|format(leg.hit_prob * 100) }}%)</span>{% else %} <span style="color:var(--muted);font-size:11px">(—)</span>{% endif %}{% if not loop.last %} + {% endif %}{% endfor %}</td>
         <td>${{ '%.2f'|format(r.band) }}</td>
         <td>{% if r.book_combo %}${{ '%.2f'|format(r.book_combo) }}{% else %}—{% endif %}</td>
         <td>{{ '%.0f'|format(r.model_joint * 100) }}%</td>

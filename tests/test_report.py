@@ -654,3 +654,70 @@ def test_search_match_sgms_deep_pool_yields_up_to_6_distinct_rungs():
     for r in out:
         subjects = [n.split()[0] for n in r["legs"]]   # first word of each leg name = subject
         assert len(set(subjects)) == len(subjects), f"Duplicate subject in rung: {r['legs']}"
+
+
+# --------------------------------------------------------------------------- #
+# Stat preference + marks cap (FIX-HIT-PCT-AND-PREFER-DISPOSALS Part B)
+# --------------------------------------------------------------------------- #
+
+def _marks_leg(name, subject, prob=0.70):
+    return LegCandidate(name=name, match_id="m1", market="player_marks",
+                        subject=subject, fair_prob=prob, market_odds=1.0 / prob, mask=None)
+
+
+def test_build_sgm_candidates_has_pref_score_and_marks_count():
+    legs = [
+        _leg("D1 20+ disp", 0.70, None, "D1"),   # disposals
+        _leg("D2 20+ disp", 0.70, None, "D2"),
+        _marks_leg("M1 4+ marks", "M1"),           # marks, no book price
+    ]
+    candidates = build_sgm_candidates(legs, odds_book={})
+    assert all("_pref_score" in c for c in candidates)
+    assert all("_n_model_marks" in c for c in candidates)
+    # The one combo: 2 disposals + 1 marks
+    assert len(candidates) == 1
+    c = candidates[0]
+    from afl_bot.config import STAT_PREFERENCE
+    expected_pref = STAT_PREFERENCE["disposals"] * 2 + STAT_PREFERENCE["marks"]
+    assert c["_pref_score"] == pytest.approx(expected_pref)
+    assert c["_n_model_marks"] == 1   # one unpriced marks leg
+
+
+def test_stat_preference_picks_disposals_over_marks():
+    # All four legs have identical prob (0.70, no mask) → identical joint prob
+    # for any 3-combo. Pref score is the only tiebreaker; the disposals-only
+    # combo must win.
+    legs = [
+        _leg("D1 20+ disp", 0.70, None, "D1"),
+        _leg("D2 20+ disp", 0.70, None, "D2"),
+        _leg("D3 20+ disp", 0.70, None, "D3"),
+        _marks_leg("M1 4+ marks", "M1"),  # no book price → model-only marks
+    ]
+    out = search_match_sgms(legs, target_odds=(2.10,), min_joint_prob=0.0)
+    assert len(out) == 1
+    assert "M1 4+ marks" not in out[0]["legs"]   # all-disposals combo wins
+
+
+def test_marks_cap_filters_all_model_only_marks_combos():
+    # Only marks legs, none priced → every 3-combo exceeds MAX_MARKS_LEGS_PER_MULTI=1
+    legs = [_marks_leg(f"M{i} 4+ marks", f"M{i}") for i in range(3)]
+    out = search_match_sgms(legs, min_joint_prob=0.0)
+    assert out == []   # all combos filtered, nothing to select
+
+
+def test_priced_marks_leg_exempt_from_marks_cap():
+    # All three marks legs have a real book price → _n_model_marks=0, not filtered
+    legs = [_marks_leg(f"M{i} 4+ marks", f"M{i}") for i in range(3)]
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    # search_market_sgms only returns fully priced combos, which are exempt
+    out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
+    assert len(out) == len(MULTI_TARGET_ODDS)   # ladder fills as normal
+    for r in out:
+        assert "_n_model_marks" not in r         # internal field stripped from output
+
+
+def test_final_rungs_have_no_internal_pref_fields():
+    out = search_match_sgms(_ladder_legs())
+    for r in out:
+        assert "_pref_score" not in r
+        assert "_n_model_marks" not in r

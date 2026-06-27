@@ -311,6 +311,13 @@ BOOKABLE_TOP_N_BY_STAT = {"disposals": 8, "goals": 6, "marks": 6, "tackles": 6}
 BOOKABLE_MARKS_ROLES = {"forward", "midfielder", "ruck"}
 BOOKABLE_TACKLES_ROLES = {"midfielder", "forward"}
 
+# Stat-selection preference — higher = preferred when the selector has a choice.
+# Applied as a SECONDARY sort key; the primary band-landing rule is unchanged.
+STAT_PREFERENCE = {"disposals": 1.0, "goals": 0.85, "tackles": 0.7, "marks": 0.35}
+# Hard cap on MODEL-ONLY marks legs per multi (a leg with a real book price is exempt).
+# Set to 0 to remove model-only marks entirely; 1 allows at most one per rung.
+MAX_MARKS_LEGS_PER_MULTI = 1
+
 # ----------------------------------------------------------------------------- #
 # Simulation
 # ----------------------------------------------------------------------------- #

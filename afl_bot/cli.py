@@ -721,6 +721,7 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
             "line": line,
             "name": name,
             "book_odds": odds_book.get(name),
+            "hit_prob": round(leg.fair_prob, 4),
         })
 
     return {

@@ -501,6 +501,58 @@ def test_dashboard_stake_zero_renders_dash(tmp_path):
     assert "+12.0%" in body          # Total EV still shows
 
 
+# ── FIX-HIT-PCT-AND-PREFER-DISPOSALS Part A: hit_prob in JSON + dashboard ────
+
+def test_rung_to_json_includes_hit_prob():
+    """Each leg in the JSON record carries hit_prob = the calibrated fair_prob."""
+    legs = _make_legs()
+    leg_by_name = {l.name: l for l in legs}
+    odds_book = {l.name: l.market_odds for l in legs}
+    rungs = search_match_sgms(legs, odds_book=odds_book)
+    for rung in rungs:
+        rec = _rung_to_json(rung, "model", 2026, 16, "Home", "Away",
+                            leg_by_name, odds_book)
+        for leg_json in rec["legs"]:
+            assert "hit_prob" in leg_json
+            assert 0.0 < leg_json["hit_prob"] <= 1.0
+
+
+def test_dashboard_renders_leg_hit_pct(tmp_path):
+    """When legs carry hit_prob, the dashboard shows (76%) next to each leg name."""
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    rec = {**_make_multi_record()}
+    for leg in rec["legs"]:
+        leg["hit_prob"] = 0.76
+    (tmp_path / "2026_r16_multis.json").write_text(
+        json.dumps([rec]), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert "(76%)" in body
+
+
+def test_dashboard_renders_dash_when_hit_prob_missing(tmp_path):
+    """When legs have no hit_prob, the dashboard shows (—) for each leg."""
+    from afl_bot.dashboard.app import app, REPORTS_DIR
+
+    rec = _make_multi_record()   # legs have no hit_prob key
+    (tmp_path / "2026_r16_multis.json").write_text(
+        json.dumps([rec]), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert "(—)" in body   # missing hit_prob shows dash
+
+
 def test_selection_is_deterministic_under_equal_scoring(tmp_path):
     """When two combos score identically on the primary key, the stable
     leg-name tie-break guarantees the same combo is chosen on every call."""
