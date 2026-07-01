@@ -8,6 +8,13 @@ repetitive, partly written without knowing what the bot already does, and
 contains several **mathematical errors** (corrected below). Hand Claude Code the
 PHASES in this doc, one at a time — **not** the raw guide.
 
+> Each phase has a detailed companion instruction file in this folder
+> (`FIX-PHASE2-PROMO-ON-LADDER-AND-KELLY.txt`, `FIX-PHASE3-CLV.txt`, …), written
+> just before that phase runs so it reflects the audit findings and what the prior
+> phase actually shipped. **This doc is the roadmap + dependencies + corrections;
+> the FIX-PHASE files are the execution detail.** Phase status: 1 (weather) ✅,
+> 2 (promo ladder + Kelly) ✅, 3 (CLV) queued.
+
 Ground rule: the current engine is strong. **No full rebuild.** Everything here is
 additive and reversible, validated on history before it goes live, with pytest
 green at each step.
@@ -144,6 +151,13 @@ confirm via CLV vs ~tens of thousands via raw ROI. But naive prop CLV is a trap
   Reference priority: Betfair exchange price where the market is liquid (H2H /
   line / popular multis), else a **de-vigged multi-book consensus** for props that
   never trade on the exchange. **Never** Sportsbet's own later price.
+- **⚠ PREREQUISITE (this should have been flagged from the start): prop CLV needs a
+  SECOND price source.** You currently scrape only Sportsbet, and you can't measure
+  a Sportsbet bet against Sportsbet's own close. So Phase 3 ships the CLV
+  infrastructure + H2H/line CLV regardless, but **prop CLV stays "n/a" until a
+  second AU book (TAB/Ladbrokes, same internal-JSON trick as `sportsbet_odds.py`) is
+  scraped.** Build the second-book scraper as the unlock for prop CLV — it is a hard
+  dependency, not an optional extra.
 - Compute per-bet CLV, rolling CLV (by prop type / player / venue), and a one-sided
   **CLV t-test** vs zero. Display the **minimum detectable edge** for the current
   sample size so a short record honestly says "too soon to tell."
