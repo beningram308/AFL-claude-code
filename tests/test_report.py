@@ -840,3 +840,41 @@ def test_greasiness_override_forces_game_value(tmp_path):
         if game_key in overrides else 0.0
     )
     assert greasiness == pytest.approx(0.75)
+
+
+# ── Part 2: Sportsbet note is always informative ──────────────────────────────
+
+def _bare_match():
+    return [{
+        "header": {"home": "A", "away": "B", "venue": "MCG", "roofed": False,
+                   "is_wet": False, "mu_margin": 5.0, "mu_total": 160.0,
+                   "p_home": 0.6, "p_away": 0.39, "p_draw": 0.0,
+                   "total_line_name": "Total 160.5+", "p_total": 0.5},
+        "projections": [], "sgms": [], "market_sgms": [],
+    }]
+
+
+def test_sportsbet_note_not_requested_explains_how_to_enable():
+    note = ("_No Sportsbet prices this run. For real book prices: paste this round's "
+            "Sportsbet match URLs into `reports/2026_r17_sportsbet_urls.json` "
+            "and rerun with `--sportsbet`._")
+    md = render_markdown(2026, 17, _bare_match(), has_odds=False, sportsbet_note=note)
+    assert "--sportsbet" in md
+    assert "sportsbet_urls.json" in md
+
+
+def test_sportsbet_note_zero_priced_shows_warning_and_fix():
+    note = ("_⚠ Sportsbet: 0 legs priced — no URL file / empty list "
+            "(`reports/2026_r17_sportsbet_urls.json`). Book/Edge columns show '—'. "
+            "Fix: populate `reports/2026_r17_sportsbet_urls.json` with this round's "
+            "Sportsbet match URLs and rerun with `--sportsbet`._")
+    md = render_markdown(2026, 17, _bare_match(), has_odds=False, sportsbet_note=note)
+    assert "⚠" in md
+    assert "0 legs priced" in md
+    assert "Fix:" in md
+
+
+def test_sportsbet_note_success_shows_leg_count():
+    note = "_Player-prop odds: live from Sportsbet (scraped, 42 leg(s) priced)._"
+    md = render_markdown(2026, 17, _bare_match(), has_odds=False, sportsbet_note=note)
+    assert "42 leg(s) priced" in md

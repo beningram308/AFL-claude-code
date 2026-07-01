@@ -75,6 +75,7 @@ from afl_bot.config import (
     PROP_LINES,
     PROP_MARKET_BLEND_WEIGHT,
     PROP_RECENT_SEASONS,
+    MANUALLY_UNAVAILABLE,
     ROOT_DIR,
     SHARE_CONCENTRATION,
     SIM_ITERATIONS,
@@ -83,7 +84,8 @@ from afl_bot.config import (
     WET_THRESHOLD_MM,
 )
 from afl_bot.data.odds import fetch_historical_odds
-from afl_bot.data.lineups import apply_outs, fetch_lineup, load_lineup, load_lineup_tog, load_outs
+from afl_bot.data.lineups import (apply_outs, fetch_injury_list, fetch_lineup,
+                                  load_lineup, load_lineup_tog, load_outs)
 from afl_bot.data.live_odds import fetch_live_odds, fetch_live_props
 from afl_bot.data.sportsbet_odds import fetch_sportsbet_odds
 from afl_bot.data.player_stats import load_player_log
@@ -910,6 +912,29 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     n_outs_excluded = 0
     if outs:
         lineup, n_outs_excluded = apply_outs(lineup, outs)
+    # Availability filter (Part 3 NEXT-STEPS-PLAN): always-on, runs every report.
+    # Fetches Footywire injury list for Season/LT/Indefinite players, merges with
+    # MANUALLY_UNAVAILABLE from config. apply_outs removes them from confirmed
+    # lineup sets (teams whose sheet IS posted); the check at the LegCandidate
+    # building step below handles teams whose sheet is NOT yet posted.
+    known_outs: dict[str, set[str]] = {}
+    _injury_list = fetch_injury_list(year, round_no)
+    for _team, _players in _injury_list.items():
+        known_outs.setdefault(_team, set()).update(_players)
+    from afl_bot.data.teams import normalize_team_name as _norm_team
+    for _team_name, _players in MANUALLY_UNAVAILABLE.items():
+        try:
+            _canonical = _norm_team(_team_name)
+            known_outs.setdefault(_canonical, set()).update(_players)
+        except KeyError:
+            print(f"MANUALLY_UNAVAILABLE: unrecognised team {_team_name!r} — skipping.",
+                  file=sys.stderr)
+    if known_outs:
+        lineup, _n_inj = apply_outs(lineup, known_outs)
+        n_outs_excluded += _n_inj
+        n_inj_total = sum(len(v) for v in known_outs.values())
+        print(f"Availability filter: {n_inj_total} player(s) in injury/config blocklist "
+              f"({_n_inj} removed from confirmed lineup sets).", file=sys.stderr)
     # Live h2h/totals + player props (The Odds API) and/or real Sportsbet
     # prices, merged with any --odds file; manual overrides everything for
     # hand-fixes (MULTI-CHANGES PART A; FIX-REAL-SPORTSBET-ODDS-AND-LINEUP
@@ -917,17 +942,32 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     # just h2h/totals), so it sits ahead of the (already-live) Odds API feed.
     live = fetch_live_odds(round_no) if use_live else {}
     live_props = fetch_live_props(round_no) if use_live else {}
+    # Always compute the default URLs path — needed for diagnostics even when
+    # --sportsbet is not used, so the note tells the user exactly what to populate.
+    _sb_urls_path = sportsbet_urls_path or str(ROOT_DIR / "reports" /
+                                                f"{year}_r{round_no}_sportsbet_urls.json")
     if use_sportsbet:
-        urls_path = sportsbet_urls_path or str(ROOT_DIR / "reports" /
-                                               f"{year}_r{round_no}_sportsbet_urls.json")
         try:
-            sb_urls = json.loads(Path(urls_path).read_text())
+            sb_urls = json.loads(Path(_sb_urls_path).read_text())
         except (OSError, json.JSONDecodeError):
-            print(f"Sportsbet: no URL file at {urls_path} -- skipping scrape.", file=sys.stderr)
+            print(f"Sportsbet: no URL file at {_sb_urls_path} -- skipping scrape.",
+                  file=sys.stderr)
             sb_urls = []
         sb = fetch_sportsbet_odds(sb_urls)
+        if not sb:
+            n_urls = len(sb_urls)
+            _reason = (f"no URLs in {_sb_urls_path}" if n_urls == 0
+                       else f"all {n_urls} event(s) failed — geo-blocked (AU IP required) or stale URLs")
+            print(f"WARNING Sportsbet: 0 legs priced ({_reason}). "
+                  f"Book/Edge columns will show '—'. "
+                  f"Populate {_sb_urls_path} and rerun with --sportsbet.",
+                  file=sys.stderr)
     else:
         sb = {}
+        sb_urls = []
+        print(f"Sportsbet: not requested. Paste round match URLs into "
+              f"{_sb_urls_path} and rerun with --sportsbet for real prices.",
+              file=sys.stderr)
     manual = json.loads(Path(odds_path).read_text()) if odds_path else {}
     odds_book = {**live, **live_props, **sb, **manual}
     odds_note = ""
@@ -942,13 +982,25 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             f"Player-prop legs are priced off {src}; rungs with no prop price show '-' for "
             f"Book/Edge and are NOT flagged VALUE. Edges shown are market-shrunk (capped)._")
 
-    sportsbet_note = ""
     if use_sportsbet:
+        if sb:
+            sportsbet_note = (
+                f"_Player-prop odds: live from Sportsbet (scraped, {len(sb)} leg(s) priced)._"
+            )
+        else:
+            n_urls = len(sb_urls)
+            _cause = (f"no URL file / empty list (`{_sb_urls_path}`)" if n_urls == 0
+                      else f"all {n_urls} event(s) failed — possibly geo-blocked (AU IP required)")
+            sportsbet_note = (
+                f"_⚠ Sportsbet: 0 legs priced — {_cause}. Book/Edge columns show '—'. "
+                f"Fix: populate `{_sb_urls_path}` with this round's Sportsbet match URLs "
+                f"and rerun with `--sportsbet`._"
+            )
+    else:
         sportsbet_note = (
-            f"_Player-prop odds: live from Sportsbet (scraped, {len(sb)} leg(s) priced)._"
-            if sb else
-            "_Player-prop odds: Sportsbet scrape unavailable (not in AU / blocked / no URL "
-            "file for this round) — fell back to --odds file / model-only._")
+            f"_No Sportsbet prices this run. For real book prices: paste this round's "
+            f"Sportsbet match URLs into `{_sb_urls_path}` and rerun with `--sportsbet`._"
+        )
 
     # Per-game greasiness overrides (Step 3 FIX-MARKS-CAP-ALL-LEGS-AND-GREASINESS).
     # JSON file: {"Home vs Away": 0.75} or {"HomeTeam": 0.75}, float in [0,1].
@@ -1068,6 +1120,11 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
 
             for player_name, stats in samples.items():
                 confirmed = (team not in lineup) or (player_name in lineup[team])
+                # Injury/config blocklist: exclude even when no team sheet is posted.
+                if confirmed and _normalize_name(player_name) in {
+                    _normalize_name(p) for p in known_outs.get(team, set())
+                }:
+                    confirmed = False
                 for stat, lines in PROP_LINES.items():
                     arr = stats.get(stat)
                     if arr is None:
