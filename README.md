@@ -40,6 +40,29 @@ wet-weather scenario; `--bankroll` sets the stake-sizing bankroll. `--lineup`
 the player pool is otherwise gated to current-season players so retired/injured
 players aren't priced off a career average.
 
+### Operational weekly loop
+
+**Thursday (after Thursday night team sheets post on Footywire):**
+```bash
+# 1. Populate this round's Sportsbet match URLs (copy from sportsbet.com.au):
+#    reports/2026_r<N>_sportsbet_urls.json  → ["https://...event_id...", ...]
+# 2. Run the report with real lineups + real book prices:
+python -m afl_bot.cli round-report --year 2026 --round <N> --auto-lineup --sportsbet
+# 3. Check picks against confirmed teams, then place bets in the dashboard tracker.
+```
+
+**Monday (after round results are in):**
+```bash
+# Settle pending bets (auto-grades legs from Fryzigg/Squiggle stats):
+python -m afl_bot.cli settle-bets --year 2026 --round <N>
+# Grade round predictions → appends to reports/calibration_log.csv:
+python -m afl_bot.cli grade-round --year 2026 --round <N>
+# Optional — snapshot closing prices for CLV tracking:
+python -m afl_bot.cli capture-close --year 2026 --round <N>
+```
+
+The CLV panel and calibration log in the dashboard build over weeks — the record is the only honest signal of whether the edge is real.
+
 ### Weekly round report
 
 ```
