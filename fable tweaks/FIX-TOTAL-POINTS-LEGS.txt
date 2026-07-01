@@ -1,0 +1,52 @@
+================================================================================
+FIX: REMOVE TOTAL-POINTS LEGS FROM MULTIS  (read first, then execute)
+================================================================================
+Date: 2026-06-27 · From: Ben
+Ben does not want "Total points X+" legs inside the same-game multis (e.g.
+"Total points 170.5+ + Billy Wilson 15+ disposals + ..."). Multis should use
+player props + team-to-win (H2H) only. The match total still shows in the header.
+
+Small, contained selection change. DO NOT touch the sim, pricing, promo, staking,
+weather, or CLV. Keep all tests green; one commit.
+
+--------------------------------------------------------------------------------
+WHAT TO CHANGE
+--------------------------------------------------------------------------------
+1. config.py — add a tunable switch (default OFF so it's easy to revert):
+       ALLOW_TOTAL_POINTS_IN_MULTI = False   # True restores total-points legs in multis
+
+2. Exclude total-points legs from the SGM candidate POOL for BOTH ladders.
+   In the shared combo builder path (build/report.py build_sgm_candidates /
+   search_match_sgms / search_market_sgms — wherever the leg pool is assembled),
+   drop any leg whose market is "total_points" before forming combos, UNLESS
+   ALLOW_TOTAL_POINTS_IN_MULTI is True.
+   - Unlike the marks cap, there is NO priced-leg exemption: total-points legs are
+     removed even when they have a real book price (Ben wants them out entirely).
+   - Team-to-win / H2H legs ("<team> to win") STAY allowed.
+   - The simplest robust spot is where match_legs / odds_legs are built in cli.py
+     round_report before being handed to the ladder builders — filter out
+     market == "total_points" there (gated on the config flag). Pick whichever
+     single chokepoint guarantees neither ladder can include one.
+
+3. Keep the total in the MATCH HEADER unchanged. The header's "Total NNN.5+ = X%"
+   line is computed separately (p_total), not from the multi pool, so it must still
+   appear. Only the in-multi usage is removed.
+
+4. The odds template may still list total-points keys for manual entry — that's
+   fine; they just can't enter a multi. (Leave the template as-is unless it errors.)
+
+--------------------------------------------------------------------------------
+TESTS + SHIP
+--------------------------------------------------------------------------------
+- No selected rung in EITHER ladder contains a total_points leg (incl. a pool
+  where a total-points leg is priced) when ALLOW_TOTAL_POINTS_IN_MULTI is False.
+- Setting the flag True restores total-points legs (covers the revert path).
+- The match header still renders the total line.
+- Every band still fills from props + H2H (the ladder isn't left short).
+- Do NOT modify sim/pricing/promo/staking/weather/CLV; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (total-points legs removed from
+  multis, config-tunable; still shown in the header).
+
+ACCEPTANCE: multis contain only player props + team-to-win legs; no "Total points
+X+" inside any multi; the match total still appears in the header.
+================================================================================

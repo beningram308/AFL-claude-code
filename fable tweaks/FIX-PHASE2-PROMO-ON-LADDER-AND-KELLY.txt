@@ -1,0 +1,103 @@
+================================================================================
+PHASE 2 — PROMO-AWARE LADDER + MULTI-OUTCOME KELLY  (read first, then execute)
+================================================================================
+Date: 2026-06-26 · From: Ben
+Builds on the audit (fable tweaks/AUDIT-AFL-BOT-2026-06-26.md) and PLAN doc.
+Phase 1 (weather greasiness) is already shipped — DO NOT touch the sim/weather.
+
+PROBLEM (from the audit): Ben bets promo "money-back-if-one-leg-fails" multis off
+the 6-band ladder (`search_match_sgms` -> report -> multis.json -> dashboard), but
+that ladder carries **no promo term**. The promo EV that exists
+(`build_promo_multi`/`promo_multi_ev` in build/multi.py) runs as a separate old
+section, uses an **independence** assumption, and the staking uses **binary
+Kelly** — which is mis-specified for a 3-outcome stake-back bet and can return a
+negative stake for a genuinely +EV promo multi. Fix all three, on the ladder.
+
+Keep pytest green; one commit at the end. Use the CORRECTED math below (the merged
+guide gets these wrong — see the AUDIT/PLAN "corrections" sections).
+
+--------------------------------------------------------------------------------
+STEP 1 — Put promo Total EV on every ladder rung (count from sim masks, not the
+         independence formula)
+--------------------------------------------------------------------------------
+In `build/report.py search_match_sgms`, each selected rung's legs already carry
+aligned per-iteration sim masks (`LegCandidate.mask`); the rung is same-game, so
+the masks are jointly valid and capture the real correlation.
+
+For each rung compute, directly from the masks (NOT analytic p1*p2*p3):
+  - stack the legs' boolean masks -> per-iteration count of WINNING legs
+  - P(all win)        = mean(n_win == n_legs)
+  - P(exactly 1 loss) = mean(n_win == n_legs - 1)
+  - P(2+ loss)        = 1 - P(all win) - P(exactly 1 loss)
+Then:
+  - Promo EV  = P(exactly 1 loss) * R           (R = refund cash-value factor)
+  - Total EV  = base EV + Promo EV, where base EV uses the rung's existing
+                joint_prob and book/fair odds (per $1 staked).
+  - R comes from config `BONUS_BET_FACTOR` (keep it tunable; default ~0.70). Add a
+    note/field so a realised R can be recorded later.
+Add these to each rung's record: p_all_win, p_one_loss, p_two_plus_loss, promo_ev,
+total_ev. Gate the promo term on a configurable minimum-legs rule (default 3); the
+ladder is 3-leg so all rungs qualify.
+
+Keep the band ladder structure exactly as is (do NOT re-select rungs to maximise
+the refund — that's the wrong objective). Promo is an added metric. The **VALUE
+PICK** tag should now rank by **Total EV edge** (book) rather than base edge, when
+real odds exist.
+
+--------------------------------------------------------------------------------
+STEP 2 — Multi-outcome Kelly staking (replace binary Kelly for promo multis only)
+--------------------------------------------------------------------------------
+In `build/staking.py`, add:
+    def multi_outcome_kelly(p_win, p_one_loss, p_dead, multi_odds, refund_factor,
+                            fraction=KELLY_FRACTION, cap=KELLY_PER_BET_CAP) -> float
+maximising expected log-growth across the three outcomes:
+    g(f) = p_win*ln(1 + f*(M-1)) + p_one_loss*ln(1 + f*(R-1)) + p_dead*ln(1 - f)
+    net returns:  win -> (M-1),  one loss -> (R-1),  2+ loss -> -1   (M=multi_odds, R=refund_factor)
+Solve g'(f)=0 numerically (scipy.optimize.brentq / minimize_scalar on -g), clamp
+f to [0, cap], then apply the fractional multiplier and existing caps. Note R<1 so
+the one-loss branch is a partial loss, not a refund of full stake.
+Keep binary `kelly_fraction` for ordinary win/lose singles. Use
+`multi_outcome_kelly` for promo-eligible multis. Surface a **suggested stake** per
+ladder rung (fraction of bankroll) using it.
+
+Acceptance for this step: for a rung that is negative on a standalone basis but
++Total-EV with the promo, binary Kelly returns ~0/negative while multi_outcome
+Kelly returns a positive, sensibly-capped stake.
+
+--------------------------------------------------------------------------------
+STEP 3 — Surface it (report + multis.json + dashboard)
+--------------------------------------------------------------------------------
+- `render_markdown`: add Total EV (and optionally promo %) + suggested stake to the
+  ladder table. Keep existing columns, model-only and VALUE tags.
+- multis.json emitter: add p_all_win, p_one_loss, promo_ev, total_ev,
+  suggested_stake to each rung record (stable ids unchanged; stays frozen per round).
+- Dashboard: show Total EV and suggested stake on each rung; the bet-tracker keeps
+  recording the user's actual stake/odds as before.
+
+--------------------------------------------------------------------------------
+STEP 4 — Consolidate the two multi paths (remove divergence)
+--------------------------------------------------------------------------------
+The ladder is now the single promo-aware multi source. Retire the duplicate
+display from the old `build_promo_multi`/`build_anchor_multis` section in
+round-report so there's ONE promo number per multi (keep the functions if other
+callers/tests use them, but the report/dashboard should read promo off the ladder).
+If retiring is risky, at minimum ensure the two never show conflicting promo EV for
+the same legs.
+
+--------------------------------------------------------------------------------
+STEP 5 — Tests + ship
+--------------------------------------------------------------------------------
+- Promo branch probs counted from masks match a hand-computed fixture (incl. a
+  correlated same-game case where the independence formula would differ).
+- multi_outcome_kelly: positive capped stake on a +Total-EV promo multi that binary
+  Kelly rejects; 0 when truly -EV; monotone in R.
+- Total EV = base EV + P(one loss)*R end-to-end on a known rung.
+- Min-legs gate respected; R reads from config.
+- Do NOT modify the sim/weather; keep all 394 existing tests green.
+- pytest -q green, ONE commit, update README/memory (ladder is promo-aware; Total
+  EV + multi-outcome Kelly; single multi source).
+
+ACCEPTANCE: every ladder rung in the report/dashboard shows a promo-aware Total EV
+and a suggested stake from multi-outcome Kelly; the promo branch is counted from
+the sim (correct for correlated SGM legs); no rung is sized with binary Kelly.
+================================================================================

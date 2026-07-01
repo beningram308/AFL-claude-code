@@ -1,0 +1,83 @@
+================================================================================
+FIX: MARKS CAP MUST COUNT *ALL* MARKS + GREASINESS VISIBILITY/OVERRIDE
+================================================================================
+Date: 2026-06-27 · From: Ben
+Two issues from the live dashboard: (1) multis STILL show 2-3 marks legs, and
+(2) the Collingwood game is super slippery in reality yet projects lots of marks.
+DO NOT touch the sim core, promo, staking, CLV, or selection bands. Keep tests
+green; one commit.
+
+--------------------------------------------------------------------------------
+ROOT CAUSE OF (1) — confirmed in report.py
+--------------------------------------------------------------------------------
+The marks cap only counts marks legs with NO book price:
+    n_model_marks += 1   only when  odds_book.get(leg.name) is None
+and drops combos with `_n_model_marks > MAX_MARKS_LEGS_PER_MULTI`. But once the
+Sportsbet/TAB scraper prices a player's marks market (it does for most named
+players), that marks leg is "priced" and is NOT counted — so it bypasses the cap.
+The Sportsbet ladder is entirely priced legs, so the cap never applies there at
+all. That's why you see 2-3 marks per multi.
+
+--------------------------------------------------------------------------------
+STEP 1 — Count ALL marks legs toward the cap, on BOTH ladders
+--------------------------------------------------------------------------------
+- In build/report.py, count EVERY marks leg in a combo regardless of whether it
+  has a book price (remove the `odds_book.get(leg.name) is None` condition; rename
+  `_n_model_marks` -> `_n_marks`).
+- Apply `_n_marks <= MAX_MARKS_LEGS_PER_MULTI` in BOTH search_match_sgms (model
+  ladder) AND search_market_sgms (Sportsbet ladder).
+- Keep MAX_MARKS_LEGS_PER_MULTI = 1 in config (Ben can set 0 to drop marks
+  entirely). Keep STAT_PREFERENCE (disposals 1.0, goals 0.85, tackles 0.7, marks
+  0.35) as the secondary sort so disposals/goals/tackles are preferred when
+  filling — Ben wants to "stay to disposals, goals and tackles", marks last.
+- If a band can't be filled with <=1 marks leg + distinct players, fall back to
+  the closest qualifying combo (still <=1 marks); only if truly impossible, note
+  the skipped band — never exceed the cap.
+
+--------------------------------------------------------------------------------
+STEP 2 — Greasiness: make it VISIBLE per game
+--------------------------------------------------------------------------------
+Show the computed greasiness value for each game on the DASHBOARD (and keep the
+report header tag), e.g. "greasiness 0.00 (dry)" / "0.55 (greasy)" / "0.80 (wet)".
+Right now Ben can't tell whether a slippery game was actually flagged — surfacing
+the number makes the next issue diagnosable.
+
+--------------------------------------------------------------------------------
+STEP 3 — Per-game greasiness override (the forecast under-called Collingwood)
+--------------------------------------------------------------------------------
+The M.C.G. game projecting lots of marks despite being slippery almost certainly
+means the FORECAST greasiness came out low (a dewy/greasy but low-rain night reads
+near-dry from rain+daily-temp). Give Ben a manual lever:
+- A per-game override file (like the outs file): JSON mapping a game/team to a
+  forced greasiness (0.0-1.0) or wet=true, applied regardless of forecast. The
+  existing --rain-mm flag forces wet globally; this makes it per-game so one
+  slippery match can be set without affecting the others.
+- Document it: when Ben knows a game is slippery, set its greasiness and
+  regenerate.
+
+--------------------------------------------------------------------------------
+STEP 4 — Strengthen wet-marks suppression (config knob, modest, validated)
+--------------------------------------------------------------------------------
+At full greasiness marks only drop 15% (multiplier 0.85), which is too weak to
+matter much. Make DEFAULT_RAIN_MULTIPLIERS config-tunable and consider marks
+~0.85 -> ~0.78 (and keep disposals/goals/tackles as-is). This is a MODELLING
+change: re-run grade-multis to confirm it doesn't regress; if it does, keep the
+safer value. Leave it as a knob so Ben can tune.
+
+--------------------------------------------------------------------------------
+TESTS + SHIP
+--------------------------------------------------------------------------------
+- No selected rung on EITHER ladder has more than MAX_MARKS_LEGS_PER_MULTI marks
+  legs, INCLUDING when the marks legs are priced (the bug case).
+- A per-game greasiness override forces that game's value; dashboard shows
+  greasiness per game.
+- Bands still fill (disposals/goals/tackles preferred); skipped band noted only if
+  genuinely unfillable.
+- Do NOT modify the sim core/promo/staking/CLV; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (marks cap counts all legs;
+  greasiness visible + per-game overridable; wet-marks knob).
+
+ACCEPTANCE: no multi shows 2+ marks legs even when those marks are priced; the
+ladder leans disposals/goals/tackles; the greasiness value is visible per game and
+can be forced for a known-slippery match like Collingwood.
+================================================================================

@@ -1,0 +1,70 @@
+================================================================================
+FIX: PER-LEG HIT% ON DASHBOARD + PREFER DISPOSALS / MINIMISE MARKS
+================================================================================
+Date: 2026-06-27 · From: Ben
+Two related tweaks: (A) show each leg's calibrated clear probability on the
+dashboard, and (B) bias multi construction toward disposals and away from marks.
+Do NOT change the sim, the per-leg probability math, calibration, promo, or
+staking. Keep all tests green; one commit.
+
+--------------------------------------------------------------------------------
+PART A — Per-leg "Hit %" on the dashboard
+--------------------------------------------------------------------------------
+Each leg already has a calibrated clear probability (the LegCandidate fair_prob /
+blended_prob used to build the rung). Surface it:
+A1. multis.json: for every rung, include each leg's calibrated probability — e.g.
+    legs: [{ "name": "...", "player": "...", "market": "disposals", "line": 20,
+             "book_odds": 1.42, "hit_prob": 0.74 }, ...]. (hit_prob = the same
+    calibrated prob that fed the joint; do not recompute differently.)
+A2. Dashboard round view: render each leg's hit % inline next to the leg, e.g.
+    "Jack Graham 15+ disposals (76%)", or a small muted "% " after each leg name.
+    Keep the existing multi-level Joint% column too. "—" if a leg has no prob.
+A3. This is display only — the leg/joint probabilities are unchanged.
+
+--------------------------------------------------------------------------------
+PART B — Prefer disposals, minimise marks (configurable)
+--------------------------------------------------------------------------------
+Ben prefers disposals legs and wants fewer marks legs in the multis. Make this a
+soft, tunable preference — not a hard ban — applied in the SHARED combo builder
+so BOTH ladders (Model + Sportsbet) inherit it.
+
+B1. config.py — add:
+      # Higher = more preferred when the selector has a choice between combos.
+      STAT_PREFERENCE = {"disposals": 1.0, "goals": 0.85, "tackles": 0.7, "marks": 0.35}
+      # Hard cap on model-only marks legs in a single multi (priced marks legs,
+      # i.e. ones with a real book price, are exempt and always allowed).
+      MAX_MARKS_LEGS_PER_MULTI = 1     # set 0 to remove model-only marks entirely
+
+B2. In build/report.py search_match_sgms combo handling, AFTER the existing
+    band-landing rule and the distinct-subject filter:
+      - DROP any combo whose count of model-only marks legs exceeds
+        MAX_MARKS_LEGS_PER_MULTI (a marks leg with a real book_odds is exempt).
+      - Among the combos that still satisfy band + distinct-subject + marks-cap,
+        rank by a PREFERENCE SCORE = sum of STAT_PREFERENCE[leg.market_stat] across
+        the combo's legs (disposals win, marks lose), used as a SECONDARY key —
+        the primary "land at/above the band, closest from above" rule is unchanged,
+        and the stable sorted-leg-names tie-break stays last for determinism.
+    Net effect: when two combos both fill a band, the one with more disposals /
+    fewer marks is chosen; marks only appear when needed to fill a band or when
+    they carry a real price.
+B3. Do NOT change which lines/legs are *eligible* (the menu, the 0.78 cap, the
+    distinct-player rule all stay). This only changes PREFERENCE among valid
+    combos, so the ladder still fills every band.
+
+--------------------------------------------------------------------------------
+TESTS + SHIP
+--------------------------------------------------------------------------------
+- Hit %: a fixture rung carries per-leg hit_prob in multis.json and the dashboard
+  renders it; missing prob -> "—".
+- Preference: given a pool where a band can be filled by either a disposals-heavy
+  or a marks-heavy combo, the selector picks the disposals-heavy one; no multi
+  exceeds MAX_MARKS_LEGS_PER_MULTI model-only marks; a priced marks leg is still
+  allowed; every band still gets a rung.
+- Do NOT modify the sim/calibration/promo/staking; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (per-leg Hit %; disposals
+  preference + marks cap, both config-tunable).
+
+ACCEPTANCE: the dashboard shows each leg's calibrated Hit %, and the multis lean
+toward disposals with at most ~one model-only marks leg each (tunable), without
+breaking the band ladder or the distinct-player rule.
+================================================================================

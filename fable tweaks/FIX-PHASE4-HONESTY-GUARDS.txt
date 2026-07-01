@@ -1,0 +1,67 @@
+================================================================================
+PHASE 4 — HONESTY GUARDS (anti-phantom-edge)  (read first, then execute)
+================================================================================
+Date: 2026-06-27 · From: Ben
+Builds on the audit + PLAN. Phases 1-3 + the TAB second book are shipped — DO NOT
+touch the sim, weather, promo/staking, or CLV code. Keep all tests green; one
+commit at the end.
+
+PROBLEM: the VALUE tag fires on a fixed edge+prob gate (`classify_leg`). When the
+engine prices many props a round, a chunk will clear that bar by chance even with
+no real edge (scan 100 props at a 5% test and ~5 flag by luck). Add discipline so
+VALUE means "survives scrutiny", not "point estimate looked good".
+
+This only gates the VALUE tag and adds an honesty caveat — it does NOT change the
+sim, the ladder structure, or the prices.
+
+--------------------------------------------------------------------------------
+GUARD 1 — Noise floor (edge must beat Monte-Carlo error)
+--------------------------------------------------------------------------------
+A leg's model prob is a Monte-Carlo estimate with known standard error
+(`pricing/edge.mc_standard_error`). Require the model's edge over the market to
+exceed its own noise before it can be VALUE: e.g. model_prob - devig_prob >
+z * mc_standard_error(model_prob, n_sims), with z configurable (default ~1.0).
+A flag inside the MC noise band is not evidence of edge.
+
+--------------------------------------------------------------------------------
+GUARD 2 — Efficiency-scaled edge threshold
+--------------------------------------------------------------------------------
+Thin, lightly-modelled props should need a BIGGER edge than liquid markets.
+Required edge = VALUE_MIN_EDGE + k * (1 - liquidity_score), k configurable.
+liquidity_score is a simple proxy you can build from what's available:
+  - priced by 2 books (Sportsbet + TAB) vs 1  -> higher,
+  - market type (H2H/line high; disposals/marks mid; goals/exotics low),
+  - tighter two-way devig overround -> higher.
+Keep it transparent and in config; conservative defaults.
+
+--------------------------------------------------------------------------------
+GUARD 3 — Multiple-testing (FDR) across the round's flags
+--------------------------------------------------------------------------------
+Turn each candidate VALUE leg's noise-floor z-score into a one-sided p-value, then
+apply the Benjamini-Hochberg procedure across all candidates in the round
+(per prop type) at a target FDR (default 10%). Only legs that survive BH keep the
+VALUE tag; the rest downgrade to SKIP (still shown, just not flagged/sized).
+
+--------------------------------------------------------------------------------
+GUARD 4 — Honest minimum-detectable-edge caveat
+--------------------------------------------------------------------------------
+Where a flag rests on a noisy estimate, show the minimum detectable edge for the
+current n_sims next to it (reuse the Phase 3 MDE helper if it fits), so a thin or
+borderline flag is visibly caveated rather than presented as a clean signal.
+
+--------------------------------------------------------------------------------
+SHIP
+--------------------------------------------------------------------------------
+- Config knobs: guard z, threshold k, FDR target (all documented).
+- Tests: a pool of mostly-noise candidates yields few/zero surviving VALUE flags;
+  a genuinely strong leg survives all three guards; thin props need a bigger edge
+  than liquid ones; BH math on a fixture; nothing tagged VALUE inside the noise
+  band.
+- Do NOT modify sim/weather/promo/CLV; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (VALUE now passes noise floor
+  + efficiency-scaled threshold + FDR; phantom flags suppressed).
+
+ACCEPTANCE: the count of VALUE flags drops to the ones that genuinely survive the
+guards; thin props demand a larger edge; borderline flags carry an MDE caveat; the
+ladder/prices are otherwise unchanged.
+================================================================================

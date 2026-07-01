@@ -1,0 +1,68 @@
+================================================================================
+EXPERIMENT: SHOULD RECENT FORM (last ~10-15 games) WEIGH MORE?  — TEST, DON'T GUESS
+================================================================================
+Date: 2026-06-27 · From: Ben
+Ben's instinct: the last 10-15 games should carry a bit more weight in player
+projections. Current setting: PROP_EWMA_HALFLIFE = 6 games (the last ~6 games
+dominate; by 12-15 games back the weight is ~18-25%). Giving the 10-15 block more
+say means LENGTHENING the half-life (e.g. 6 -> 9/10/12).
+
+This is a DIAGNOSTIC / TUNING experiment, NOT a blind change. Run it, report the
+numbers, and adopt a new default ONLY if it genuinely improves out-of-sample.
+Standing rule applies: if a change regresses, keep the safer default (6) and say
+so. DO NOT touch the sim, promo, staking, CLV, weather, or dashboard.
+
+--------------------------------------------------------------------------------
+WHY it's a real trade-off (state this in the writeup)
+--------------------------------------------------------------------------------
+- Longer half-life: steadier projections, less noise from one or two outlier
+  games, uses a fuller recent picture (Ben's intent).
+- Cost: slower to catch a GENUINE recent change — a player moved to a new role
+  (the Duursma-at-HF case) shows up more slowly. So this is accuracy-vs-reactivity,
+  decided by data, not feel.
+
+--------------------------------------------------------------------------------
+METHOD
+--------------------------------------------------------------------------------
+1. Make PROP_EWMA_HALFLIFE sweepable: thread a halflife override through
+   player_rate_profile and the prop backtest path (afl_bot/backtest/props.py +
+   walkforward) so several values run without hand-editing config each time. Do
+   not hardcode.
+2. Candidates: [6 (current), 8, 10, 12].
+3. Walk-forward, BOTH directions (fit/test 2024 and 2025 — not one season), using
+   the EXISTING backtest harness (don't build a new metrics source). For each
+   half-life, REFIT the prop calibrators on that half-life (apples-to-apples) and
+   report on the calibrated pipeline:
+     - prop log loss, Brier, ECE / calibration error,
+     - the high-confidence-bucket overconfidence gap the project already tracks.
+4. Multi-level check: take the BEST prop half-life and re-run
+   `grade-multis --year 2024,2025` vs the current 6, confirming no regression in
+   multi log loss / high-bucket gap. (This is the number that actually matters for
+   the bets.)
+5. Keep it reproducible (fixed RNG seed); note runtime.
+
+--------------------------------------------------------------------------------
+DECISION RULE
+--------------------------------------------------------------------------------
+Adopt a new PROP_EWMA_HALFLIFE ONLY if it:
+   (a) improves prop log loss AND does not worsen calibration, AND
+   (b) does not regress grade-multis,
+   validated on BOTH 2024 and 2025 (consistent direction, not a one-season fluke).
+Otherwise keep 6 and report the finding. A tiny improvement that only shows in one
+season is NOT enough — keep the safer default.
+
+--------------------------------------------------------------------------------
+SHIP
+--------------------------------------------------------------------------------
+- Report a clear table: halflife | prop log loss | Brier | ECE | high-bucket gap |
+  grade-multis log loss — and a one-line recommendation with the reactivity caveat.
+- If ADOPTED: update PROP_EWMA_HALFLIFE, REFIT/commit the prop calibrators on the
+  new value (they depend on it), commit + README/memory with the before/after.
+- If NOT adopted: commit just the sweep capability + the written finding (6 stays
+  the default), so the experiment is reproducible later.
+- pytest -q green either way.
+
+ACCEPTANCE: Ben gets a straight answer — does weighting the last ~10-15 games more
+actually improve accuracy out-of-sample? — with the numbers behind it, and the
+live default only moves if the data backs it.
+================================================================================

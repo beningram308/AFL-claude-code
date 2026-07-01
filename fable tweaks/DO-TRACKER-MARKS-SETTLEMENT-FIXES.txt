@@ -1,0 +1,113 @@
+================================================================================
+DO THIS (one pass): SETTLEMENT FIX + MARKS-CAP FIX + MANUAL BETS
+================================================================================
+Date: 2026-06-27 · From: Ben
+Three pending fixes in one doc — run top to bottom, ONE commit at the end.
+(Supersedes the separate FIX-SETTLEMENT-NO-PHANTOM-WINS.txt,
+FIX-MARKS-CAP-ALL-LEGS-AND-GREASINESS.txt and ADD-MANUAL-BETS-TO-TRACKER.txt.)
+DO NOT touch the sim core, promo, staking, CLV, or selection bands. Keep the full
+suite green.
+
+>>> STATUS (2026-06-27): PART 2 (marks cap + greasiness) is ALREADY DONE — commit
+>>> a598602. VERIFY it's present (do NOT redo it), then COMPLETE PART 1 (settlement)
+>>> and PART 3 (manual bets). CRITICAL: finish ALL remaining parts in THIS one run —
+>>> do not stop after one part. Commit once at the end with PART 1 + PART 3 done.
+
+################################################################################
+# PART 1 — SETTLEMENT: NO PHANTOM WINS  (most urgent)
+################################################################################
+ROOT CAUSE (dashboard/settle.py): `_settle_leg` returns None when a player's
+actual stat isn't found and the docstring calls it "void". `settle_bets` then does
+`elif all(lr["hit"] for lr in non_void): status="won"` — i.e. it settles the multi
+on only the gradeable legs. So "Carlton to win (hit) + 2 prop legs (no data ->
+void)" settled WON at full odds. Missing data is being conflated with did-not-play.
+
+1A. A multi auto-settles ONLY when EVERY leg is definite:
+    - WON  = every leg HIT.
+    - LOST = at least one leg a definite MISS (rest known).
+    - Any leg UNGRADEABLE (no data, not a confirmed DNP) -> the WHOLE bet stays
+      PENDING with a flag naming the ungradeable leg(s); NOT counted in P&L.
+    REMOVE the "settle on the non-void subset" path. Never ignore an unresolved leg.
+1B. Distinguish did-not-play from no-data:
+    - GENUINE VOID (allowed): round player stats ARE populated AND the player was
+      named in the lineup but has no row -> did-not-play (prefer flagging for a
+      quick manual confirm).
+    - UNGRADEABLE -> PENDING: round stats empty (not published yet) OR player not
+      found in a populated set (likely name mismatch); H2H/total with no result.
+      Log leg name + reason.
+1C. Re-grade existing mis-settled bets: any bet currently "won"/"void" that still
+    contains an ungradeable leg reverts to PENDING (clear payout/profit/settled_at)
+    so the current phantom +$11 disappears and it re-settles correctly when data
+    arrives.
+
+################################################################################
+# PART 2 — MARKS CAP MUST COUNT *ALL* MARKS + GREASINESS VISIBILITY
+################################################################################
+ROOT CAUSE (build/report.py): the cap only counts marks legs with NO book price
+(`odds_book.get(leg.name) is None`). Once Sportsbet/TAB prices a marks market the
+leg bypasses the cap; the Sportsbet ladder is all-priced so the cap never applies
+-> multis with 2-3 marks legs.
+
+2A. Count EVERY marks leg toward the cap (remove the price condition; rename
+    `_n_model_marks` -> `_n_marks`). Apply `_n_marks <= MAX_MARKS_LEGS_PER_MULTI`
+    in BOTH search_match_sgms (model ladder) AND search_market_sgms (Sportsbet
+    ladder). Keep MAX_MARKS_LEGS_PER_MULTI = 1 (Ben can set 0). Keep STAT_PREFERENCE
+    (disposals 1.0, goals 0.85, tackles 0.7, marks 0.35) as the secondary sort —
+    "stay to disposals/goals/tackles", marks last. If a band can't fill with <=1
+    marks + distinct players, take the closest qualifying combo (still <=1 marks);
+    note a skipped band only if genuinely unfillable — never exceed the cap.
+2B. Show the computed greasiness value per game on the DASHBOARD (and keep the
+    report header tag): e.g. "greasiness 0.00 (dry)" / "0.55 (greasy)" / "0.80
+    (wet)" — so Ben can see whether a slippery game (e.g. Collingwood) was flagged.
+2C. Per-game greasiness override (forecast under-calls dewy nights): a small JSON
+    mapping game/team -> forced greasiness (0.0-1.0) or wet=true, applied regardless
+    of forecast (the existing --rain-mm forces it globally; this is per-game).
+2D. Make DEFAULT_RAIN_MULTIPLIERS config-tunable; consider marks ~0.85 -> ~0.78 at
+    full greasiness. This is a modelling change — re-run grade-multis; if it
+    regresses, keep the safer value. Leave it a knob.
+
+################################################################################
+# PART 3 — MANUAL / OWN BETS IN THE TRACKER
+################################################################################
+Let Ben enter his OWN bets (not from a generated rung) and track + settle them.
+
+3A. "Add my own bet" form (Tracker / P&L tab), not tied to a rung: year + round,
+    stake, taken_odds, optional label; 1..N legs, each picking a TYPE that maps to
+    the standard leg name + structured fields:
+      * Player prop : player + stat (disposals/goals/marks/tackles) + line
+                      -> "<player> <line>+ <stat>", market "player_<stat>".
+      * Team to win : team -> "<team> to win", market "h2h".
+      * Total points: line -> "Total points <line>+", market "total_points".
+      * Other       : free text -> market "other" (cannot auto-settle).
+    Normalise player/team names through the same identity path and WARN inline if a
+    name can't be matched (it may need a manual result).
+3B. Store via the existing add_bet path: source="manual", a SNAPSHOT of the
+    structured legs, stake, taken_odds, placed_at (Australia/Melbourne),
+    status="pending", standard CLV null fields. Tag for a "manual" badge.
+3C. Settlement: structured legs auto-settle under the PART 1 rules (and never a
+    phantom win). For "other"/unmatched legs the bet stays pending -> a manual
+    per-leg/whole-bet win/loss/void control settles it (writes payout: stake*odds
+    on win, 0 on loss, stake on void) and feeds the season P&L. A manual result
+    always overrides auto-grading.
+3D. Manual bets appear in the Tracker/P&L list + season summary with the "manual"
+    badge (optional manual-only / bot-only filter).
+
+################################################################################
+# TESTS + SHIP (one commit covering all three parts)
+################################################################################
+- Settlement: "H2H hit + two no-data prop legs" -> PENDING not won; "all hit" ->
+  won; "any definite miss" -> lost; "round stats not published" -> pending;
+  re-grade reverts a phantom-won bet to pending.
+- Marks: no rung on EITHER ladder has >MAX_MARKS_LEGS_PER_MULTI marks, INCLUDING
+  priced marks; per-game greasiness override forces the value; dashboard shows
+  greasiness per game; bands still fill.
+- Manual bets: adding one appends a pending manual record with structured legs;
+  gradeable legs auto-settle; "other"/unmatched stays pending until manual; P&L
+  includes manual bets.
+- Do NOT modify sim/promo/staking/CLV; keep the full suite green.
+- pytest -q green, ONE commit, update README + memory for all three.
+
+ACCEPTANCE: no multi shows WON unless every leg hit (no phantom +$11); no multi has
+2+ marks legs even when priced; greasiness is visible/overridable per game; and Ben
+can add and track his own bets.
+================================================================================

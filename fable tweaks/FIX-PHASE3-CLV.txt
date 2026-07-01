@@ -1,0 +1,105 @@
+================================================================================
+PHASE 3 — CLOSING LINE VALUE, DONE RIGHT  (read first, then execute)
+================================================================================
+Date: 2026-06-26 · From: Ben
+Builds on the audit + PLAN. Phases 1 (weather) and 2 (promo ladder + Kelly) are
+shipped — DO NOT touch the sim/weather or the promo/staking code.
+
+GOAL: live per-bet Closing Line Value (CLV) as the primary "is my edge real"
+gauge — measured against a SHARP reference, never the soft book you bet into —
+plus rolling CLV, a one-sided significance test, and a minimum-detectable-edge
+readout so a short record reports honestly.
+
+THE ONE RULE THAT MATTERS (Opus C4): **never compute prop CLV by comparing your
+Sportsbet fill to Sportsbet's own later price.** That mostly measures the book's
+margin schedule and manufactures a phantom signal. Use a sharp reference:
+  - H2H / line: Betfair exchange price where liquid (matched-volume filtered).
+  - Props: a de-vigged CONSENSUS across >=2 independent books.
+If a sharp reference doesn't exist for a market, **do not fabricate CLV for it** —
+record the bet and mark CLV unavailable.
+
+--------------------------------------------------------------------------------
+DATA DEPENDENCY — read this first
+--------------------------------------------------------------------------------
+Proper PROP CLV needs a SECOND price source (another AU book, or Betfair). Today
+only Sportsbet is scraped. So this phase has two tiers; build both and degrade
+gracefully:
+  * Always: full per-bet CLV infrastructure + H2H/line CLV (a sharp reference is
+    constructible there via Betfair or the existing historical close).
+  * Prop CLV: active only when >=2 sources are present; otherwise prop bets store
+    "clv_unavailable: soft-book self-reference" and are excluded from CLV stats.
+Adding a second book scraper (e.g. TAB/Ladbrokes via the same internal-JSON
+pattern as sportsbet_odds.py) is the unlock — note it as the follow-up, don't
+block this phase on it.
+
+--------------------------------------------------------------------------------
+STEP 1 — Per-bet CLV fields
+--------------------------------------------------------------------------------
+Extend the bets ledger (and/or a `clv_history` store) per bet with:
+  open_odds, taken_odds, close_ref_odds, close_ref_source, close_implied_prob,
+  clv_pct, clv_available (bool), captured_at (AEST).
+Definition (decimal odds): CLV = (1 / taken_odds) - (1 / close_ref_odds),
+expressed as a % of stake. `taken_odds` is recorded at placement (already in the
+ledger). `close_ref_odds` is the sharp reference captured near bounce (Step 2).
+
+--------------------------------------------------------------------------------
+STEP 2 — Closing-snapshot job
+--------------------------------------------------------------------------------
+Add `python -m afl_bot.cli capture-close [--year --round]` that, run shortly
+before bounce, snapshots the reference price for every market with an open bet
+(and, optionally, the whole ladder for model validation). Source priority per
+market:
+  1. Betfair exchange price where liquid (H2H/line) — filter on matched volume.
+  2. De-vigged consensus median across >=2 books (props) — reuse
+     `pricing/edge.devig_proportional` (or Shin) per book, then liquidity-weighted
+     median.
+  3. Sportsbet-only -> store the close but set clv_available=False,
+     close_ref_source="soft-self" (NOT used in CLV).
+Idempotent; safe to re-run; logs how many markets got a sharp reference vs not.
+
+--------------------------------------------------------------------------------
+STEP 3 — CLV stats + honesty readout
+--------------------------------------------------------------------------------
+Over settled/closed bets with clv_available:
+  - rolling mean CLV overall and by market type / player / venue,
+  - one-sided t-test vs 0:  t = mean(CLV) / (sd(CLV)/sqrt(n));  flag "significant
+    positive CLV" only when t > ~1.65 (n>100),
+  - **minimum detectable edge** for the current n (so a thin record says "too
+    soon to tell" instead of implying an edge),
+  - alert when rolling CLV goes negative over a window (model-review trigger).
+Reuse the existing H2H CLV logic in backtest/walkforward.py where it fits; this
+adds the LIVE per-bet layer on top.
+
+--------------------------------------------------------------------------------
+STEP 4 — Props: signal-vs-noise gate (light hook; full engine is Phase 5)
+--------------------------------------------------------------------------------
+A prop line move counts as signal only when (a) attributable to a catalyst (late
+out / role change / weather shift) AND (b) the model independently agrees on
+direction. Otherwise it's noise and must not move stakes. For now just record an
+attribution flag on captured moves; the catalyst listener is Phase 5.
+
+--------------------------------------------------------------------------------
+STEP 5 — Dashboard panel
+--------------------------------------------------------------------------------
+Add a CLV panel: rolling CLV, % of bets with positive CLV, t-stat, min-detectable
+-edge, and a per-market breakdown. H2H/line vs the sharp reference; props shown
+only where a sharp reference existed (others labelled "CLV n/a — needs 2nd book").
+Keep it read-only over the stored CLV data, consistent with the frozen-multis
+dashboard pattern.
+
+--------------------------------------------------------------------------------
+STEP 6 — Tests + ship
+--------------------------------------------------------------------------------
+- CLV math on a fixture; reference construction from >=2 mock books; graceful
+  degradation to clv_available=False with only Sportsbet.
+- t-test + minimum-detectable-edge on a fixture sample.
+- capture-close is idempotent and never uses a soft-self price for CLV.
+- Do NOT modify sim/weather/promo; keep all 416 tests green.
+- pytest -q green, ONE commit, update README/memory (live CLV vs sharp reference;
+  prop CLV gated on a 2nd source).
+
+ACCEPTANCE: every settled bet on a market with a sharp reference shows a CLV vs a
+NON-Sportsbet price; the dashboard shows rolling CLV + min-detectable-edge; prop
+CLV is never computed against the originating book, and is cleanly marked
+unavailable until a second odds source is added.
+================================================================================

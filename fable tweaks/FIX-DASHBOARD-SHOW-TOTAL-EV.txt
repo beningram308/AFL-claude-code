@@ -1,0 +1,53 @@
+================================================================================
+FIX: SHOW TOTAL EV + SUGGESTED STAKE ON THE DASHBOARD  (read first, then execute)
+================================================================================
+Date: 2026-06-27 · From: Ben
+Small presentation-only fix. The data already exists in multis.json (Phase 2 wrote
+total_ev / suggested_stake / promo fields per rung) — the dashboard's round-view
+table just isn't rendering them, so Ben is looking at raw Edge (mostly negative on
+the safe rungs) instead of the promo-aware Total EV he actually bets on.
+
+DO NOT touch the sim, pricing, promo, staking, or CLV logic. This is dashboard
+template only. Keep all tests green; one commit.
+
+--------------------------------------------------------------------------------
+WHAT TO ADD
+--------------------------------------------------------------------------------
+In afl_bot/dashboard/app.py (the round-view template), add two columns to BOTH the
+Model ladder and the Sportsbet ladder tables, placed right after the Edge column:
+  - "Total EV"  -> rung["total_ev"] formatted as a signed % (e.g. +47.5%),
+                   colour-coded green/red the same way Edge is.
+  - "Stake"     -> rung["suggested_stake"] formatted as a % of bankroll (e.g. 5.0%).
+Render "—" when a field is None/missing (don't crash, don't show 0%).
+
+Add a one-line caption above each ladder so the columns aren't misread:
+  "Edge = raw model vs book price. **Total EV** includes the stake-back refund —
+   that's the number to bet on. Stake = suggested % of bankroll (capped Kelly)."
+
+Optional (nice, low-risk): on hover/title for the Total EV cell, show the promo
+breakdown if present — P(exactly one loss) and promo_ev — so the refund
+contribution is visible.
+
+--------------------------------------------------------------------------------
+ORDERING / VALUE (small, optional)
+--------------------------------------------------------------------------------
+Keep the band ladder order as-is (frozen). The "Value picks only" filter and any
+sort should key off **total_ev** (promo-aware), not raw edge, so the filter
+surfaces what's actually +EV to bet. If that's more than a one-liner, skip it and
+just add the columns.
+
+--------------------------------------------------------------------------------
+VERIFY + SHIP
+--------------------------------------------------------------------------------
+- Confirm multis.json rungs carry total_ev and suggested_stake (they should from
+  Phase 2 / commit history). If a rung legitimately lacks them, the cell shows "—".
+- Add/extend a dashboard test: a fixture multis.json with total_ev + suggested_stake
+  renders both columns with the right values; a rung with null fields renders "—".
+- Do NOT modify data/selection; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (dashboard shows Total EV +
+  suggested stake; Edge kept for reference).
+
+ACCEPTANCE: the dashboard round view shows Total EV and Stake next to Edge on both
+ladders, so the promo-aware number (e.g. +47.5%) is visible instead of only the
+raw −20% edge; nothing else changes.
+================================================================================

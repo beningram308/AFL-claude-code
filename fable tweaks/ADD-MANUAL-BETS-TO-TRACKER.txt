@@ -1,0 +1,75 @@
+================================================================================
+ADD: MANUAL / OWN BETS IN THE TRACKER  (read first, then execute)
+================================================================================
+Date: 2026-06-27 · From: Ben
+Today the tracker only logs bets placed from a generated ladder rung ("I placed
+this"). Ben wants to enter his OWN bets too — ones the bot didn't build — and have
+them tracked, auto-settled where possible, and counted in the season P&L like the
+rest. Dashboard + ledger + settlement only. DO NOT touch the sim, promo, staking,
+CLV math, or selection. Keep tests green; one commit.
+
+--------------------------------------------------------------------------------
+PART A — "Add my own bet" form (dashboard, Tracker / P&L tab)
+--------------------------------------------------------------------------------
+A standalone form (not tied to a rung) where Ben builds a bet:
+  - year + round, stake, taken_odds, optional label/note.
+  - 1..N legs; each leg picks a TYPE and the bot turns it into the standard leg
+    name + structured fields so it can settle:
+      * Player prop : player + stat (disposals/goals/marks/tackles) + line
+                      -> name "<player> <line>+ <stat>", market "player_<stat>".
+      * Team to win : team -> "<team> to win", market "h2h".
+      * Total points: line -> "Total points <line>+", market "total_points".
+      * Other       : free text -> market "other" (cannot auto-settle; needs a
+                      manual result — see Part C).
+  - Normalise player/team names through the SAME identity path
+    (teams.normalize_team_name + the player normalisation Sportsbet/settlement use)
+    and WARN inline if a typed player/team can't be matched, so Ben knows that leg
+    may need a manual result.
+
+--------------------------------------------------------------------------------
+PART B — Store it in the same ledger
+--------------------------------------------------------------------------------
+Append to reports/bets_ledger.json using the existing add_bet path, with:
+  source="manual", a SNAPSHOT of the structured legs, stake, taken_odds,
+  placed_at (Australia/Melbourne), status="pending", and the standard CLV null
+  fields (CLV stays n/a for manual bets unless those exact markets get a sharp
+  reference at capture-close — don't special-case it). Tag so the UI can show a
+  small "manual" badge.
+
+--------------------------------------------------------------------------------
+PART C — Settlement + manual result override
+--------------------------------------------------------------------------------
+- Reuse settle.py: structured legs (player prop / team-win / total) auto-settle
+  against the SAME actuals as everything else. Won only if every non-void leg hit.
+- For "other" legs, or any leg whose player/team didn't match the actuals source,
+  the leg result is unknown -> the bet stays pending and is flagged "needs manual
+  result". Add a small control on a pending bet in the tracker to set the result
+  manually: per-leg hit/miss/void OR a whole-bet won/lost/void, which then writes
+  payout (stake*taken_odds on win, 0 on loss, stake on void) and marks it settled.
+- A manually-resolved bet feeds the season P&L exactly like an auto-settled one.
+
+--------------------------------------------------------------------------------
+PART D — P&L
+--------------------------------------------------------------------------------
+Manual bets appear in the Tracker / P&L list and the season summary (total staked,
+returned, net profit, ROI, strike rate, cumulative line) alongside bot bets, with
+the "manual" badge so Ben can tell them apart. Optionally a filter to show
+manual-only / bot-only.
+
+--------------------------------------------------------------------------------
+TESTS + SHIP
+--------------------------------------------------------------------------------
+- Adding a manual bet appends a pending ledger record with the structured legs +
+  source="manual".
+- A manual bet with gradeable legs auto-settles correctly (win/loss/void) on the
+  next settle; an "other"/unmatched leg stays pending until manually resolved.
+- The manual-result control settles a bet and writes the right payout.
+- P&L includes manual bets; the manual badge/filter works.
+- Do NOT modify sim/promo/staking/CLV/selection; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (manual bet entry + manual
+  settlement override in the tracker).
+
+ACCEPTANCE: Ben can add a bet the bot never generated, it shows in the tracker
+with a "manual" badge, auto-settles when its legs are gradeable (and can be
+settled by hand otherwise), and rolls into the same season P&L.
+================================================================================

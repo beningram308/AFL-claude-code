@@ -1,0 +1,80 @@
+================================================================================
+FIX: SETTLEMENT — NO PHANTOM WINS (missing data != void != win)
+================================================================================
+Date: 2026-06-27 · From: Ben
+The tracker marked a multi WON (+$11) when its prop legs never actually resolved.
+DO NOT touch the sim, promo, staking, CLV, or selection. Dashboard/settlement
+only. Keep tests green; one commit.
+
+--------------------------------------------------------------------------------
+ROOT CAUSE (confirmed in dashboard/settle.py)
+--------------------------------------------------------------------------------
+- `_settle_leg` returns None whenever a player's actual stat isn't found
+  (`val is None -> return None  # void — player didn't play / no data`). This
+  conflates THREE different things: genuine did-not-play, stats-not-published-yet,
+  and name-mismatch.
+- `settle_bets` then computes `non_void = legs with a definite hit/miss` and does
+  `elif all(lr["hit"] for lr in non_void): status = "won"`. So a multi with one
+  HIT leg and two undatable legs settles WON at full odds — a phantom win. P&L is
+  wrong.
+
+--------------------------------------------------------------------------------
+STEP 1 — A multi only auto-settles when EVERY leg is definite
+--------------------------------------------------------------------------------
+Replace the settlement rule:
+  - WON  = every leg is a definite HIT.
+  - LOST = at least one leg is a definite MISS (and the rest are HIT/known).
+  - Any leg that is UNGRADEABLE (no data, not a confirmed DNP) -> the WHOLE bet
+    STAYS PENDING, with a flag listing which leg(s) couldn't be graded. It is NOT
+    counted in P&L.
+REMOVE the path that settles WON/LOST on only the gradeable subset. Never ignore a
+leg that hasn't resolved.
+
+--------------------------------------------------------------------------------
+STEP 2 — Distinguish "did not play" from "no data yet / name mismatch"
+--------------------------------------------------------------------------------
+- GENUINE VOID (allowed): only when the round's player stats ARE populated (stats
+  published) AND the player was NAMED in the lineup but has no stat row -> treat as
+  did-not-play. (Even here, prefer flagging for a quick manual confirm over silent
+  void.)
+- UNGRADEABLE -> PENDING (NOT void): the round's player_stat set is empty (not
+  published yet), OR the player isn't found in a populated set (likely a name
+  mismatch). Same for an H2H/total leg with no result yet. Log the leg name +
+  reason so a low match-rate is visible.
+A single fully-void multi may still return the stake ONLY when every leg is a
+confirmed DNP — not when legs are merely undatable.
+
+--------------------------------------------------------------------------------
+STEP 3 — Re-grade the already mis-settled bets
+--------------------------------------------------------------------------------
+On settle, any bet currently "won"/"void" that contains a leg which is STILL
+ungradeable under the Step 2 rules must be REVERTED to pending (clear
+payout/profit/settled_at), so the existing phantom +$11 win disappears from the
+P&L and the bet re-settles correctly once real data arrives.
+
+--------------------------------------------------------------------------------
+STEP 4 — Manual resolution stays available
+--------------------------------------------------------------------------------
+Keep/confirm the manual win/loss/void control on a pending bet so Ben can resolve
+a genuinely ungradeable bet by hand (ties in with the manual-bets change). A
+manual result always overrides auto-grading.
+
+--------------------------------------------------------------------------------
+TESTS + SHIP
+--------------------------------------------------------------------------------
+- THE BUG: "H2H hit + two prop legs with no data" -> status PENDING, NOT won, $0 in
+  P&L.
+- "every leg hit" -> won; "any leg a definite miss" -> lost.
+- "round player stats not published" -> all such bets stay pending.
+- "player named in lineup but no row in a populated round" -> DNP void (or flagged
+  per chosen policy), and a multi of [hit, DNP-void] settles per book rule.
+- Re-grade: a previously phantom-won bet with an ungradeable leg reverts to pending.
+- Do NOT modify sim/promo/staking/CLV; keep the full suite green.
+- pytest -q green, ONE commit, update README/memory (settlement never wins on an
+  ungradeable leg; missing data keeps a bet pending; re-grade corrects past
+  phantom settlements).
+
+ACCEPTANCE: a multi only shows WON when every leg genuinely hit; legs with missing
+data keep the bet pending until graded or manually resolved; the current phantom
++$11 reverts to pending.
+================================================================================

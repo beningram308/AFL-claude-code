@@ -1,0 +1,67 @@
+================================================================================
+SECOND BOOK — UNLOCK PROP CLV (read first, then execute)
+================================================================================
+Date: 2026-06-27 · From: Ben
+Phase 3 shipped the CLV engine but every bet is clv_available=False because only
+Sportsbet is connected (devig_consensus needs >=2 books). This adds ONE more AU
+bookmaker so a sharp consensus reference exists and PROP CLV switches on.
+
+Same pattern as afl_bot/data/sportsbet_odds.py (scrape the book's own internal
+JSON; no key, AU IP only, runs on Ben's machine). DO NOT touch the sim, weather,
+promo, or staking code. Keep all 448 tests green; one commit at the end.
+
+--------------------------------------------------------------------------------
+STEP 1 — Pick the second book (decide LOCALLY, on Ben's machine)
+--------------------------------------------------------------------------------
+Add a new module afl_bot/data/<book>_odds.py exposing the SAME contract as
+sportsbet_odds.py:
+    def fetch_<book>_odds(...) -> dict[str, float]   # {leg_name: decimal_odds}
+Try in this order, use the first that returns AFL player props cleanly:
+  1. TAB — public-ish JSON at api.beta.tab.com.au (see the JaseZiv/bettRtab client
+     for the endpoint shape). Often the easiest non-Sportsbet AU source.
+  2. Ladbrokes / Neds — internal "sportsbook" JSON API.
+  3. Pointsbet — internal JSON API.
+Confirm the live endpoint by opening the book's AFL page and watching the Network
+tab (you're on an AU IP). Auto-discover the round's events by matching the bot's
+fixtures by normalised team name — exactly like the Sportsbet auto-discovery.
+
+--------------------------------------------------------------------------------
+STEP 2 — Normalise to the bot's leg keys (so it joins the consensus)
+--------------------------------------------------------------------------------
+Map the book's markets/selections to the SAME leg-name format the bot already
+uses ("<player> 20+ disposals", "<team> to win", "Total points N+"). Normalise
+team names via data/teams.normalize_team_name and players through the same
+identity path Sportsbet uses, BEFORE returning. Log matched-vs-dropped counts so
+a low hit-rate is visible. Take the book's best/standard price consistently.
+
+--------------------------------------------------------------------------------
+STEP 3 — Wire into capture-close (the consensus reference)
+--------------------------------------------------------------------------------
+In dashboard/capture_close.py: when snapshotting the close, fetch BOTH Sportsbet
+and the second book, de-vig each, and build the consensus reference via the
+existing clv.devig_consensus (it already requires >=2 books). For any market with
+>=2 book prices, set clv_available=True and source="consensus:<books>"; markets
+with only one book stay clv_available=False as today. H2H/line: if Betfair is ever
+added later it takes priority, but a 2-book consensus is a valid sharp-ish
+reference now.
+The second book is for the REFERENCE/consensus, not for placing bets — Sportsbet
+stays the fill source. Keep everything fail-soft: if the second book is
+unreachable, behaviour is exactly today's (CLV n/a), never an error.
+
+--------------------------------------------------------------------------------
+STEP 4 — Tests + ship
+--------------------------------------------------------------------------------
+- fetch_<book>_odds parses a saved sample into correct leg keys; unmatched
+  selections dropped + counted; non-JSON/blocked -> {} (no crash).
+- capture-close with two mock books -> clv_available=True + a consensus
+  close_ref_odds; with one book -> clv_available=False (unchanged).
+- clv_pct then computes for prop bets that have a consensus reference.
+- Do NOT modify sim/weather/promo/staking; keep all 448 tests green.
+- pytest -q green, ONE commit, update README/memory (second book = <name>; prop
+  CLV now active via 2-book consensus; Betfair still the future H2H upgrade).
+
+ACCEPTANCE: after capture-close, prop bets priced by both books show a real CLV
+vs a consensus reference (not Sportsbet's own price); the dashboard CLV tab lights
+up for props instead of "no sharp reference"; single-book markets still honestly
+read n/a.
+================================================================================
