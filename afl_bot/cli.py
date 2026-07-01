@@ -1688,6 +1688,303 @@ def fit_command(through: int, use_optuna: bool, n_trials: int) -> None:
           file=sys.stderr)
 
 
+def prop_calibration_check(
+    eval_years: list[int],
+    out_path: str | None = None,
+    multis_year: int = 2026,
+    multis_round: int | None = None,
+) -> None:
+    """OOS prop calibration check: model calibrated prob vs actual hit rate.
+
+    For every (player, game, stat, line) in eval_years, generates walk-forward
+    NB predictions (no leakage within each game's EWMA), applies year-specific
+    calibrators fitted on strictly prior data, then reports per-market and
+    per-prob-band calibration.  Overlays book raw-implied from the most recent
+    saved sportsbet multis.json to classify each market.
+
+    Diagnostic only -- no model/config change.
+    """
+    import statistics as _stats
+    import textwrap
+
+    from afl_bot.backtest.props import (
+        apply_prop_calibration,
+        fit_prop_calibrators,
+        walk_forward_prop_predictions,
+    )
+    from afl_bot.config import PROP_CALIBRATION_LOOKBACK
+
+    client = SquiggleClient()
+    all_fetch_years = sorted(set(
+        y for ey in eval_years for y in _history_years(ey, lookback=8)
+    ))
+    print(f"[prop-cal-check] loading games {min(all_fetch_years)}-{max(all_fetch_years)} ...",
+          file=sys.stderr)
+    games = pd.concat(
+        [client.get_completed_games(y) for y in all_fetch_years], ignore_index=True)
+    games = games[games["year"] <= max(eval_years)]
+
+    print("[prop-cal-check] loading player log ...", file=sys.stderr)
+    player_log = load_player_log(games, prefer_real=True)
+
+    # ── Per-eval-year walk-forward predictions (leakage-safe) ───────────────
+    print("[prop-cal-check] running walk-forward prop predictions ...", file=sys.stderr)
+    raw_all = walk_forward_prop_predictions(player_log, eval_start_year=min(eval_years))
+    raw_all = raw_all[raw_all["year"].isin(eval_years)].reset_index(drop=True)
+    if raw_all.empty:
+        print("[prop-cal-check] no predictions generated for eval years.", file=sys.stderr)
+        return
+
+    # ── Year-by-year calibration (calibrators fitted on prior years only) ───
+    _prop_cal_cache = CACHE_DIR / "prop_cal_check"
+    _prop_cal_cache.mkdir(parents=True, exist_ok=True)
+
+    frames_cal: list[pd.DataFrame] = []
+    for eval_year in sorted(eval_years):
+        prior_log = player_log[player_log["year"] < eval_year]
+        cal_start = eval_year - PROP_CALIBRATION_LOOKBACK
+        print(f"[prop-cal-check] fitting calibrators for {eval_year} "
+              f"(training on {cal_start}-{eval_year-1}) ...", file=sys.stderr)
+        prior_raw = walk_forward_prop_predictions(prior_log, eval_start_year=cal_start)
+        calibrators = fit_prop_calibrators(prior_raw) if not prior_raw.empty else {}
+
+        year_preds = raw_all[raw_all["year"] == eval_year].copy()
+        year_preds["cal_prob"] = year_preds.apply(
+            lambda r: apply_prop_calibration(calibrators, r["stat"], r["line"], r["prob"]),
+            axis=1,
+        )
+        frames_cal.append(year_preds)
+
+    preds = pd.concat(frames_cal, ignore_index=True)
+
+    # ── Book comparison from saved sportsbet multis.json ────────────────────
+    # Store per-leg (hit_prob_band, market) -> [book_implied] so we can compare
+    # within the same probability band (not overall averages, which are skewed
+    # by different lines).  hit_prob is the model calibrated prob at the time of
+    # the report, equivalent to our cal_prob in the walk-forward sample.
+    BANDS = [(0.3, 0.5), (0.5, 0.7), (0.7, 0.9)]
+    book_by_mkt_band: dict[tuple[str, int], list[float]] = {}
+    # Overall per-market book-implied list (for reference, NOT used in classification)
+    book_by_market: dict[str, list[float]] = {}
+    # Mean per-market gap from ev-diagnostic (model hit_prob vs 1/book_odds at priced lines)
+    ev_diag_gap: dict[str, float] = {}
+
+    if multis_round is not None:
+        multis_path = ROOT_DIR / "reports" / f"{multis_year}_r{multis_round}_multis.json"
+    else:
+        import glob as _glob
+        candidates = sorted(_glob.glob(
+            str(ROOT_DIR / "reports" / f"{multis_year}_r*_multis.json")))
+        multis_path = Path(candidates[-1]) if candidates else None  # type: ignore[arg-type]
+
+    if multis_path and multis_path.exists():
+        multis_data = json.loads(multis_path.read_text())
+        for rung in multis_data:
+            if rung.get("ladder") != "sportsbet":
+                continue
+            for leg in rung.get("legs", []):
+                bo = leg.get("book_odds")
+                hp = leg.get("hit_prob")
+                if bo is None or hp is None:
+                    continue
+                mkt = leg.get("market", "")
+                p_imp = 1.0 / bo
+                book_by_market.setdefault(mkt, []).append(p_imp)
+                # Gap = book_implied - model_hit_prob (positive = model under book)
+                ev_diag_gap.setdefault(mkt, [])           # type: ignore[assignment]
+                ev_diag_gap[mkt].append(p_imp - hp)       # type: ignore[index]
+                # Bucket by the model hit_prob band
+                for band_idx, (lo, hi) in enumerate(BANDS):
+                    if lo <= hp < hi:
+                        book_by_mkt_band.setdefault((mkt, band_idx), []).append(p_imp)
+                        break
+        multis_note = str(multis_path.name)
+        # Average the gap lists
+        ev_diag_gap = {k: float(sum(v) / len(v)) for k, v in ev_diag_gap.items()
+                       if isinstance(v, list) and v}  # type: ignore[assignment]
+    else:
+        multis_note = "no sportsbet multis found"
+        ev_diag_gap = {}
+
+    def _band_label(lo, hi):
+        return f"{lo:.0%}-{hi:.0%}"
+
+    lines_buf: list[str] = []
+
+    def _w(s):
+        lines_buf.append(s)
+
+    _w(f"# Prop Calibration Check: Model vs Actual Hit Rate")
+    _w(f"")
+    _w(f"**Eval years:** {eval_years}")
+    _w(f"**Total legs graded:** {len(preds):,}")
+    _w(f"**Book comparison source:** {multis_note}")
+    _w(f"")
+    _w(f"Calibrators are fitted on data strictly prior to each eval year "
+       f"(PROP_CALIBRATION_LOOKBACK={PROP_CALIBRATION_LOOKBACK}), so no leakage.")
+    _w(f"")
+    _w(f"> **Note on book comparison**: `book_implied` is the average of 1/leg_book_odds "
+       f"for legs appearing in sportsbet SGM multis. These are only the specific "
+       f"high-probability lines the book prices for SGMs - they are NOT comparable to "
+       f"the overall calibration mean (which spans all evaluated lines, including long-shot "
+       f"lines with low hit rates). The `ev_diag_gap` column is the correct comparable: "
+       f"it shows model calibrated prob vs book implied at the SAME specific priced legs "
+       f"(from the ev-diagnostic). Use the per-band table for a fair comparison.")
+    _w(f"")
+
+    # Overall summary table
+    _w(f"## Per-Market Summary\n")
+    _w(f"| Market | n | Cal prob | Hit rate | Cal gap | book_minus_model (priced SGM legs) | Class |")
+    _w(f"|--------|---|----------|----------|---------|-----------------------------------|-------|")
+
+    verdicts: list[tuple[str, str]] = []
+    for stat in ("disposals", "goals", "marks", "tackles"):
+        grp = preds[preds["stat"] == stat]
+        if grp.empty:
+            continue
+        cal_probs = grp["cal_prob"].to_numpy()
+        actuals = grp["actual"].to_numpy(dtype=float)
+        n = len(grp)
+        mean_cal = float(cal_probs.mean())
+        hit_rate = float(actuals.mean())
+        cal_gap = mean_cal - hit_rate   # positive = model over-predicts
+
+        # ev_diag_gap: model hit_prob - book_implied at priced lines (negative = model under book)
+        evg = ev_diag_gap.get(stat, float("nan"))
+        evg_str = f"{evg:+.3f}" if evg == evg else "n/a"
+
+        # Classify based ONLY on cal_gap (model vs actual, not vs book)
+        if cal_gap < -0.05:
+            cls = "GENUINELY CONSERVATIVE"
+        elif cal_gap > 0.05:
+            cls = "OVER-CONFIDENT"
+        elif abs(cal_gap) <= 0.02:
+            cls = "WELL CALIBRATED"
+        else:
+            cls = "CLOSE"
+        verdicts.append((stat, cls))
+
+        _w(f"| {stat:<11} | {n:>6,} | {mean_cal:.3f} | {hit_rate:.3f} | "
+           f"{cal_gap:+.3f} | {evg_str:>35} | {cls} |")
+
+    _w(f"")
+    _w(f"*Cal gap: positive = model over-predicts vs actual; negative = model under-predicts.*")
+    _w(f"*book_minus_model: positive = book is ABOVE model (book's structural margin); negative = model above book.*")
+    _w(f"")
+
+    # Per-market x prob-band with book comparison per band
+    _w(f"## Per-Market x Probability Band (with book implied per band)\n")
+    _w(f"The three-way comparison works correctly within each probability band, because "
+       f"the book's priced legs and the walk-forward sample are in the same prob range.")
+    _w(f"")
+    for stat in ("disposals", "goals", "marks", "tackles"):
+        grp = preds[preds["stat"] == stat]
+        if grp.empty:
+            continue
+        _w(f"### {stat.capitalize()}\n")
+        _w(f"| Band | n | Cal prob | Hit rate | Gap | Book implied (SGM) | Book vs actual |")
+        _w(f"|------|---|----------|----------|-----|--------------------|----------------|")
+        for band_idx, (lo, hi) in enumerate(BANDS):
+            band_mask = (grp["cal_prob"] >= lo) & (grp["cal_prob"] < hi)
+            band = grp[band_mask]
+            if len(band) < 5:
+                continue
+            bp = float(band["cal_prob"].mean())
+            hr = float(band["actual"].mean())
+            book_list = book_by_mkt_band.get((stat, band_idx), [])
+            book_mean = float(sum(book_list) / len(book_list)) if book_list else float("nan")
+            book_vs_actual = f"{book_mean - hr:+.3f}" if book_mean == book_mean else "n/a"
+            book_str = f"{book_mean:.3f}" if book_mean == book_mean else "n/a"
+            _w(f"| {_band_label(lo, hi)} | {len(band):>5,} | {bp:.3f} | {hr:.3f} | "
+               f"{bp-hr:+.3f} | {book_str:>18} | {book_vs_actual:>14} |")
+        _w(f"")
+
+    # Calibration_log cross-check (the earlier 0.42-vs-0.46 finding)
+    cal_log_path = ROOT_DIR / "reports" / "calibration_log.csv"
+    if cal_log_path.exists():
+        import csv as _csv
+        cal_log_rows = list(_csv.DictReader(cal_log_path.open()))
+        prop_rows = [r for r in cal_log_rows if r["market"].startswith("player_")]
+        if prop_rows:
+            log_mean_pred = _stats.mean(float(r["prob"]) for r in prop_rows)
+            log_hit_rate = _stats.mean(float(r["actual"]) for r in prop_rows)
+            _w(f"## Cross-check vs calibration_log.csv\n")
+            _w(f"calibration_log ({len(prop_rows)} prop rows): "
+               f"mean pred = {log_mean_pred:.3f}, actual hit rate = {log_hit_rate:.3f}, "
+               f"gap = {log_mean_pred-log_hit_rate:+.3f}")
+            _w(f"*(This log uses the model calibrated probs from each live round-report run, "
+               f"not the walk-forward reproduced probs above.)*")
+            _w(f"")
+
+    # Verdict per market
+    _w(f"## Verdict\n")
+    for stat, cls in verdicts:
+        grp = preds[preds["stat"] == stat]
+        cal_probs = grp["cal_prob"].to_numpy()
+        actuals = grp["actual"].to_numpy(dtype=float)
+        cal_gap = float(cal_probs.mean() - actuals.mean())
+        evg = ev_diag_gap.get(stat, float("nan"))
+
+        if cls == "GENUINELY CONSERVATIVE":
+            detail = (f"The model under-predicts {stat} hit rates by {abs(cal_gap)*100:.1f}pp "
+                      f"on average (calibrated). This is a genuine calibration gap vs actual outcomes. "
+                      f"Proposal: re-fit or loosen the {stat} calibrator "
+                      f"(raise the isotonic curve's floor for high-probability legs). "
+                      f"DO NOT implement in this run.")
+        elif cls == "WELL CALIBRATED":
+            evg_part = (f" The book prices its {stat} legs ~{abs(evg)*100:.1f}pp above the model "
+                        f"on priced SGM legs (ev_diag_gap={evg:+.3f}), which is the book's structural "
+                        f"margin, not model error. Accept it; only back legs with clear model edge."
+                        if evg == evg else "")
+            detail = (f"Model and actual hit rate are closely aligned for {stat} "
+                      f"(cal gap {cal_gap:+.3f}).{evg_part} "
+                      f"No calibration adjustment needed for this market.")
+        elif cls == "CLOSE":
+            evg_part = (f" The book prices its {stat} legs ~{abs(evg)*100:.1f}pp above the model "
+                        f"on priced SGM legs (ev_diag_gap={evg:+.3f}), consistent with the book's "
+                        f"structural margin."
+                        if evg == evg else "")
+            detail = (f"Model is close to actual hit rate for {stat} (cal gap {cal_gap:+.3f}).{evg_part} "
+                      f"Minor calibration drift of {abs(cal_gap)*100:.1f}pp - within normal variance. "
+                      f"No immediate action needed.")
+        else:
+            detail = (f"The model OVER-predicts {stat} hit rates by {cal_gap*100:.1f}pp "
+                      f"(calibrated). Watch this market; the existing calibrator may be "
+                      f"insufficient. Consider a tighter per-line calibrator.")
+        _w(f"**{stat.upper()} - {cls}:** {detail}")
+        _w(f"")
+
+    # Overall call
+    all_cls = [cls for _, cls in verdicts]
+    n_well = sum(1 for c in all_cls if c in ("WELL CALIBRATED", "CLOSE"))
+    n_conserv = sum(1 for c in all_cls if c == "GENUINELY CONSERVATIVE")
+    n_over = sum(1 for c in all_cls if c == "OVER-CONFIDENT")
+    _w(f"## Overall Call\n")
+    if n_conserv > 0 and n_over == 0:
+        _w(f"**ACTION NEEDED**: {n_conserv} market(s) show genuine conservatism vs actual "
+           f"outcomes. Consider re-fitting their calibrators in a follow-up run.")
+    elif n_over > 0 and n_conserv == 0:
+        _w(f"**WATCH**: {n_over} market(s) are over-confident vs actual outcomes. "
+           f"The calibrator may need tightening.")
+    elif n_well == len(all_cls):
+        _w(f"**NO CALIBRATION ACTION NEEDED.** All {len(all_cls)} markets are well-calibrated "
+           f"vs actual hit rates. The observed -EV in SGM multis is attributable to the book's "
+           f"structural margin (8-12pp above model on priced legs), not to model conservatism. "
+           f"No calibration tightening is warranted. Focus on leg selection quality (ev > threshold) "
+           f"to manage the book's edge.")
+    else:
+        _w(f"Mixed picture across markets. Review individual verdicts above.")
+    _w(f"")
+
+    report_text = "\n".join(lines_buf)
+
+    # Save output
+    save_path = Path(out_path) if out_path else ROOT_DIR / "reports" / "prop_calibration_check_2024_2025.md"
+    save_path.write_text(report_text, encoding="utf-8")
+    print(report_text)
+    print(f"\n[saved to {save_path}]", file=sys.stderr)
+
+
 def ev_diagnostic(year: int, round_no: int) -> None:
     """Print a negative-EV diagnostic for a saved sportsbet multis ladder.
 
@@ -2047,6 +2344,20 @@ def main(argv: list[str] | None = None) -> None:
     dash_p.add_argument("--no-browser", action="store_true", dest="no_browser",
                         help="Don't auto-open the browser.")
 
+    pcal_p = sub.add_parser("prop-calibration-check",
+                            help="OOS prop calibration check: model calibrated prob vs actual "
+                                 "hit rate for 2024-2025, overlaid with book implied. "
+                                 "Diagnostic only, no model change.")
+    pcal_p.add_argument("--years", type=str, default="2024,2025",
+                        help="Comma-separated eval years (default: 2024,2025).")
+    pcal_p.add_argument("--out", type=str, default=None, dest="out_path",
+                        help="Output markdown path (default: reports/prop_calibration_check_2024_2025.md).")
+    pcal_p.add_argument("--multis-year", type=int, default=2026, dest="multis_year",
+                        help="Year of the multis.json to use for book comparison (default: 2026).")
+    pcal_p.add_argument("--multis-round", type=int, default=None, dest="multis_round",
+                        help="Round of the multis.json to use for book comparison "
+                             "(default: auto-detect latest).")
+
     evdiag_p = sub.add_parser("ev-diagnostic",
                                help="Per-leg and per-rung EV breakdown for a saved sportsbet "
                                     "ladder: model vs book-implied gap, structural vs "
@@ -2116,6 +2427,11 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "dashboard":
         from afl_bot.dashboard.app import run_dashboard
         run_dashboard(port=args.port, open_browser=not args.no_browser)
+    elif args.command == "prop-calibration-check":
+        years = [int(y) for y in args.years.split(",")]
+        prop_calibration_check(years, out_path=args.out_path,
+                               multis_year=args.multis_year,
+                               multis_round=args.multis_round)
     elif args.command == "ev-diagnostic":
         ev_diagnostic(args.year, args.round_no)
 

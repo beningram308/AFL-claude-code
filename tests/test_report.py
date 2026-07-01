@@ -1062,3 +1062,108 @@ def test_ev_diagnostic_missing_file_prints_error(tmp_path, capsys):
 
     err = capsys.readouterr().err
     assert "not found" in err
+
+
+# --------------------------------------------------------------------------- #
+# Prop Calibration Check (prop-calibration-check CLI)                         #
+# --------------------------------------------------------------------------- #
+
+def _make_prop_preds(tmp_path):
+    """Build a minimal walk-forward predictions dataframe for testing."""
+    import pandas as pd
+    rng = np.random.default_rng(42)
+    n = 200
+    # Raw probabilities spread across [0.3, 0.9]; actual outcomes ~ Bernoulli(prob)
+    raw_prob = rng.uniform(0.3, 0.9, n)
+    actual = (rng.random(n) < raw_prob).astype(int)
+    return pd.DataFrame({
+        "year": [2024] * 100 + [2025] * 100,
+        "round": [1] * n,
+        "player": [f"P{i}" for i in range(n)],
+        "stat": ["disposals"] * 50 + ["goals"] * 50 + ["marks"] * 50 + ["tackles"] * 50,
+        "line": [20.0] * 50 + [1.0] * 50 + [4.0] * 50 + [3.0] * 50,
+        "prob": raw_prob,
+        "cal_prob": raw_prob * 0.95,   # mock calibrated (slightly lower)
+        "actual": actual,
+    })
+
+
+def test_prop_calibration_check_gap_formula():
+    # gap = mean_cal_prob - actual_hit_rate (positive = over-predict)
+    preds = _make_prop_preds(None)
+    grp = preds[preds["stat"] == "disposals"]
+    cal_gap = grp["cal_prob"].mean() - grp["actual"].mean()
+    # The gap is well-defined regardless of sign
+    assert isinstance(cal_gap, float)
+    assert -1.0 < cal_gap < 1.0
+
+
+def test_prop_calibration_check_band_bucketing():
+    # Verify that probability bands partition the predictions correctly.
+    preds = _make_prop_preds(None)
+    grp = preds[preds["stat"] == "disposals"]
+    BANDS = [(0.3, 0.5), (0.5, 0.7), (0.7, 0.9)]
+    total_in_bands = sum(
+        ((grp["cal_prob"] >= lo) & (grp["cal_prob"] < hi)).sum()
+        for lo, hi in BANDS
+    )
+    # All 50 disposals rows should fall in one of the three bands (prob in [0.3,0.9))
+    assert total_in_bands == len(grp)
+
+
+def test_prop_calibration_check_saves_file(tmp_path, capsys, monkeypatch):
+    import json as _json
+    import afl_bot.cli as _cli_mod
+    from afl_bot.cli import prop_calibration_check
+
+    # Stub out the heavy computation so the test runs without real data
+    dummy_preds_df = _make_prop_preds(tmp_path)
+
+    import pandas as pd
+
+    def _fake_wfpp(log, *, eval_start_year, **kw):
+        return dummy_preds_df[dummy_preds_df["year"] >= eval_start_year]
+
+    def _fake_load_player_log(games, **kw):
+        return pd.DataFrame({"year": [2023], "round": [1], "player": ["X"],
+                              "disposals": [20.0], "goals": [1.0], "marks": [4.0],
+                              "tackles": [3.0], "team": ["T"], "unixtime": [0]})
+
+    def _fake_games(y):
+        return pd.DataFrame({"year": [y], "round": [1], "hteam": ["A"], "ateam": ["B"],
+                              "hscore": [100], "ascore": [90]})
+
+    import afl_bot.backtest.props as _props_mod
+    orig_wfpp = _props_mod.walk_forward_prop_predictions
+    orig_lpl = _cli_mod.load_player_log
+
+    # Minimal fake fit_prop_calibrators that returns empty dict
+    from afl_bot.backtest.props import fit_prop_calibrators as _real_fit
+
+    orig_root = _cli_mod.ROOT_DIR
+    try:
+        _cli_mod.ROOT_DIR = tmp_path
+        (tmp_path / "reports").mkdir(exist_ok=True)
+        _props_mod.walk_forward_prop_predictions = _fake_wfpp
+        _cli_mod.load_player_log = _fake_load_player_log
+
+        # Patch SquiggleClient to return dummy games
+        class FakeClient:
+            def get_completed_games(self, y):
+                return _fake_games(y)
+        monkeypatch.setattr(_cli_mod, "SquiggleClient", lambda: FakeClient())
+
+        out_path = str(tmp_path / "reports" / "test_cal_check.md")
+        prop_calibration_check([2024, 2025], out_path=out_path,
+                               multis_year=2026, multis_round=None)
+    finally:
+        _props_mod.walk_forward_prop_predictions = orig_wfpp
+        _cli_mod.load_player_log = orig_lpl
+        _cli_mod.ROOT_DIR = orig_root
+
+    import os
+    assert os.path.exists(out_path), "output file should be saved"
+    content = open(out_path, encoding="utf-8").read()
+    assert "Prop Calibration Check" in content
+    assert "disposals" in content
+    assert "Verdict" in content
