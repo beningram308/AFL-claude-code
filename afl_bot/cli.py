@@ -1688,6 +1688,174 @@ def fit_command(through: int, use_optuna: bool, n_trials: int) -> None:
           file=sys.stderr)
 
 
+def ev_diagnostic(year: int, round_no: int) -> None:
+    """Print a negative-EV diagnostic for a saved sportsbet multis ladder.
+
+    For every sportsbet rung, computes:
+      - per-leg gap = book_raw_implied (1/book_odds) - model_hit_prob
+      - book_naive_joint = product of (1/leg_book_odds) per rung
+      - EV split: leg-disagreement component vs structural (margin + SGM loading)
+
+    Diagnostic only — no model change.
+    """
+    import statistics
+
+    multis_path = ROOT_DIR / "reports" / f"{year}_r{round_no}_multis.json"
+    if not multis_path.exists():
+        print(f"ev-diagnostic: {multis_path} not found — run round-report first.",
+              file=sys.stderr)
+        return
+
+    rungs = json.loads(multis_path.read_text())
+    sb_rungs = [r for r in rungs if r.get("ladder") == "sportsbet" and r.get("book_combo")]
+    if not sb_rungs:
+        print("ev-diagnostic: no sportsbet rungs with real book_combo found.", file=sys.stderr)
+        return
+
+    # ── Per-leg analysis ─────────────────────────────────────────────────────
+    # bucket: {market_type -> list of gaps}
+    buckets: dict[str, list[float]] = {}
+    under20_count = 0    # model within 20pp of book
+    under20_40_count = 0  # model 20-40pp under book (calibration concern)
+    over40_count = 0     # model > 40pp under book (extreme)
+    total_legs = 0
+
+    for rung in sb_rungs:
+        for leg in rung.get("legs", []):
+            if "book_odds" not in leg or "hit_prob" not in leg:
+                continue
+            p_implied = 1.0 / leg["book_odds"]
+            gap = p_implied - leg["hit_prob"]   # positive = model under book
+            mtype = leg.get("market", "unknown")
+            buckets.setdefault(mtype, []).append(gap)
+            total_legs += 1
+            abs_gap = abs(gap)
+            if abs_gap < 0.20:
+                under20_count += 1
+            elif abs_gap <= 0.40:
+                under20_40_count += 1
+            else:
+                over40_count += 1
+
+    # ── Per-rung split ───────────────────────────────────────────────────────
+    rung_rows: list[dict] = []
+    for rung in sb_rungs:
+        legs = rung.get("legs", [])
+        if not legs:
+            continue
+        book_naive_joint = 1.0
+        for leg in legs:
+            if "book_odds" in leg:
+                book_naive_joint *= (1.0 / leg["book_odds"])
+
+        model_joint = rung.get("model_joint", 0.0)
+        book_combo = rung.get("book_combo", 0.0)
+        if book_combo <= 0:
+            continue
+
+        # EV components (from model's perspective)
+        total_ev = model_joint * book_combo - 1.0
+        # Leg-disagreement: (model_joint - book_naive_joint) * book_combo
+        leg_disagree_ev = (model_joint - book_naive_joint) * book_combo
+        # Structural: book_naive_joint * book_combo - 1
+        structural_ev = book_naive_joint * book_combo - 1.0
+
+        rung_rows.append({
+            "id": rung["id"],
+            "band": rung.get("band"),
+            "model_joint": model_joint,
+            "book_naive_joint": book_naive_joint,
+            "book_combo": book_combo,
+            "total_ev": total_ev,
+            "leg_disagree_ev": leg_disagree_ev,
+            "structural_ev": structural_ev,
+        })
+
+    # ── Print report ─────────────────────────────────────────────────────────
+    print(f"\n{'=' * 72}")
+    print(f"  EV DIAGNOSTIC  |  {year} R{round_no}  |  {len(sb_rungs)} sportsbet rungs")
+    print(f"{'=' * 72}")
+
+    print(f"\n-- PER-LEG GAP (p_book_implied - model_hit_prob)  [{total_legs} legs] --\n")
+    print(f"  {'Market':<12}  {'n':>4}  {'mean gap':>10}  {'median gap':>11}  {'stdev':>7}")
+    print(f"  {'-'*12}  {'-'*4}  {'-'*10}  {'-'*11}  {'-'*7}")
+    for mtype, gaps in sorted(buckets.items()):
+        n = len(gaps)
+        mean_g = statistics.mean(gaps)
+        median_g = statistics.median(gaps)
+        stdev_g = statistics.stdev(gaps) if n > 1 else 0.0
+        bar = "^" if mean_g > 0.05 else ("~" if abs(mean_g) <= 0.05 else "v")
+        print(f"  {mtype:<12}  {n:>4}  {mean_g:>+10.3f}  {median_g:>+11.3f}  {stdev_g:>7.3f}  {bar}")
+    print()
+    print(f"  Leg gap breakdown: within ±20pp={under20_count}"
+          f"  |  20-40pp under book={under20_40_count}"
+          f"  |  >40pp under book={over40_count}")
+
+    print(f"\n-- PER-RUNG EV SPLIT --\n")
+    print(f"  {'Band':>6}  {'Model%':>8}  {'BookNaive%':>11}  {'Combo':>6}"
+          f"  {'TotalEV':>8}  {'LegDisag':>9}  {'Structural':>11}")
+    print(f"  {'-'*6}  {'-'*8}  {'-'*11}  {'-'*6}  {'-'*8}  {'-'*9}  {'-'*11}")
+    for row in rung_rows:
+        print(f"  {row['band']:>6.2f}"
+              f"  {row['model_joint']*100:>7.1f}%"
+              f"  {row['book_naive_joint']*100:>10.1f}%"
+              f"  {row['book_combo']:>6.2f}"
+              f"  {row['total_ev']:>+8.3f}"
+              f"  {row['leg_disagree_ev']:>+9.3f}"
+              f"  {row['structural_ev']:>+11.3f}")
+
+    # ── Aggregates ────────────────────────────────────────────────────────────
+    all_total_ev = [r["total_ev"] for r in rung_rows]
+    all_leg_dis = [r["leg_disagree_ev"] for r in rung_rows]
+    all_struct = [r["structural_ev"] for r in rung_rows]
+    all_model = [r["model_joint"] for r in rung_rows]
+    all_naive = [r["book_naive_joint"] for r in rung_rows]
+
+    print(f"\n  Avg model joint:      {statistics.mean(all_model)*100:.1f}%")
+    print(f"  Avg book naive joint: {statistics.mean(all_naive)*100:.1f}%")
+    print(f"  Mean total EV:        {statistics.mean(all_total_ev):+.3f}")
+    print(f"  -- leg-disagree component: {statistics.mean(all_leg_dis):+.3f}")
+    print(f"  -- structural component:   {statistics.mean(all_struct):+.3f}")
+
+    # ── Verdict ───────────────────────────────────────────────────────────────
+    mean_gap_all = statistics.mean(g for gaps in buckets.values() for g in gaps)
+    pct_structural = (abs(statistics.mean(all_struct)) /
+                      max(abs(statistics.mean(all_total_ev)), 0.001))
+
+    print(f"\n-- VERDICT --\n")
+    if mean_gap_all > 0.12:
+        calibration_flag = "CALIBRATION CONCERN"
+        detail = (f"The model is on average {mean_gap_all*100:.0f}pp below the book's raw-implied "
+                  f"probability across all legs, which accounts for ~{100-pct_structural*100:.0f}% "
+                  f"of the -EV on the sportsbet ladder. Structural charges (SGM margin + "
+                  f"per-leg book margin) explain only ~{pct_structural*100:.0f}%. "
+                  f"The dominant driver is model conservatism - the hit_prob calibration "
+                  f"consistently under-rates outcomes the book prices as near-locks. "
+                  f"This warrants a follow-up calibration audit (e.g. re-examine LEG_PROB_MAX "
+                  f"capping, the PROP_EWMA_HALFLIFE for short-priced legs, or greasiness "
+                  f"accumulation across correlated legs). Only back priced legs where the "
+                  f"model's edge is clear-cut - the average -EV here is structural + model gap.")
+    elif mean_gap_all > 0.05:
+        calibration_flag = "MIXED"
+        detail = (f"The model is {mean_gap_all*100:.0f}pp below the book's raw-implied average, "
+                  f"a moderate gap. Structural book charges (margin + SGM loading) account for "
+                  f"~{pct_structural*100:.0f}% of total -EV; model-vs-book leg disagreement "
+                  f"accounts for the remainder. Some negative edge is genuine structural book "
+                  f"take - accept it and only back the explicit value picks. The calibration gap "
+                  f"is real but not extreme; monitor whether it persists across multiple rounds "
+                  f"before tuning. No model change in this run.")
+    else:
+        calibration_flag = "STRUCTURAL"
+        detail = (f"The model's per-leg probabilities are close to the book's raw-implied "
+                  f"(mean gap {mean_gap_all*100:.0f}pp). The -EV is mostly structural: "
+                  f"the book's margin + SGM correlation loading (~{pct_structural*100:.0f}% "
+                  f"of total -EV) explains it. This means the model is well-calibrated on "
+                  f"these legs and the negative edge is the book's structural take - "
+                  f"expected, and only value picks (where model clearly beats book implied) "
+                  f"should be backed. No calibration follow-up needed.")
+    print(f"  [{calibration_flag}] {detail}\n")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="afl_bot")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1879,6 +2047,13 @@ def main(argv: list[str] | None = None) -> None:
     dash_p.add_argument("--no-browser", action="store_true", dest="no_browser",
                         help="Don't auto-open the browser.")
 
+    evdiag_p = sub.add_parser("ev-diagnostic",
+                               help="Per-leg and per-rung EV breakdown for a saved sportsbet "
+                                    "ladder: model vs book-implied gap, structural vs "
+                                    "leg-disagreement split. Diagnostic only, no model change.")
+    evdiag_p.add_argument("--year", type=int, required=True)
+    evdiag_p.add_argument("--round", type=int, required=True, dest="round_no")
+
     args = parser.parse_args(argv)
     if args.command == "run-round":
         run_round(args.year, args.round_no, args.odds, args.n_sims,
@@ -1941,6 +2116,8 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "dashboard":
         from afl_bot.dashboard.app import run_dashboard
         run_dashboard(port=args.port, open_browser=not args.no_browser)
+    elif args.command == "ev-diagnostic":
+        ev_diagnostic(args.year, args.round_no)
 
 
 if __name__ == "__main__":
