@@ -26,6 +26,7 @@ from afl_bot.config import (
     BOOKABLE_TOP_N_BY_STAT,
     BONUS_BET_FACTOR,
     MAX_MARKS_LEGS_PER_MULTI,
+    MAX_TACKLE_MARKS_LEGS,
     MULTI_MARKET_SHRINK,
     MULTI_TARGET_ODDS,
     PROMO_MIN_LEGS,
@@ -172,17 +173,22 @@ def build_sgm_candidates(legs: list[LegCandidate], *, min_legs: int = 3, max_leg
                 entry["raw_edge"] = joint * book - 1.0
                 entry["edge"] = shrunk * book - 1.0
             entry["odds"] = entry.get("book_odds", entry["fair_odds"])
-            # Preference score (secondary sort key) and total marks leg count.
+            # Preference score (secondary sort key), marks leg count, and
+            # combined tackles+marks count (for the combined cap filter).
             pref = 0.0
             n_marks = 0
+            n_tackle_marks = 0
             for leg in legs_list:
                 mstat = (leg.market.replace("player_", "")
                          if leg.market.startswith("player_") else leg.market)
                 pref += STAT_PREFERENCE.get(mstat, 0.5)
                 if mstat == "marks":
                     n_marks += 1
+                if mstat in ("marks", "tackles"):
+                    n_tackle_marks += 1
             entry["_pref_score"] = pref
             entry["_n_marks"] = n_marks
+            entry["_n_tackle_marks"] = n_tackle_marks
             combos.append(entry)
     return combos
 
@@ -287,6 +293,8 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
     # Drop combos exceeding the marks cap (ALL marks legs count, priced or not).
     combos = [c for c in combos if c.get("_n_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
+    # Drop combos where combined tackles+marks legs exceed the combined cap.
+    combos = [c for c in combos if c.get("_n_tackle_marks", 0) <= MAX_TACKLE_MARKS_LEGS]
 
     # Stable tie-break key: sorted leg names guarantee the same combo always
     # wins when two candidates score identically on the primary sort key.
@@ -420,6 +428,7 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         pick.pop("_leg_masks", None)
         pick.pop("_pref_score", None)
         pick.pop("_n_marks", None)
+        pick.pop("_n_tackle_marks", None)
         # Suggested stake via multi-outcome Kelly (promo-eligible rungs only).
         if (pick.get("p_all_win") is not None and pick.get("book_odds")
                 and pick.get("total_ev") is not None and pick["total_ev"] > 0):
@@ -480,6 +489,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
                                   odds_book=odds_book, min_joint_prob=min_joint_prob)
     # Drop combos exceeding the marks cap (ALL marks legs count, priced or not).
     combos = [c for c in combos if c.get("_n_marks", 0) <= MAX_MARKS_LEGS_PER_MULTI]
+    # Drop combos where combined tackles+marks legs exceed the combined cap.
+    combos = [c for c in combos if c.get("_n_tackle_marks", 0) <= MAX_TACKLE_MARKS_LEGS]
     priced = [c for c in combos if "book_odds" in c]
     if not priced:
         return []
@@ -545,6 +556,7 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         pick.pop("_leg_masks", None)
         pick.pop("_pref_score", None)
         pick.pop("_n_marks", None)
+        pick.pop("_n_tackle_marks", None)
         if (pick.get("p_all_win") is not None
                 and pick.get("total_ev") is not None and pick["total_ev"] > 0):
             pick["suggested_stake"] = multi_outcome_kelly(

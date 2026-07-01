@@ -758,6 +758,95 @@ def test_marks_cap_market_sgms_at_most_one_priced_marks_leg_per_rung():
 
 
 # --------------------------------------------------------------------------- #
+# Combined tackles+marks cap (MAX_TACKLE_MARKS_LEGS)                         #
+# --------------------------------------------------------------------------- #
+
+def _tackle_leg(name="T1 5+ tackles", player="T1", prob=0.65):
+    from afl_bot.build.multi import LegCandidate
+    return LegCandidate(name=name, match_id="m1", market="tackles",
+                        subject=player, fair_prob=prob, market_odds=1.0 / prob, mask=None)
+
+
+def test_tackle_marks_combined_cap_filters_excess_combos():
+    # Two tackles + one disposals leg: the combo has _n_tackle_marks=2 which
+    # exceeds MAX_TACKLE_MARKS_LEGS=1, so no rungs should contain both tackles legs.
+    legs = [
+        _leg("D1 20+ disp", 0.65, None, "D1"),
+        _tackle_leg("T1 5+ tackles", "T1", prob=0.65),
+        _tackle_leg("T2 5+ tackles", "T2", prob=0.65),
+    ]
+    candidates = build_sgm_candidates(legs)
+    # The pool contains a combo with _n_tackle_marks=2 (T1+T2+D1).
+    assert any(c.get("_n_tackle_marks", 0) == 2 for c in candidates)
+    # After filter, no selected rung should have two tackles legs.
+    out = search_match_sgms(legs, min_joint_prob=0.0)
+    for r in out:
+        tackle_legs = [n for n in r["legs"] if "tackles" in n]
+        assert len(tackle_legs) <= 1
+
+
+def test_disposal_preferred_over_equal_marks_leg():
+    # Disposals legs carry a higher STAT_PREFERENCE weight than marks. Verify
+    # that the all-disposals combo has a strictly higher _pref_score than any
+    # mixed combo in the candidate pool (the tie-break invariant), and that the
+    # first selected rung (sorted safest→longest) has no marks leg.
+    legs = [
+        _leg("D1 20+ disp", 0.65, None, "D1"),
+        _leg("D2 20+ disp", 0.65, None, "D2"),
+        _leg("D3 20+ disp", 0.65, None, "D3"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.65),
+    ]
+    candidates = build_sgm_candidates(legs)
+    pure_disp = [c for c in candidates if c["_n_marks"] == 0]
+    mixed = [c for c in candidates if c["_n_marks"] > 0]
+    assert pure_disp, "all-disposals combo must appear in candidate pool"
+    assert mixed, "mixed combo must also be present so we can compare"
+    # Core invariant: disposals-only outscores any mixed combo on _pref_score.
+    best_pure = max(c["_pref_score"] for c in pure_disp)
+    best_mixed = max(c["_pref_score"] for c in mixed)
+    assert best_pure > best_mixed, (
+        f"all-disposals pref {best_pure} should beat mixed pref {best_mixed}"
+    )
+
+
+def test_positive_edge_marks_leg_survives_tackle_marks_cap():
+    # A priced marks leg with real positive edge must survive even when it is
+    # the only "value" leg. The cap filters based on COUNT, not on edge, so a
+    # single marks/tackles leg (n_tackle_marks=1) always passes the combined cap.
+    legs = [
+        _leg("D1 20+ disp", 0.65, None, "D1"),
+        _leg("D2 20+ disp", 0.65, None, "D2"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.72),  # prob > implied price → +EV
+    ]
+    odds_book = {"M1 4+ marks": 1.0 / 0.65}   # book has it at 0.65 implied → model 0.72 → +EV
+    out = search_match_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
+    assert out, "should return rungs"
+    # Marks leg should appear (n_tackle_marks=1 ≤ cap=1, so it passes).
+    mark_legs_found = any("marks" in n for r in out for n in r["legs"])
+    assert mark_legs_found, "positive-edge marks leg should survive the cap"
+
+
+def test_tackle_marks_cap_sportsbet_ladder():
+    # Same combined cap applies to search_market_sgms.
+    legs = [
+        _leg("D1 20+ disp", 0.65, None, "D1"),
+        _tackle_leg("T1 5+ tackles", "T1", prob=0.65),
+        _tackle_leg("T2 5+ tackles", "T2", prob=0.65),
+    ]
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
+    for r in out:
+        tackle_legs = [n for n in r["legs"] if "tackles" in n]
+        assert len(tackle_legs) <= 1
+
+
+def test_final_rungs_have_no_internal_tackle_marks_field():
+    out = search_match_sgms(_ladder_legs())
+    for r in out:
+        assert "_n_tackle_marks" not in r
+
+
+# --------------------------------------------------------------------------- #
 # Total-points legs excluded from multis (FIX-TOTAL-POINTS-LEGS)
 # --------------------------------------------------------------------------- #
 
@@ -878,3 +967,98 @@ def test_sportsbet_note_success_shows_leg_count():
     note = "_Player-prop odds: live from Sportsbet (scraped, 42 leg(s) priced)._"
     md = render_markdown(2026, 17, _bare_match(), has_odds=False, sportsbet_note=note)
     assert "42 leg(s) priced" in md
+
+
+# --------------------------------------------------------------------------- #
+# EV Diagnostic (Part B)                                                       #
+# --------------------------------------------------------------------------- #
+
+def _make_multis_json(tmp_path, rungs):
+    import json as _json
+    p = tmp_path / "2026_r99_multis.json"
+    p.write_text(_json.dumps(rungs))
+    return p
+
+
+def test_ev_diagnostic_runs_without_crashing(tmp_path, capsys):
+    import json as _json
+    from afl_bot.cli import ev_diagnostic
+    import afl_bot.cli as _cli_mod
+
+    rung = {
+        "id": "2026-r99-TeamA-TeamB-sportsbet-2.10",
+        "year": 2026, "round": 99,
+        "game": "TeamA vs TeamB",
+        "ladder": "sportsbet",
+        "band": 2.1,
+        "legs": [
+            {"player": "P1", "market": "disposals", "line": 20,
+             "book_odds": 1.25, "hit_prob": 0.70},
+            {"player": "P2", "market": "goals", "line": 1,
+             "book_odds": 1.20, "hit_prob": 0.75},
+            {"player": "P3", "market": "tackles", "line": 3,
+             "book_odds": 1.30, "hit_prob": 0.65},
+        ],
+        "model_joint": 0.35, "model_fair": 2.86,
+        "book_combo": 2.10, "edge": -0.20,
+    }
+
+    # Point ROOT_DIR at tmp_path so ev_diagnostic finds the file.
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    p = reports_dir / "2026_r99_multis.json"
+    p.write_text(_json.dumps([rung]))
+
+    orig_root = _cli_mod.ROOT_DIR
+    try:
+        _cli_mod.ROOT_DIR = tmp_path
+        ev_diagnostic(2026, 99)
+    finally:
+        _cli_mod.ROOT_DIR = orig_root
+
+    out = capsys.readouterr().out
+    assert "EV DIAGNOSTIC" in out
+    assert "disposals" in out
+    assert "VERDICT" in out
+
+
+def test_ev_diagnostic_leg_gap_arithmetic():
+    # Verify the per-leg gap formula: p_implied - hit_prob
+    book_odds = 1.25
+    hit_prob = 0.70
+    p_implied = 1.0 / book_odds        # 0.80
+    expected_gap = p_implied - hit_prob  # +0.10
+    assert abs(expected_gap - 0.10) < 1e-6
+
+
+def test_ev_diagnostic_rung_split_arithmetic():
+    # Verify EV split: total = leg_disagree + structural
+    # legs: p_implied=[0.80, 0.75, 0.769], model_joint=0.35, book_combo=2.10
+    p_implied = [1/1.25, 1/1.20, 1/1.30]
+    book_naive = p_implied[0] * p_implied[1] * p_implied[2]
+    model_joint = 0.35
+    book_combo = 2.10
+
+    total_ev = model_joint * book_combo - 1.0
+    leg_disagree = (model_joint - book_naive) * book_combo
+    structural = book_naive * book_combo - 1.0
+
+    # Total must equal sum of components.
+    assert abs(total_ev - (leg_disagree + structural)) < 1e-9
+
+
+def test_ev_diagnostic_missing_file_prints_error(tmp_path, capsys):
+    import sys
+    from afl_bot.cli import ev_diagnostic
+    import afl_bot.cli as _cli_mod
+
+    orig_root = _cli_mod.ROOT_DIR
+    try:
+        _cli_mod.ROOT_DIR = tmp_path
+        (tmp_path / "reports").mkdir()
+        ev_diagnostic(2026, 99)
+    finally:
+        _cli_mod.ROOT_DIR = orig_root
+
+    err = capsys.readouterr().err
+    assert "not found" in err

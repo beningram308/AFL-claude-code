@@ -335,6 +335,9 @@ STAT_PREFERENCE = {"disposals": 1.0, "goals": 0.85, "tackles": 0.7, "marks": 0.3
 # Hard cap on MODEL-ONLY marks legs per multi (a leg with a real book price is exempt).
 # Set to 0 to remove model-only marks entirely; 1 allows at most one per rung.
 MAX_MARKS_LEGS_PER_MULTI = 1
+# Combined hard cap: tackles + marks legs per multi. Default 1 means a rung can
+# have at most ONE tackle-or-marks leg total. Set higher to relax.
+MAX_TACKLE_MARKS_LEGS = 1
 
 # ----------------------------------------------------------------------------- #
 # Simulation
