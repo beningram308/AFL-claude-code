@@ -206,3 +206,28 @@ def test_prop_halflife_sweep_metrics_are_finite():
     result = prop_halflife_sweep(LOG, eval_years=[2024], halflives=[6.0, 10.0])
     for col in ["log_loss", "brier", "ece"]:
         assert result[col].apply(np.isfinite).all(), f"{col} has non-finite values"
+
+
+# ── Part 5: stale-calibrator guard ───────────────────────────────────────────
+
+def test_load_or_fit_prop_calibrators_saves_fitted_max_year(tmp_path):
+    load_or_fit_prop_calibrators(LOG, eval_start_year=2023, cache_dir=tmp_path)
+    data = json.loads((tmp_path / "prop_calibrators.json").read_text())
+    assert "_fitted_max_year" in data
+    assert data["_fitted_max_year"] == int(LOG["year"].max())
+
+
+def test_load_or_fit_prop_calibrators_warns_when_log_newer_than_cache(tmp_path, capsys):
+    load_or_fit_prop_calibrators(LOG, eval_start_year=2023, cache_dir=tmp_path)
+    stale_log = LOG.copy()
+    stale_log["year"] = stale_log["year"].max() + 1  # simulate new season
+    load_or_fit_prop_calibrators(stale_log, eval_start_year=2023, cache_dir=tmp_path)
+    captured = capsys.readouterr()
+    assert "stale" in captured.err.lower() or "WARNING" in captured.err
+
+
+def test_load_or_fit_prop_calibrators_no_warning_when_log_matches_cache(tmp_path, capsys):
+    load_or_fit_prop_calibrators(LOG, eval_start_year=2023, cache_dir=tmp_path)
+    load_or_fit_prop_calibrators(LOG, eval_start_year=2023, cache_dir=tmp_path)
+    captured = capsys.readouterr()
+    assert "stale" not in captured.err.lower()

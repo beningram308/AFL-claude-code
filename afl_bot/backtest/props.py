@@ -198,13 +198,24 @@ def load_or_fit_prop_calibrators(log: pd.DataFrame, *, eval_start_year: int,
     if path.exists() and not effective_refresh:
         data = json.loads(path.read_text())
         if data.get("_version") == CALIBRATOR_CACHE_VERSION:
+            fitted_max_year = data.get("_fitted_max_year")
+            if fitted_max_year is not None and "year" in log.columns:
+                log_max_year = int(log["year"].max())
+                if log_max_year > fitted_max_year:
+                    import sys
+                    print(
+                        f"WARNING: {path.name} was fitted through {fitted_max_year} but "
+                        f"player log now has data through {log_max_year}. "
+                        f"Run `python -m afl_bot.cli fit` (or rerun round-report) to refit.",
+                        file=sys.stderr,
+                    )
             return {
                 stat: {
                     "pooled": IsotonicCalibrator.from_dict(entry["pooled"]),
                     "lines": {float(line): IsotonicCalibrator.from_dict(d)
                               for line, d in entry["lines"].items()},
                 }
-                for stat, entry in data.items() if stat != "_version"
+                for stat, entry in data.items() if stat not in ("_version", "_fitted_max_year")
             }
         # Stale pre-Phase-3.2 flat {stat: calibrator} cache -- refit below.
 
@@ -213,9 +224,11 @@ def load_or_fit_prop_calibrators(log: pd.DataFrame, *, eval_start_year: int,
     if preds.empty:
         return {}
     calibrators = fit_prop_calibrators(preds)
+    fitted_max_year = int(preds["year"].max()) if not preds.empty and "year" in preds.columns else None
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({
         "_version": CALIBRATOR_CACHE_VERSION,
+        "_fitted_max_year": fitted_max_year,
         **{
             stat: {
                 "pooled": entry["pooled"].to_dict(),
