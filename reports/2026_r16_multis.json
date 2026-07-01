@@ -1,0 +1,1622 @@
+[
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-model-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "model",
+    "band": 2.1,
+    "legs": [
+      {
+        "player": "Ollie Wines",
+        "market": "tackles",
+        "line": 3,
+        "name": "Ollie Wines 3+ tackles",
+        "book_odds": 1.11,
+        "hit_prob": 0.8086
+      },
+      {
+        "player": "Logan Evans",
+        "market": "disposals",
+        "line": 15,
+        "name": "Logan Evans 15+ disposals",
+        "book_odds": 1.17,
+        "hit_prob": 0.7491
+      },
+      {
+        "player": "Sam Berry",
+        "market": "tackles",
+        "line": 6,
+        "name": "Sam Berry 6+ tackles",
+        "book_odds": 1.08,
+        "hit_prob": 0.7852
+      }
+    ],
+    "model_joint": 0.4756494519442633,
+    "model_fair": 2.10238863077084,
+    "book_combo": 1.402596,
+    "edge": -0.24964198597558807,
+    "p_all_win": 0.3795,
+    "p_one_loss": 0.4304,
+    "promo_ev": 0.3228,
+    "total_ev": 0.07315801402441191,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-model-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "model",
+    "band": 2.75,
+    "legs": [
+      {
+        "player": "Jase Burgoyne",
+        "market": "tackles",
+        "line": 3,
+        "name": "Jase Burgoyne 3+ tackles",
+        "book_odds": 1.23,
+        "hit_prob": 0.7081
+      },
+      {
+        "player": "James Peatling",
+        "market": "disposals",
+        "line": 15,
+        "name": "James Peatling 15+ disposals",
+        "book_odds": 1.08,
+        "hit_prob": 0.8063
+      },
+      {
+        "player": "Alex Neal-Bullen",
+        "market": "marks",
+        "line": 4,
+        "name": "Alex Neal-Bullen 4+ marks",
+        "book_odds": 1.24,
+        "hit_prob": 0.6369
+      }
+    ],
+    "model_joint": 0.3635985894494601,
+    "model_fair": 2.750285696966377,
+    "book_combo": 1.647216,
+    "edge": -0.3008059394110635,
+    "p_all_win": 0.2275,
+    "p_one_loss": 0.44012,
+    "promo_ev": 0.33009,
+    "total_ev": 0.02928406058893651,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-model-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "model",
+    "band": 3.5,
+    "legs": [
+      {
+        "player": "Zak Butters",
+        "market": "disposals",
+        "line": 25,
+        "name": "Zak Butters 25+ disposals",
+        "book_odds": 1.2,
+        "hit_prob": 0.7188
+      },
+      {
+        "player": "Jordan Dawson",
+        "market": "tackles",
+        "line": 6,
+        "name": "Jordan Dawson 6+ tackles",
+        "book_odds": 1.39,
+        "hit_prob": 0.6592
+      },
+      {
+        "player": "Josh Rachele",
+        "market": "tackles",
+        "line": 3,
+        "name": "Josh Rachele 3+ tackles",
+        "book_odds": 1.52,
+        "hit_prob": 0.6029
+      }
+    ],
+    "model_joint": 0.28570651729333457,
+    "model_fair": 3.500095165744158,
+    "book_combo": 2.53536,
+    "edge": -0.20672334323637853,
+    "p_all_win": 0.26596,
+    "p_one_loss": 0.40986,
+    "promo_ev": 0.307395,
+    "total_ev": 0.10067165676362144,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-model-5.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "model",
+    "band": 5.0,
+    "legs": [
+      {
+        "player": "Willem Drew",
+        "market": "tackles",
+        "line": 7,
+        "name": "Willem Drew 7+ tackles",
+        "book_odds": 1.73,
+        "hit_prob": 0.5194
+      },
+      {
+        "player": "Wayne Milera",
+        "market": "disposals",
+        "line": 20,
+        "name": "Wayne Milera 20+ disposals",
+        "book_odds": null,
+        "hit_prob": 0.6509
+      },
+      {
+        "player": "Josh Rachele",
+        "market": "disposals",
+        "line": 15,
+        "name": "Josh Rachele 15+ disposals",
+        "book_odds": 1.42,
+        "hit_prob": 0.5916
+      }
+    ],
+    "model_joint": 0.19999891003746434,
+    "model_fair": 5.000027249211895,
+    "book_combo": null,
+    "edge": null,
+    "p_all_win": 0.13602,
+    "p_one_loss": 0.3671,
+    "promo_ev": 0.275325,
+    "total_ev": 0.275325,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-model-15.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "model",
+    "band": 15.0,
+    "legs": [
+      {
+        "player": "Port Adelaide",
+        "market": "h2h",
+        "line": null,
+        "name": "Port Adelaide to win",
+        "book_odds": 3.85,
+        "hit_prob": 0.4178
+      },
+      {
+        "player": "Ollie Wines",
+        "market": "tackles",
+        "line": 3,
+        "name": "Ollie Wines 3+ tackles",
+        "book_odds": 1.11,
+        "hit_prob": 0.8086
+      },
+      {
+        "player": "Josh Rachele",
+        "market": "goals",
+        "line": 2,
+        "name": "Josh Rachele 2+ goals",
+        "book_odds": 1.78,
+        "hit_prob": 0.4645
+      }
+    ],
+    "model_joint": 0.15690142678474767,
+    "model_fair": 6.373428339640884,
+    "book_combo": 7.60683,
+    "edge": 0.14514186023176667,
+    "p_all_win": 0.08552,
+    "p_one_loss": 0.47994,
+    "promo_ev": 0.35995499999999997,
+    "total_ev": 0.5050968602317667,
+    "suggested_stake": 0.0006339625565932002,
+    "value_pick": true,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-model-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "model",
+    "band": 8.0,
+    "legs": [
+      {
+        "player": "Adelaide",
+        "market": "h2h",
+        "line": null,
+        "name": "Adelaide to win",
+        "book_odds": 1.25,
+        "hit_prob": 0.5719
+      },
+      {
+        "player": "Jase Burgoyne",
+        "market": "tackles",
+        "line": 4,
+        "name": "Jase Burgoyne 4+ tackles",
+        "book_odds": 1.63,
+        "hit_prob": 0.4705
+      },
+      {
+        "player": "Josh Rachele",
+        "market": "goals",
+        "line": 2,
+        "name": "Josh Rachele 2+ goals",
+        "book_odds": 1.78,
+        "hit_prob": 0.4645
+      }
+    ],
+    "model_joint": 0.12499541507933001,
+    "model_fair": 8.00029344568628,
+    "book_combo": 3.6267499999999995,
+    "edge": -0.41000465877077985,
+    "p_all_win": 0.079,
+    "p_one_loss": 0.30848,
+    "promo_ev": 0.23135999999999998,
+    "total_ev": -0.17864465877077987,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "band": 2.1,
+    "legs": [
+      {
+        "player": "Zak Butters",
+        "market": "disposals",
+        "line": 25,
+        "name": "Zak Butters 25+ disposals",
+        "book_odds": 1.2,
+        "hit_prob": 0.7188
+      },
+      {
+        "player": "Jase Burgoyne",
+        "market": "disposals",
+        "line": 20,
+        "name": "Jase Burgoyne 20+ disposals",
+        "book_odds": 1.4,
+        "hit_prob": 0.6046
+      },
+      {
+        "player": "Brayden Cook",
+        "market": "disposals",
+        "line": 15,
+        "name": "Brayden Cook 15+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.6713
+      }
+    ],
+    "model_joint": 0.15234,
+    "model_fair": 6.564264145989235,
+    "book_combo": 2.1,
+    "edge": -0.5100644999999999,
+    "p_all_win": 0.15234,
+    "p_one_loss": 0.36686,
+    "promo_ev": 0.27514500000000003,
+    "total_ev": -0.2349194999999999,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "band": 2.75,
+    "legs": [
+      {
+        "player": "Jase Burgoyne",
+        "market": "tackles",
+        "line": 4,
+        "name": "Jase Burgoyne 4+ tackles",
+        "book_odds": 1.63,
+        "hit_prob": 0.4705
+      },
+      {
+        "player": "Logan Evans",
+        "market": "marks",
+        "line": 5,
+        "name": "Logan Evans 5+ marks",
+        "book_odds": 1.52,
+        "hit_prob": 0.5599
+      },
+      {
+        "player": "Rory Laird",
+        "market": "disposals",
+        "line": 20,
+        "name": "Rory Laird 20+ disposals",
+        "book_odds": 1.11,
+        "hit_prob": 0.8003
+      }
+    ],
+    "model_joint": 0.1024,
+    "model_fair": 9.765625,
+    "book_combo": 2.750136,
+    "edge": -0.5387895551999999,
+    "p_all_win": 0.1024,
+    "p_one_loss": 0.35622,
+    "promo_ev": 0.267165,
+    "total_ev": -0.27162455519999995,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "band": 3.5,
+    "legs": [
+      {
+        "player": "Ollie Wines",
+        "market": "marks",
+        "line": 4,
+        "name": "Ollie Wines 4+ marks",
+        "book_odds": 1.69,
+        "hit_prob": 0.4904
+      },
+      {
+        "player": "Logan Evans",
+        "market": "tackles",
+        "line": 3,
+        "name": "Logan Evans 3+ tackles",
+        "book_odds": 1.49,
+        "hit_prob": 0.5201
+      },
+      {
+        "player": "Jordan Dawson",
+        "market": "tackles",
+        "line": 6,
+        "name": "Jordan Dawson 6+ tackles",
+        "book_odds": 1.39,
+        "hit_prob": 0.6592
+      }
+    ],
+    "model_joint": 0.09238,
+    "model_fair": 10.824853864472828,
+    "book_combo": 3.5001589999999996,
+    "edge": -0.507491483685,
+    "p_all_win": 0.09238,
+    "p_one_loss": 0.35114,
+    "promo_ev": 0.263355,
+    "total_ev": -0.24413648368499996,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-5.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "band": 5.0,
+    "legs": [
+      {
+        "player": "Jason Horne-Francis",
+        "market": "goals",
+        "line": 2,
+        "name": "Jason Horne-Francis 2+ goals",
+        "book_odds": 2.85,
+        "hit_prob": 0.3392
+      },
+      {
+        "player": "Willem Drew",
+        "market": "tackles",
+        "line": 6,
+        "name": "Willem Drew 6+ tackles",
+        "book_odds": 1.36,
+        "hit_prob": 0.6682
+      },
+      {
+        "player": "Alex Neal-Bullen",
+        "market": "tackles",
+        "line": 4,
+        "name": "Alex Neal-Bullen 4+ tackles",
+        "book_odds": 1.29,
+        "hit_prob": 0.6476
+      }
+    ],
+    "model_joint": 0.1124,
+    "model_fair": 8.896797153024911,
+    "book_combo": 5.00004,
+    "edge": -0.328496628,
+    "p_all_win": 0.1124,
+    "p_one_loss": 0.3963,
+    "promo_ev": 0.29722499999999996,
+    "total_ev": -0.03127162800000005,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-15.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "band": 15.0,
+    "legs": [
+      {
+        "player": "Port Adelaide",
+        "market": "h2h",
+        "line": null,
+        "name": "Port Adelaide to win",
+        "book_odds": 3.85,
+        "hit_prob": 0.4178
+      },
+      {
+        "player": "Rory Laird",
+        "market": "tackles",
+        "line": 3,
+        "name": "Rory Laird 3+ tackles",
+        "book_odds": 1.4,
+        "hit_prob": 0.6769
+      },
+      {
+        "player": "Izak Rankine",
+        "market": "goals",
+        "line": 1,
+        "name": "Izak Rankine 1+ goals",
+        "book_odds": 1.37,
+        "hit_prob": 0.6608
+      }
+    ],
+    "model_joint": 0.1614,
+    "model_fair": 6.195786864931847,
+    "book_combo": 7.3843000000000005,
+    "edge": 0.143869515,
+    "p_all_win": 0.1614,
+    "p_one_loss": 0.48592,
+    "promo_ev": 0.36444,
+    "total_ev": 0.508309515,
+    "suggested_stake": 0.0358739457048616,
+    "value_pick": true,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "band": 8.0,
+    "legs": [
+      {
+        "player": "Port Adelaide",
+        "market": "h2h",
+        "line": null,
+        "name": "Port Adelaide to win",
+        "book_odds": 3.85,
+        "hit_prob": 0.4178
+      },
+      {
+        "player": "Jase Burgoyne",
+        "market": "tackles",
+        "line": 3,
+        "name": "Jase Burgoyne 3+ tackles",
+        "book_odds": 1.23,
+        "hit_prob": 0.7081
+      },
+      {
+        "player": "Ollie Wines",
+        "market": "marks",
+        "line": 4,
+        "name": "Ollie Wines 4+ marks",
+        "book_odds": 1.69,
+        "hit_prob": 0.4904
+      }
+    ],
+    "model_joint": 0.09502,
+    "model_fair": 10.524100189433804,
+    "book_combo": 8.002995,
+    "edge": -0.17966656132500003,
+    "p_all_win": 0.09502,
+    "p_one_loss": 0.36506,
+    "promo_ev": 0.273795,
+    "total_ev": 0.09412843867499998,
+    "suggested_stake": 0.0017072790840637745,
+    "value_pick": false,
+    "greasiness": 0.36
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-model-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "model",
+    "band": 2.1,
+    "legs": [
+      {
+        "player": "Harry Sheezel",
+        "market": "disposals",
+        "line": 25,
+        "name": "Harry Sheezel 25+ disposals",
+        "book_odds": 1.11,
+        "hit_prob": 0.8169
+      },
+      {
+        "player": "Caleb Daniel",
+        "market": "disposals",
+        "line": 20,
+        "name": "Caleb Daniel 20+ disposals",
+        "book_odds": null,
+        "hit_prob": 0.7729
+      },
+      {
+        "player": "Jye Caldwell",
+        "market": "tackles",
+        "line": 4,
+        "name": "Jye Caldwell 4+ tackles",
+        "book_odds": 1.21,
+        "hit_prob": 0.7424
+      }
+    ],
+    "model_joint": 0.46874993108617513,
+    "model_fair": 2.1333336469678534,
+    "book_combo": null,
+    "edge": null,
+    "p_all_win": 0.39656,
+    "p_one_loss": 0.4074,
+    "promo_ev": 0.30555,
+    "total_ev": 0.30555,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-model-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "model",
+    "band": 2.75,
+    "legs": [
+      {
+        "player": "Harry Sheezel",
+        "market": "tackles",
+        "line": 3,
+        "name": "Harry Sheezel 3+ tackles",
+        "book_odds": 1.24,
+        "hit_prob": 0.7295
+      },
+      {
+        "player": "Luke Parker",
+        "market": "disposals",
+        "line": 25,
+        "name": "Luke Parker 25+ disposals",
+        "book_odds": 1.33,
+        "hit_prob": 0.6714
+      },
+      {
+        "player": "Jye Caldwell",
+        "market": "tackles",
+        "line": 4,
+        "name": "Jye Caldwell 4+ tackles",
+        "book_odds": 1.21,
+        "hit_prob": 0.7424
+      }
+    ],
+    "model_joint": 0.3636342534228912,
+    "model_fair": 2.7500159585819945,
+    "book_combo": 1.9955319999999999,
+    "edge": -0.20576715824888336,
+    "p_all_win": 0.28942,
+    "p_one_loss": 0.44614,
+    "promo_ev": 0.334605,
+    "total_ev": 0.12883784175111662,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-model-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "model",
+    "band": 3.5,
+    "legs": [
+      {
+        "player": "Harry Sheezel",
+        "market": "disposals",
+        "line": 30,
+        "name": "Harry Sheezel 30+ disposals",
+        "book_odds": 1.49,
+        "hit_prob": 0.5698
+      },
+      {
+        "player": "Will Setterfield",
+        "market": "tackles",
+        "line": 5,
+        "name": "Will Setterfield 5+ tackles",
+        "book_odds": 1.35,
+        "hit_prob": 0.6543
+      },
+      {
+        "player": "Jye Caldwell",
+        "market": "disposals",
+        "line": 15,
+        "name": "Jye Caldwell 15+ disposals",
+        "book_odds": 1.13,
+        "hit_prob": 0.7662
+      }
+    ],
+    "model_joint": 0.28566514584775826,
+    "model_fair": 3.5006020669141686,
+    "book_combo": 2.2729950000000003,
+    "edge": -0.26301341386033106,
+    "p_all_win": 0.20032,
+    "p_one_loss": 0.41458,
+    "promo_ev": 0.310935,
+    "total_ev": 0.04792158613966896,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-model-5.00",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "model",
+    "band": 5.0,
+    "legs": [
+      {
+        "player": "Harry Sheezel",
+        "market": "tackles",
+        "line": 3,
+        "name": "Harry Sheezel 3+ tackles",
+        "book_odds": 1.24,
+        "hit_prob": 0.7295
+      },
+      {
+        "player": "Finn O'Sullivan",
+        "market": "marks",
+        "line": 5,
+        "name": "Finn O'Sullivan 5+ marks",
+        "book_odds": 1.64,
+        "hit_prob": 0.5871
+      },
+      {
+        "player": "George Wardlaw",
+        "market": "tackles",
+        "line": 5,
+        "name": "George Wardlaw 5+ tackles",
+        "book_odds": 1.68,
+        "hit_prob": 0.4669
+      }
+    ],
+    "model_joint": 0.19998367510732876,
+    "model_fair": 5.0004081556322655,
+    "book_combo": 3.4164479999999995,
+    "edge": -0.23757462986018774,
+    "p_all_win": 0.17778,
+    "p_one_loss": 0.42284,
+    "promo_ev": 0.31713,
+    "total_ev": 0.07955537013981229,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-model-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "model",
+    "band": 8.0,
+    "legs": [
+      {
+        "player": "Luke Davies-Uniacke",
+        "market": "marks",
+        "line": 5,
+        "name": "Luke Davies-Uniacke 5+ marks",
+        "book_odds": 1.81,
+        "hit_prob": 0.5035
+      },
+      {
+        "player": "Finn O'Sullivan",
+        "market": "disposals",
+        "line": 20,
+        "name": "Finn O'Sullivan 20+ disposals",
+        "book_odds": 1.63,
+        "hit_prob": 0.5426
+      },
+      {
+        "player": "Will Setterfield",
+        "market": "tackles",
+        "line": 6,
+        "name": "Will Setterfield 6+ tackles",
+        "book_odds": 1.74,
+        "hit_prob": 0.4575
+      }
+    ],
+    "model_joint": 0.12499771592793056,
+    "model_fair": 8.00014618328359,
+    "book_combo": 5.133522,
+    "edge": -0.26874110650066363,
+    "p_all_win": 0.09118,
+    "p_one_loss": 0.31718,
+    "promo_ev": 0.237885,
+    "total_ev": -0.030856106500663616,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-model-15.00",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "model",
+    "band": 15.0,
+    "legs": [
+      {
+        "player": "George Wardlaw",
+        "market": "goals",
+        "line": 1,
+        "name": "George Wardlaw 1+ goals",
+        "book_odds": 2.45,
+        "hit_prob": 0.445
+      },
+      {
+        "player": "Darcy Parish",
+        "market": "tackles",
+        "line": 3,
+        "name": "Darcy Parish 3+ tackles",
+        "book_odds": 1.66,
+        "hit_prob": 0.5889
+      },
+      {
+        "player": "Jye Caldwell",
+        "market": "goals",
+        "line": 1,
+        "name": "Jye Caldwell 1+ goals",
+        "book_odds": 2.8,
+        "hit_prob": 0.3869
+      }
+    ],
+    "model_joint": 0.10138676643804578,
+    "model_fair": 9.863220172931229,
+    "book_combo": 11.387599999999999,
+    "edge": 0.11591395611741762,
+    "p_all_win": 0.17532,
+    "p_one_loss": 0.42146,
+    "promo_ev": 0.316095,
+    "total_ev": 0.43200895611741763,
+    "suggested_stake": 0.047861467783332744,
+    "value_pick": true,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-sportsbet-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "sportsbet",
+    "band": 2.1,
+    "legs": [
+      {
+        "player": "North Melbourne",
+        "market": "h2h",
+        "line": null,
+        "name": "North Melbourne to win",
+        "book_odds": 1.46,
+        "hit_prob": 0.6347
+      },
+      {
+        "player": "Harry Sheezel",
+        "market": "tackles",
+        "line": 3,
+        "name": "Harry Sheezel 3+ tackles",
+        "book_odds": 1.24,
+        "hit_prob": 0.7295
+      },
+      {
+        "player": "Colby McKercher",
+        "market": "marks",
+        "line": 4,
+        "name": "Colby McKercher 4+ marks",
+        "book_odds": 1.16,
+        "hit_prob": 0.7096
+      }
+    ],
+    "model_joint": 0.27046,
+    "model_fair": 3.697404422095689,
+    "book_combo": 2.1000639999999997,
+    "edge": -0.3240125179200001,
+    "p_all_win": 0.27046,
+    "p_one_loss": 0.44454,
+    "promo_ev": 0.333405,
+    "total_ev": 0.009392482079999931,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-sportsbet-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "sportsbet",
+    "band": 2.75,
+    "legs": [
+      {
+        "player": "Luke Davies-Uniacke",
+        "market": "tackles",
+        "line": 4,
+        "name": "Luke Davies-Uniacke 4+ tackles",
+        "book_odds": 1.29,
+        "hit_prob": 0.6288
+      },
+      {
+        "player": "Colby McKercher",
+        "market": "disposals",
+        "line": 20,
+        "name": "Colby McKercher 20+ disposals",
+        "book_odds": 1.3,
+        "hit_prob": 0.7257
+      },
+      {
+        "player": "Finn O'Sullivan",
+        "market": "marks",
+        "line": 5,
+        "name": "Finn O'Sullivan 5+ marks",
+        "book_odds": 1.64,
+        "hit_prob": 0.5871
+      }
+    ],
+    "model_joint": 0.21792,
+    "model_fair": 4.588839941262849,
+    "book_combo": 2.75028,
+    "edge": -0.3004942368,
+    "p_all_win": 0.21792,
+    "p_one_loss": 0.4291,
+    "promo_ev": 0.32182499999999997,
+    "total_ev": 0.02133076319999999,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-sportsbet-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "sportsbet",
+    "band": 3.5,
+    "legs": [
+      {
+        "player": "Harry Sheezel",
+        "market": "disposals",
+        "line": 30,
+        "name": "Harry Sheezel 30+ disposals",
+        "book_odds": 1.49,
+        "hit_prob": 0.5698
+      },
+      {
+        "player": "Luke Davies-Uniacke",
+        "market": "marks",
+        "line": 4,
+        "name": "Luke Davies-Uniacke 4+ marks",
+        "book_odds": 1.35,
+        "hit_prob": 0.706
+      },
+      {
+        "player": "Will Setterfield",
+        "market": "tackles",
+        "line": 6,
+        "name": "Will Setterfield 6+ tackles",
+        "book_odds": 1.74,
+        "hit_prob": 0.4575
+      }
+    ],
+    "model_joint": 0.13516,
+    "model_fair": 7.39863865048831,
+    "book_combo": 3.5000100000000005,
+    "edge": -0.3952039863,
+    "p_all_win": 0.13516,
+    "p_one_loss": 0.3966,
+    "promo_ev": 0.29745,
+    "total_ev": -0.09775398629999998,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-sportsbet-15.00",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "sportsbet",
+    "band": 15.0,
+    "legs": [
+      {
+        "player": "Harry Sheezel",
+        "market": "tackles",
+        "line": 3,
+        "name": "Harry Sheezel 3+ tackles",
+        "book_odds": 1.24,
+        "hit_prob": 0.7295
+      },
+      {
+        "player": "Zach Merrett",
+        "market": "tackles",
+        "line": 4,
+        "name": "Zach Merrett 4+ tackles",
+        "book_odds": 1.24,
+        "hit_prob": 0.7311
+      },
+      {
+        "player": "Jye Caldwell",
+        "market": "goals",
+        "line": 1,
+        "name": "Jye Caldwell 1+ goals",
+        "book_odds": 2.8,
+        "hit_prob": 0.3869
+      }
+    ],
+    "model_joint": 0.27788,
+    "model_fair": 3.5986756873470562,
+    "book_combo": 4.30528,
+    "edge": 0.1472634048000001,
+    "p_all_win": 0.27788,
+    "p_one_loss": 0.46724,
+    "promo_ev": 0.35043,
+    "total_ev": 0.4976934048000001,
+    "suggested_stake": 0.05,
+    "value_pick": true,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-sportsbet-5.00",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "sportsbet",
+    "band": 5.0,
+    "legs": [
+      {
+        "player": "Luke Davies-Uniacke",
+        "market": "disposals",
+        "line": 25,
+        "name": "Luke Davies-Uniacke 25+ disposals",
+        "book_odds": 1.62,
+        "hit_prob": 0.5965
+      },
+      {
+        "player": "Dylan Stephens",
+        "market": "disposals",
+        "line": 20,
+        "name": "Dylan Stephens 20+ disposals",
+        "book_odds": 1.86,
+        "hit_prob": 0.5233
+      },
+      {
+        "player": "Darcy Parish",
+        "market": "tackles",
+        "line": 3,
+        "name": "Darcy Parish 3+ tackles",
+        "book_odds": 1.66,
+        "hit_prob": 0.5889
+      }
+    ],
+    "model_joint": 0.21246,
+    "model_fair": 4.706768332862656,
+    "book_combo": 5.001912,
+    "edge": 0.04702966764000016,
+    "p_all_win": 0.21246,
+    "p_one_loss": 0.40454,
+    "promo_ev": 0.30340500000000004,
+    "total_ev": 0.3504346676400002,
+    "suggested_stake": 0.03433155402743702,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-North_Melbourne-Essendon-sportsbet-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "North Melbourne vs Essendon",
+    "ladder": "sportsbet",
+    "band": 8.0,
+    "legs": [
+      {
+        "player": "Luke Davies-Uniacke",
+        "market": "disposals",
+        "line": 30,
+        "name": "Luke Davies-Uniacke 30+ disposals",
+        "book_odds": 3.4,
+        "hit_prob": 0.2948
+      },
+      {
+        "player": "Jy Simpkin",
+        "market": "marks",
+        "line": 6,
+        "name": "Jy Simpkin 6+ marks",
+        "book_odds": 1.48,
+        "hit_prob": 0.5719
+      },
+      {
+        "player": "Zach Merrett",
+        "market": "tackles",
+        "line": 5,
+        "name": "Zach Merrett 5+ tackles",
+        "book_odds": 1.59,
+        "hit_prob": 0.5228
+      }
+    ],
+    "model_joint": 0.0697,
+    "model_fair": 14.347202295552368,
+    "book_combo": 8.00088,
+    "edge": -0.33175399800000005,
+    "p_all_win": 0.0697,
+    "p_one_loss": 0.2825,
+    "promo_ev": 0.21187499999999998,
+    "total_ev": -0.11987899800000007,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.0
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-model-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "model",
+    "band": 2.1,
+    "legs": [
+      {
+        "player": "Fremantle",
+        "market": "h2h",
+        "line": null,
+        "name": "Fremantle to win",
+        "book_odds": 1.18,
+        "hit_prob": 0.7346
+      },
+      {
+        "player": "Caleb Serong",
+        "market": "disposals",
+        "line": 20,
+        "name": "Caleb Serong 20+ disposals",
+        "book_odds": 1.13,
+        "hit_prob": 0.7913
+      },
+      {
+        "player": "John Noble",
+        "market": "disposals",
+        "line": 20,
+        "name": "John Noble 20+ disposals",
+        "book_odds": 1.11,
+        "hit_prob": 0.8191
+      }
+    ],
+    "model_joint": 0.476084083400819,
+    "model_fair": 2.1004692970550165,
+    "book_combo": 1.480074,
+    "edge": -0.2215202447584621,
+    "p_all_win": 0.35544,
+    "p_one_loss": 0.4366,
+    "promo_ev": 0.32745,
+    "total_ev": 0.10592975524153792,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-model-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "model",
+    "band": 2.75,
+    "legs": [
+      {
+        "player": "Andrew Brayshaw",
+        "market": "disposals",
+        "line": 20,
+        "name": "Andrew Brayshaw 20+ disposals",
+        "book_odds": 1.1,
+        "hit_prob": 0.8105
+      },
+      {
+        "player": "Luke Ryan",
+        "market": "marks",
+        "line": 6,
+        "name": "Luke Ryan 6+ marks",
+        "book_odds": 1.37,
+        "hit_prob": 0.6142
+      },
+      {
+        "player": "Karl Worner",
+        "market": "disposals",
+        "line": 15,
+        "name": "Karl Worner 15+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.7304
+      }
+    ],
+    "model_joint": 0.36362018665670187,
+    "model_fair": 2.750122343851366,
+    "book_combo": 1.8837500000000005,
+    "edge": -0.23627285503907836,
+    "p_all_win": 0.26198,
+    "p_one_loss": 0.42368,
+    "promo_ev": 0.31776,
+    "total_ev": 0.08148714496092163,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-model-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "model",
+    "band": 3.5,
+    "legs": [
+      {
+        "player": "Fremantle",
+        "market": "h2h",
+        "line": null,
+        "name": "Fremantle to win",
+        "book_odds": 1.18,
+        "hit_prob": 0.7346
+      },
+      {
+        "player": "Andrew Brayshaw",
+        "market": "disposals",
+        "line": 25,
+        "name": "Andrew Brayshaw 25+ disposals",
+        "book_odds": 1.58,
+        "hit_prob": 0.5156
+      },
+      {
+        "player": "Touk Miller",
+        "market": "disposals",
+        "line": 20,
+        "name": "Touk Miller 20+ disposals",
+        "book_odds": 1.22,
+        "hit_prob": 0.7543
+      }
+    ],
+    "model_joint": 0.2857085839424356,
+    "model_fair": 3.500069848099067,
+    "book_combo": 2.274568,
+    "edge": -0.2626022982294166,
+    "p_all_win": 0.19964,
+    "p_one_loss": 0.45158,
+    "promo_ev": 0.338685,
+    "total_ev": 0.0760827017705834,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-model-5.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "model",
+    "band": 5.0,
+    "legs": [
+      {
+        "player": "Jordan Clark",
+        "market": "marks",
+        "line": 4,
+        "name": "Jordan Clark 4+ marks",
+        "book_odds": 1.51,
+        "hit_prob": 0.6261
+      },
+      {
+        "player": "Christian Petracca",
+        "market": "disposals",
+        "line": 25,
+        "name": "Christian Petracca 25+ disposals",
+        "book_odds": 1.83,
+        "hit_prob": 0.4868
+      },
+      {
+        "player": "Wil Powell",
+        "market": "tackles",
+        "line": 3,
+        "name": "Wil Powell 3+ tackles",
+        "book_odds": 1.33,
+        "hit_prob": 0.6561
+      }
+    ],
+    "model_joint": 0.19999401535847336,
+    "model_fair": 5.000149620515292,
+    "book_combo": 3.6751890000000005,
+    "edge": -0.19873814601653073,
+    "p_all_win": 0.16306,
+    "p_one_loss": 0.40148,
+    "promo_ev": 0.30111,
+    "total_ev": 0.10237185398346926,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-model-15.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "model",
+    "band": 15.0,
+    "legs": [
+      {
+        "player": "Gold Coast",
+        "market": "h2h",
+        "line": null,
+        "name": "Gold Coast to win",
+        "book_odds": 4.9,
+        "hit_prob": 0.2578
+      },
+      {
+        "player": "Karl Worner",
+        "market": "marks",
+        "line": 4,
+        "name": "Karl Worner 4+ marks",
+        "book_odds": 1.18,
+        "hit_prob": 0.784
+      },
+      {
+        "player": "Christian Petracca",
+        "market": "tackles",
+        "line": 3,
+        "name": "Christian Petracca 3+ tackles",
+        "book_odds": 1.48,
+        "hit_prob": 0.6555
+      }
+    ],
+    "model_joint": 0.1324667655362395,
+    "model_fair": 7.549063313744349,
+    "book_combo": 8.55736,
+    "edge": 0.10017435054689594,
+    "p_all_win": 0.15612,
+    "p_one_loss": 0.54012,
+    "promo_ev": 0.40509000000000006,
+    "total_ev": 0.505264350546896,
+    "suggested_stake": 0.0435864816217658,
+    "value_pick": true,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-model-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "model",
+    "band": 8.0,
+    "legs": [
+      {
+        "player": "Shai Bolton",
+        "market": "tackles",
+        "line": 4,
+        "name": "Shai Bolton 4+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.4229
+      },
+      {
+        "player": "Jordan Clark",
+        "market": "tackles",
+        "line": 3,
+        "name": "Jordan Clark 3+ tackles",
+        "book_odds": 2.15,
+        "hit_prob": 0.388
+      },
+      {
+        "player": "Luke Jackson",
+        "market": "tackles",
+        "line": 4,
+        "name": "Luke Jackson 4+ tackles",
+        "book_odds": 1.11,
+        "hit_prob": 0.7618
+      }
+    ],
+    "model_joint": 0.12499096674988862,
+    "model_fair": 8.000578169789147,
+    "book_combo": 4.773000000000001,
+    "edge": -0.30256358677708617,
+    "p_all_win": 0.11576,
+    "p_one_loss": 0.32906,
+    "promo_ev": 0.24679500000000001,
+    "total_ev": -0.055768586777086154,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-sportsbet-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "sportsbet",
+    "band": 2.1,
+    "legs": [
+      {
+        "player": "Christian Petracca",
+        "market": "disposals",
+        "line": 20,
+        "name": "Christian Petracca 20+ disposals",
+        "book_odds": 1.14,
+        "hit_prob": 0.7937
+      },
+      {
+        "player": "Matt Rowell",
+        "market": "disposals",
+        "line": 20,
+        "name": "Matt Rowell 20+ disposals",
+        "book_odds": 1.22,
+        "hit_prob": 0.7243
+      },
+      {
+        "player": "Joel Jeffrey",
+        "market": "marks",
+        "line": 5,
+        "name": "Joel Jeffrey 5+ marks",
+        "book_odds": 1.51,
+        "hit_prob": 0.5427
+      }
+    ],
+    "model_joint": 0.18828,
+    "model_fair": 5.311238580837051,
+    "book_combo": 2.1001079999999996,
+    "edge": -0.4534437493200001,
+    "p_all_win": 0.18828,
+    "p_one_loss": 0.42838,
+    "promo_ev": 0.321285,
+    "total_ev": -0.1321587493200001,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-sportsbet-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "sportsbet",
+    "band": 2.75,
+    "legs": [
+      {
+        "player": "Andrew Brayshaw",
+        "market": "disposals",
+        "line": 20,
+        "name": "Andrew Brayshaw 20+ disposals",
+        "book_odds": 1.1,
+        "hit_prob": 0.8105
+      },
+      {
+        "player": "Nathan O'Driscoll",
+        "market": "tackles",
+        "line": 3,
+        "name": "Nathan O'Driscoll 3+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.464
+      },
+      {
+        "player": "Karl Worner",
+        "market": "disposals",
+        "line": 15,
+        "name": "Karl Worner 15+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.7304
+      }
+    ],
+    "model_joint": 0.23758,
+    "model_fair": 4.209108510817408,
+    "book_combo": 2.75,
+    "edge": -0.25999125,
+    "p_all_win": 0.23758,
+    "p_one_loss": 0.43092,
+    "promo_ev": 0.32319000000000003,
+    "total_ev": 0.06319875000000003,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-sportsbet-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "sportsbet",
+    "band": 3.5,
+    "legs": [
+      {
+        "player": "Nathan O'Driscoll",
+        "market": "tackles",
+        "line": 3,
+        "name": "Nathan O'Driscoll 3+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.464
+      },
+      {
+        "player": "Karl Worner",
+        "market": "disposals",
+        "line": 15,
+        "name": "Karl Worner 15+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.7304
+      },
+      {
+        "player": "Wil Powell",
+        "market": "disposals",
+        "line": 15,
+        "name": "Wil Powell 15+ disposals",
+        "book_odds": 1.4,
+        "hit_prob": 0.5901
+      }
+    ],
+    "model_joint": 0.1502,
+    "model_fair": 6.657789613848203,
+    "book_combo": 3.5,
+    "edge": -0.35572500000000007,
+    "p_all_win": 0.1502,
+    "p_one_loss": 0.39084,
+    "promo_ev": 0.29313,
+    "total_ev": -0.06259500000000007,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-sportsbet-5.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "sportsbet",
+    "band": 5.0,
+    "legs": [
+      {
+        "player": "Shai Bolton",
+        "market": "tackles",
+        "line": 4,
+        "name": "Shai Bolton 4+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.4229
+      },
+      {
+        "player": "Nathan O'Driscoll",
+        "market": "tackles",
+        "line": 3,
+        "name": "Nathan O'Driscoll 3+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.464
+      },
+      {
+        "player": "Karl Worner",
+        "market": "disposals",
+        "line": 15,
+        "name": "Karl Worner 15+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.7304
+      }
+    ],
+    "model_joint": 0.13844,
+    "model_fair": 7.223345853799479,
+    "book_combo": 5.0,
+    "edge": -0.2308499999999999,
+    "p_all_win": 0.13844,
+    "p_one_loss": 0.35586,
+    "promo_ev": 0.266895,
+    "total_ev": 0.036045000000000105,
+    "suggested_stake": 0.0,
+    "value_pick": false,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-sportsbet-15.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "sportsbet",
+    "band": 15.0,
+    "legs": [
+      {
+        "player": "Gold Coast",
+        "market": "h2h",
+        "line": null,
+        "name": "Gold Coast to win",
+        "book_odds": 4.9,
+        "hit_prob": 0.2578
+      },
+      {
+        "player": "Andrew Brayshaw",
+        "market": "tackles",
+        "line": 5,
+        "name": "Andrew Brayshaw 5+ tackles",
+        "book_odds": 1.23,
+        "hit_prob": 0.7523
+      },
+      {
+        "player": "Karl Worner",
+        "market": "marks",
+        "line": 4,
+        "name": "Karl Worner 4+ marks",
+        "book_odds": 1.18,
+        "hit_prob": 0.784
+      }
+    ],
+    "model_joint": 0.16524,
+    "model_fair": 6.051803437424352,
+    "book_combo": 7.11186,
+    "edge": 0.1313728098,
+    "p_all_win": 0.16524,
+    "p_one_loss": 0.55538,
+    "promo_ev": 0.416535,
+    "total_ev": 0.5479078098,
+    "suggested_stake": 0.044300949684439296,
+    "value_pick": true,
+    "greasiness": 0.301
+  },
+  {
+    "id": "2026-r16-Fremantle-Gold_Coast-sportsbet-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Fremantle vs Gold Coast",
+    "ladder": "sportsbet",
+    "band": 8.0,
+    "legs": [
+      {
+        "player": "Shai Bolton",
+        "market": "tackles",
+        "line": 4,
+        "name": "Shai Bolton 4+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.4229
+      },
+      {
+        "player": "Nathan O'Driscoll",
+        "market": "tackles",
+        "line": 3,
+        "name": "Nathan O'Driscoll 3+ tackles",
+        "book_odds": 2.0,
+        "hit_prob": 0.464
+      },
+      {
+        "player": "Mac Andrew",
+        "market": "marks",
+        "line": 7,
+        "name": "Mac Andrew 7+ marks",
+        "book_odds": 2.0,
+        "hit_prob": 0.4116
+      }
+    ],
+    "model_joint": 0.07068,
+    "model_fair": 14.148273910582908,
+    "book_combo": 8.0,
+    "edge": -0.32592,
+    "p_all_win": 0.07068,
+    "p_one_loss": 0.27714,
+    "promo_ev": 0.207855,
+    "total_ev": -0.11806499999999998,
+    "suggested_stake": null,
+    "value_pick": false,
+    "greasiness": 0.301
+  }
+]
