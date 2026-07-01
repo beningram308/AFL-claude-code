@@ -509,3 +509,113 @@ def test_known_outs_excludes_season_out_player_when_no_team_sheet():
 def test_manually_unavailable_config_key_is_dict():
     from afl_bot.config import MANUALLY_UNAVAILABLE
     assert isinstance(MANUALLY_UNAVAILABLE, dict)
+
+
+# --------------------------------------------------------------------------- #
+# Fixture / player-club wiring guards
+# --------------------------------------------------------------------------- #
+
+def test_select_players_excludes_prior_year_only_players_when_roster_is_full():
+    """When a team has >= 18 unique players with 2026 stats, _select_players
+    must draw only from 2026 data. A player with a big pre-2026 average who
+    retired or transferred must not appear — this is the guard against
+    wrong-club / retired players surfacing when no team sheet is posted."""
+    rows = []
+    for i in range(18):
+        for _ in range(5):
+            rows.append({"team": "Geelong", "year": 2026, "player": f"Current {i}",
+                         "disposals": 20.0 + i})
+    # "Retired Legend" only has Geelong stats in 2024–2025, averaging 30 disposals
+    for year in (2024, 2025):
+        for _ in range(10):
+            rows.append({"team": "Geelong", "year": year, "player": "Retired Legend",
+                         "disposals": 30.0})
+    log = pd.DataFrame(rows)
+    players = _select_players(log, "Geelong", 2026, n=10)
+    assert "Retired Legend" not in players
+    assert all(p.startswith("Current") for p in players)
+
+
+def test_select_players_confirmed_lineup_excludes_unconfirmed_player():
+    """When a confirmed lineup is supplied for a team, _select_players must
+    return only named players. An in-form player who was a late scratch
+    must not appear in the pricing pool if not in the lineup set."""
+    rows = []
+    for name in ["Star Player", "Bench Player", "Late Scratch"]:
+        for _ in range(10):
+            rows.append({"team": "Carlton", "year": 2026, "player": name,
+                         "disposals": 30.0 if name == "Late Scratch" else 20.0})
+    log = pd.DataFrame(rows)
+    confirmed = {"Star Player", "Bench Player"}
+    players = _select_players(log, "Carlton", 2026, n=10, confirmed=confirmed)
+    assert "Late Scratch" not in players
+    assert "Star Player" in players
+    assert "Bench Player" in players
+
+
+def test_footywire_team_slugs_all_18_clubs_parse_to_canonical():
+    """Every AFL club must have at least one Footywire pp- slug that maps to
+    the correct canonical team name. If a slug returns None the lineup filter
+    silently drops that team, letting all historical stats through unfiltered."""
+    from afl_bot.data.lineups import _team_and_player
+    from afl_bot.data.teams import CANONICAL_TEAMS
+
+    # Slugs observed on the Footywire team-selections page (pp-{slug}--{player})
+    slug_to_canonical = {
+        "brisbane-lions": "Brisbane Lions",
+        "sydney-swans": "Sydney",
+        "hawthorn": "Hawthorn",
+        "greater-western-sydney-giants": "Greater Western Sydney",
+        "carlton": "Carlton",
+        "west-coast-eagles": "West Coast",
+        "geelong-cats": "Geelong",
+        "gold-coast-suns": "Gold Coast",
+        "collingwood-magpies": "Collingwood",
+        "richmond": "Richmond",
+        "port-adelaide-power": "Port Adelaide",
+        "adelaide": "Adelaide",
+        "fremantle": "Fremantle",
+        "north-melbourne-kangaroos": "North Melbourne",
+        "essendon": "Essendon",
+        "st-kilda": "St Kilda",
+        "western-bulldogs": "Western Bulldogs",
+        "melbourne": "Melbourne",
+    }
+    for slug, expected in slug_to_canonical.items():
+        result = _team_and_player(f"pp-{slug}--test-player")
+        assert result is not None, (
+            f"Slug {slug!r} → None; lineup filter will silently break for {expected}"
+        )
+        assert result[0] == expected, (
+            f"Slug {slug!r}: expected {expected!r}, got {result[0]!r}"
+        )
+    # Every canonical team must be covered
+    covered = set(slug_to_canonical.values())
+    missing = set(CANONICAL_TEAMS) - covered
+    assert not missing, f"No Footywire slug registered for teams: {missing}"
+
+
+def test_fixture_team_names_match_canonical_team_names():
+    """Team names returned by the Squiggle fixture must be canonical so that
+    lineup.get(team) finds the right entry. A mismatch (e.g. 'GWS Giants' vs
+    'Greater Western Sydney') would silently disable the lineup filter for
+    that game and let all historical players through."""
+    from afl_bot.data.teams import CANONICAL_TEAMS
+    from afl_bot.data.squiggle import SquiggleClient
+
+    # Round 17 2026 fixture (9 games, 18 teams)
+    R17_FIXTURE = [
+        ("Geelong", "Brisbane Lions"),
+        ("Sydney", "Western Bulldogs"),
+        ("West Coast", "Adelaide"),
+        ("Hawthorn", "Melbourne"),
+        ("Greater Western Sydney", "Fremantle"),
+        ("Gold Coast", "Collingwood"),
+        ("Richmond", "Carlton"),
+        ("Essendon", "St Kilda"),
+        ("Port Adelaide", "North Melbourne"),
+    ]
+    canonical_set = set(CANONICAL_TEAMS)
+    for home, away in R17_FIXTURE:
+        assert home in canonical_set, f"Fixture home team {home!r} is not a canonical name"
+        assert away in canonical_set, f"Fixture away team {away!r} is not a canonical name"
