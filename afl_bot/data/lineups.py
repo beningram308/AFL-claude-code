@@ -30,8 +30,13 @@ import requests
 from afl_bot.data.teams import normalize_team_name
 
 FOOTYWIRE_SELECTIONS_URL = "https://www.footywire.com/afl/footy/afl_team_selections"
+FOOTYWIRE_INJURY_LIST_URL = "https://www.footywire.com/afl/footy/ft_injury_list"
 _USER_AGENT = "afl-multi-builder (personal use; contact via repo issues)"
 _MIN_PLAYERS_FOR_CONFIRMED_SHEET = 18  # teams with fewer named players are treated as not-yet-posted
+
+# Statuses on the Footywire injury list that mean a player is definitely not
+# available this week. Matched case-insensitively as a prefix/substring.
+_LONG_TERM_STATUSES = ("season", "indefinite", "long term", "long-term")
 
 
 def load_lineup(path: str | None) -> dict[str, set[str]]:
@@ -275,6 +280,99 @@ def _normalize_player_key(name: str) -> str:
     hyphens/apostrophes stripped) -- duplicated locally to avoid a
     lineups<->cli import cycle (cli already imports from this module)."""
     return name.lower().replace("-", " ").replace("'", "").strip()
+
+
+def _is_long_term_status(status: str) -> bool:
+    """True when a Footywire injury-list status clearly means the player is
+    not available this week (Season / Indefinite / Long Term)."""
+    s = status.strip().lower()
+    return any(s.startswith(kw) or kw in s for kw in _LONG_TERM_STATUSES)
+
+
+def parse_footywire_injury_list(html: str) -> dict[str, set[str]]:
+    """Parse the Footywire injury-list HTML and return
+    ``{canonical_team: {player_name}}`` for players whose status is
+    Season / Indefinite / Long Term — i.e. definitely not available this week.
+
+    The page has a ``<table>`` with one row per injured player; typical columns
+    are Team | Player | Injury | Status | Return.  Only rows where the Status
+    cell matches ``_LONG_TERM_STATUSES`` are included; a parse/BeautifulSoup
+    failure returns ``{}`` rather than raising."""
+    from bs4 import BeautifulSoup
+    result: dict[str, set[str]] = {}
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        # Find the main injury table — it has 'bgcolor' rows and player links.
+        for tr in soup.find_all("tr", class_=("lightcolor", "darkcolor", "data")):
+            tds = tr.find_all("td")
+            if len(tds) < 4:
+                continue
+            # Column order on Footywire injury list: Team | Player | Injury | Status | ...
+            team_cell = tds[0]
+            player_cell = tds[1]
+            status_cell = tds[3]
+            status_text = status_cell.get_text(strip=True)
+            if not _is_long_term_status(status_text):
+                continue
+            # Team: try the anchor href first, fall back to text
+            team_a = team_cell.find("a", href=True)
+            team_text = team_a.get_text(strip=True) if team_a else team_cell.get_text(strip=True)
+            try:
+                canonical_team = normalize_team_name(team_text)
+            except KeyError:
+                continue
+            # Player: the anchor text is the display name
+            player_a = player_cell.find("a")
+            if player_a:
+                player_name = player_a.get_text(strip=True)
+            else:
+                player_name = player_cell.get_text(strip=True)
+            if player_name:
+                result.setdefault(canonical_team, set()).add(player_name)
+    except Exception:  # noqa: BLE001
+        pass
+    return result
+
+
+def fetch_injury_list(year: int, round_no: int, *,
+                      cache_seconds: float = 3600.0,
+                      cache_dir: Path | None = None) -> dict[str, set[str]]:
+    """Fetch the Footywire injury list and return
+    ``{canonical_team: {player_name}}`` for Season/Indefinite/Long-Term players.
+
+    Cached for ``cache_seconds`` (1 h default).  Returns ``{}`` on any
+    network or parse failure — the caller must handle a missing list gracefully."""
+    from afl_bot.config import CACHE_DIR as _default_cache
+    if cache_dir is None:
+        cache_dir = _default_cache
+
+    cache_path = Path(cache_dir) / f"injury_list_{year}_r{round_no}.json"
+    if cache_path.exists() and (time.time() - cache_path.stat().st_mtime) < cache_seconds:
+        try:
+            data = json.loads(cache_path.read_text())
+            return {team: set(players) for team, players in data.items()}
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    try:
+        resp = requests.get(FOOTYWIRE_INJURY_LIST_URL,
+                            headers={"User-Agent": _USER_AGENT}, timeout=30)
+        resp.raise_for_status()
+    except Exception as exc:  # noqa: BLE001
+        print(f"Footywire injury list fetch failed ({exc}); no auto-exclusion applied.",
+              file=sys.stderr)
+        return {}
+
+    out_players = parse_footywire_injury_list(resp.text)
+    n_total = sum(len(v) for v in out_players.values())
+    print(f"Injury list: {n_total} long-term/season-out player(s) across "
+          f"{len(out_players)} team(s).", file=sys.stderr)
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps({t: list(p) for t, p in out_players.items()}))
+    except OSError:
+        pass
+    return out_players
 
 
 def apply_outs(lineup: dict[str, set[str]],

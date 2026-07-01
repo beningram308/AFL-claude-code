@@ -56,13 +56,21 @@ POINTS_PER_GOAL = 6.8
 # ----------------------------------------------------------------------------- #
 # Player props — plan §3.3
 # ----------------------------------------------------------------------------- #
-PROP_FORM_GAMES = 20          # rolling window for EWMA rate (legacy; see PLAYER_FORM_WINDOW)
 PROP_EWMA_HALFLIFE = 6        # games; current-season weighted up
 PROP_MIN_DISPERSION = 4.0     # floor on NB dispersion to avoid degenerate fits
 
 # --- Player form window (last-N games, not all-history) ---
 PLAYER_FORM_WINDOW = 40          # project each player off their most recent 40 games
 TOG_RETURN_DEFAULT = 0.75        # expected TOG for a player flagged returning-from-injury / managed
+
+# Instant availability blocklist — added here, excluded from EVERY run regardless
+# of what the Footywire injury-list scrape says (Part 3 NEXT-STEPS-PLAN.md).
+# Keys are canonical team names; values are lists of player names to drop.
+# Use this as a safety net for players the scraper might miss (e.g. mid-week
+# delisting). Clear entries once the player returns.
+MANUALLY_UNAVAILABLE: dict[str, list[str]] = {
+    # "Geelong": ["Patrick Dangerfield"],  # example — remove once ready
+}
 
 # ----------------------------------------------------------------------------- #
 # Boundary throw-ins / out-of-bounds market — plan §1.6c

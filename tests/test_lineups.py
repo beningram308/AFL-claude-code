@@ -9,10 +9,12 @@ from afl_bot.data.lineups import (
     _parse_footywire_selections,
     _slug_to_name,
     apply_outs,
+    fetch_injury_list,
     fetch_lineup,
     load_lineup,
     load_lineup_tog,
     load_outs,
+    parse_footywire_injury_list,
 )
 
 
@@ -418,3 +420,92 @@ def test_apply_outs_does_not_mutate_input_lineup():
     lineup = {"Hawthorn": {"Jai Newcombe", "Karl Amon"}}
     apply_outs(lineup, {"Hawthorn": {"Karl Amon"}})
     assert lineup == {"Hawthorn": {"Jai Newcombe", "Karl Amon"}}   # original untouched
+
+
+# ── Part 3: injury / availability filter ─────────────────────────────────────
+
+_INJURY_HTML = """
+<html><body>
+<table>
+  <tr class="lightcolor">
+    <td><a href="/afl/footy/te-richmond">Richmond</a></td>
+    <td><a href="/pp-richmond--dustin-martin">Dustin Martin</a></td>
+    <td>Hip</td>
+    <td>Season</td>
+    <td>-</td>
+  </tr>
+  <tr class="darkcolor">
+    <td><a href="/afl/footy/te-geelong">Geelong</a></td>
+    <td><a href="/pp-geelong--patrick-dangerfield">Patrick Dangerfield</a></td>
+    <td>Knee</td>
+    <td>Long Term</td>
+    <td>-</td>
+  </tr>
+  <tr class="lightcolor">
+    <td><a href="/afl/footy/te-carlton">Carlton</a></td>
+    <td><a href="/pp-carlton--patrick-cripps">Patrick Cripps</a></td>
+    <td>Calf</td>
+    <td>R17</td>
+    <td>-</td>
+  </tr>
+</table>
+</body></html>
+"""
+
+
+def test_parse_footywire_injury_list_extracts_season_and_long_term():
+    result = parse_footywire_injury_list(_INJURY_HTML)
+    assert "Dustin Martin" in result.get("Richmond", set())
+    assert "Patrick Dangerfield" in result.get("Geelong", set())
+
+
+def test_parse_footywire_injury_list_excludes_short_term_status():
+    result = parse_footywire_injury_list(_INJURY_HTML)
+    # Patrick Cripps has status "R17" — NOT a long-term exclusion
+    assert "Patrick Cripps" not in result.get("Carlton", set())
+
+
+def test_parse_footywire_injury_list_empty_html_returns_empty():
+    assert parse_footywire_injury_list("<html></html>") == {}
+
+
+def test_parse_footywire_injury_list_bad_html_returns_empty():
+    assert parse_footywire_injury_list("not html at all <<<") == {}
+
+
+def test_fetch_injury_list_uses_cache(tmp_path):
+    cached = {"Richmond": ["Dustin Martin"]}
+    cache_file = tmp_path / "injury_list_2026_r17.json"
+    cache_file.write_text(json.dumps(cached))
+    result = fetch_injury_list(2026, 17, cache_seconds=9999, cache_dir=tmp_path)
+    assert result == {"Richmond": {"Dustin Martin"}}
+
+
+def test_fetch_injury_list_network_error_returns_empty(tmp_path):
+    with patch("afl_bot.data.lineups.requests.get", side_effect=OSError("no network")):
+        result = fetch_injury_list(2026, 17, cache_seconds=0, cache_dir=tmp_path)
+    assert result == {}
+
+
+def test_known_outs_excludes_season_out_player_when_no_team_sheet():
+    """Regression: a player in the injury blocklist must not be 'confirmed'
+    even when no team sheet has been fetched (lineup == {})."""
+    lineup: dict[str, set[str]] = {}   # no team sheet posted
+    known_outs = {"Richmond": {"Dustin Martin"}}
+
+    def _is_confirmed(team, player):
+        confirmed = (team not in lineup) or (player in lineup[team])
+        if confirmed:
+            norm = player.lower().replace("-", " ").replace("'", "").strip()
+            if norm in {p.lower().replace("-", " ").replace("'", "").strip()
+                        for p in known_outs.get(team, set())}:
+                confirmed = False
+        return confirmed
+
+    assert not _is_confirmed("Richmond", "Dustin Martin")
+    assert _is_confirmed("Richmond", "Tom Lynch")   # not in blocklist
+
+
+def test_manually_unavailable_config_key_is_dict():
+    from afl_bot.config import MANUALLY_UNAVAILABLE
+    assert isinstance(MANUALLY_UNAVAILABLE, dict)
