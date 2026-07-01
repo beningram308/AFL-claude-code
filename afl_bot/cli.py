@@ -992,7 +992,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             _cause = (f"no URL file / empty list (`{_sb_urls_path}`)" if n_urls == 0
                       else f"all {n_urls} event(s) failed — possibly geo-blocked (AU IP required)")
             sportsbet_note = (
-                f"_⚠ Sportsbet: 0 legs priced — {_cause}. Book/Edge columns show '—'. "
+                f"_WARNING Sportsbet: 0 legs priced — {_cause}. Book/Edge columns show '—'. "
                 f"Fix: populate `{_sb_urls_path}` with this round's Sportsbet match URLs "
                 f"and rerun with `--sportsbet`._"
             )

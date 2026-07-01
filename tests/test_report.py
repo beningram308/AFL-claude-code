@@ -864,12 +864,12 @@ def test_sportsbet_note_not_requested_explains_how_to_enable():
 
 
 def test_sportsbet_note_zero_priced_shows_warning_and_fix():
-    note = ("_⚠ Sportsbet: 0 legs priced — no URL file / empty list "
+    note = ("_WARNING Sportsbet: 0 legs priced — no URL file / empty list "
             "(`reports/2026_r17_sportsbet_urls.json`). Book/Edge columns show '—'. "
             "Fix: populate `reports/2026_r17_sportsbet_urls.json` with this round's "
             "Sportsbet match URLs and rerun with `--sportsbet`._")
     md = render_markdown(2026, 17, _bare_match(), has_odds=False, sportsbet_note=note)
-    assert "⚠" in md
+    assert "WARNING" in md
     assert "0 legs priced" in md
     assert "Fix:" in md
 
