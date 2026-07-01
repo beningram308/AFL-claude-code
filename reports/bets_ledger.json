@@ -1,0 +1,300 @@
+[
+  {
+    "bet_id": "425cec04-6057-4b2e-bf16-b85f3731126e",
+    "multi_id": "2026-r16-Carlton-West_Coast-sportsbet-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "Carlton vs West Coast",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Harley Reid",
+        "market": "tackles",
+        "line": 3,
+        "name": "Harley Reid 3+ tackles",
+        "book_odds": 1.43
+      },
+      {
+        "player": "Liam Duggan",
+        "market": "marks",
+        "line": 6,
+        "name": "Liam Duggan 6+ marks",
+        "book_odds": 1.36
+      },
+      {
+        "player": "Willem Duursma",
+        "market": "tackles",
+        "line": 3,
+        "name": "Willem Duursma 3+ tackles",
+        "book_odds": 1.08
+      }
+    ],
+    "stake": 5.0,
+    "open_odds": 2.31,
+    "taken_odds": 2.31,
+    "placed_at": "2026-06-27T12:45:52.500782+10:00",
+    "status": "void",
+    "settled_at": "2026-06-27T12:55:13.225781+10:00",
+    "payout": 5.0,
+    "leg_results": [
+      {
+        "name": "Harley Reid 3+ tackles",
+        "hit": null
+      },
+      {
+        "name": "Liam Duggan 6+ marks",
+        "hit": null
+      },
+      {
+        "name": "Willem Duursma 3+ tackles",
+        "hit": null
+      }
+    ],
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
+  },
+  {
+    "bet_id": "6c3069c4-16fc-4b0a-a956-92326cfea8de",
+    "multi_id": "2026-r16-Carlton-West_Coast-sportsbet-2.10",
+    "year": 2026,
+    "round": 16,
+    "game": "Carlton vs West Coast",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Harley Reid",
+        "market": "tackles",
+        "line": 3,
+        "name": "Harley Reid 3+ tackles",
+        "book_odds": 1.43
+      },
+      {
+        "player": "Liam Duggan",
+        "market": "marks",
+        "line": 6,
+        "name": "Liam Duggan 6+ marks",
+        "book_odds": 1.36
+      },
+      {
+        "player": "Willem Duursma",
+        "market": "tackles",
+        "line": 3,
+        "name": "Willem Duursma 3+ tackles",
+        "book_odds": 1.08
+      }
+    ],
+    "stake": 5.0,
+    "open_odds": 2.31,
+    "taken_odds": 2.31,
+    "placed_at": "2026-06-27T12:56:10.814745+10:00",
+    "status": "void",
+    "settled_at": "2026-06-27T18:33:23.563551+10:00",
+    "payout": 5.0,
+    "leg_results": [
+      {
+        "name": "Harley Reid 3+ tackles",
+        "hit": null
+      },
+      {
+        "name": "Liam Duggan 6+ marks",
+        "hit": null
+      },
+      {
+        "name": "Willem Duursma 3+ tackles",
+        "hit": null
+      }
+    ],
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
+  },
+  {
+    "bet_id": "f9d9d5a9-3b20-4f2e-ad79-dbe634a44847",
+    "multi_id": "2026-r16-Carlton-West_Coast-sportsbet-8.00",
+    "year": 2026,
+    "round": 16,
+    "game": "Carlton vs West Coast",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Nic Newman",
+        "market": "disposals",
+        "line": 25,
+        "name": "Nic Newman 25+ disposals",
+        "book_odds": 3.33
+      },
+      {
+        "player": "Billy Wilson",
+        "market": "marks",
+        "line": 4,
+        "name": "Billy Wilson 4+ marks",
+        "book_odds": 1.35
+      },
+      {
+        "player": "Harley Reid",
+        "market": "goals",
+        "line": 1,
+        "name": "Harley Reid 1+ goals",
+        "book_odds": 1.78
+      }
+    ],
+    "stake": 5.0,
+    "open_odds": 7.0,
+    "taken_odds": 7.0,
+    "placed_at": "2026-06-27T12:57:42.265376+10:00",
+    "status": "void",
+    "settled_at": "2026-06-27T18:33:23.563571+10:00",
+    "payout": 5.0,
+    "leg_results": [
+      {
+        "name": "Nic Newman 25+ disposals",
+        "hit": null
+      },
+      {
+        "name": "Billy Wilson 4+ marks",
+        "hit": null
+      },
+      {
+        "name": "Harley Reid 1+ goals",
+        "hit": null
+      }
+    ],
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
+  },
+  {
+    "bet_id": "f8821d98-650f-490e-9f68-dea0dab819f7",
+    "multi_id": "2026-r16-Carlton-West_Coast-sportsbet-3.50",
+    "year": 2026,
+    "round": 16,
+    "game": "Carlton vs West Coast",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Carlton",
+        "market": "h2h",
+        "line": null,
+        "name": "Carlton to win",
+        "book_odds": 1.13
+      },
+      {
+        "player": "Oliver Florent",
+        "market": "marks",
+        "line": 4,
+        "name": "Oliver Florent 4+ marks",
+        "book_odds": 1.28
+      },
+      {
+        "player": "Jack Graham",
+        "market": "disposals",
+        "line": 20,
+        "name": "Jack Graham 20+ disposals",
+        "book_odds": 2.42
+      }
+    ],
+    "stake": 5.0,
+    "open_odds": 3.2,
+    "taken_odds": 3.2,
+    "placed_at": "2026-06-27T13:05:59.635318+10:00",
+    "status": "won",
+    "settled_at": "2026-06-27T18:33:23.563590+10:00",
+    "payout": 16.0,
+    "leg_results": [
+      {
+        "name": "Carlton to win",
+        "hit": true
+      },
+      {
+        "name": "Oliver Florent 4+ marks",
+        "hit": null
+      },
+      {
+        "name": "Jack Graham 20+ disposals",
+        "hit": null
+      }
+    ],
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
+  },
+  {
+    "bet_id": "92ab5549-1a7d-43b8-8225-1dae1607e422",
+    "multi_id": "2026-r16-Port_Adelaide-Adelaide-sportsbet-2.75",
+    "year": 2026,
+    "round": 16,
+    "game": "Port Adelaide vs Adelaide",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Jason Horne-Francis",
+        "market": "disposals",
+        "line": 20,
+        "name": "Jason Horne-Francis 20+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.7132
+      },
+      {
+        "player": "Jordan Dawson",
+        "market": "tackles",
+        "line": 7,
+        "name": "Jordan Dawson 7+ tackles",
+        "book_odds": 1.76,
+        "hit_prob": 0.5138
+      },
+      {
+        "player": "Brayden Cook",
+        "market": "disposals",
+        "line": 15,
+        "name": "Brayden Cook 15+ disposals",
+        "book_odds": 1.25,
+        "hit_prob": 0.6713
+      }
+    ],
+    "stake": 7.5,
+    "open_odds": 2.8,
+    "taken_odds": 2.8,
+    "placed_at": "2026-06-27T19:16:10.167537+10:00",
+    "status": "void",
+    "settled_at": "2026-06-27T19:30:47.938872+10:00",
+    "payout": 7.5,
+    "leg_results": [
+      {
+        "name": "Jason Horne-Francis 20+ disposals",
+        "hit": null
+      },
+      {
+        "name": "Jordan Dawson 7+ tackles",
+        "hit": null
+      },
+      {
+        "name": "Brayden Cook 15+ disposals",
+        "hit": null
+      }
+    ],
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
+  }
+]
