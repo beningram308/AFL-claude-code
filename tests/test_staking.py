@@ -1,10 +1,12 @@
 import numpy as np
+import pytest
 
-from afl_bot.config import KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP
+from afl_bot.config import KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP, UNIT_SIZE, UNIT_STEP
 from afl_bot.build.staking import (
     bankroll_report,
     fractional_kelly_fraction,
     kelly_fraction,
+    recommend_units,
     simulate_bankroll,
     simulate_bankroll_joint,
     stake_bets,
@@ -79,3 +81,65 @@ def test_bankroll_report_keys():
     rep = bankroll_report(sim, 500.0)
     assert {"median_terminal", "p5_terminal", "p95_terminal", "p_profit", "p_bust",
             "median_max_drawdown", "p_drawdown_over_50pct"} == set(rep)
+
+
+# ── recommend_units ───────────────────────────────────────────────────────────
+
+def test_recommend_units_positive_edge_returns_kelly_units():
+    # Good edge bet: prob=0.55, odds=2.10 -> fractional Kelly > 0
+    units, tag = recommend_units(0.55, 2.10)
+    assert units > 0
+    assert tag.endswith("u")
+    # Result must be a multiple of UNIT_STEP
+    assert abs(units % UNIT_STEP) < 1e-9 or abs(units % UNIT_STEP - UNIT_STEP) < 1e-9
+
+
+def test_recommend_units_rounding_down():
+    # Force a known raw_units and verify floor rounding
+    # kelly(0.52, 2.0) = (0.52*2-1)/(2-1) = 0.04; fraction=0.25*0.04=0.01
+    # raw_units = 0.01 * 1500 / 15 = 1.0 exactly -> 1.0u
+    units, tag = recommend_units(0.52, 2.0)
+    assert units == 1.0
+    assert tag == "1u"
+
+
+def test_recommend_units_longshot_cap():
+    # book_odds >= 5.0 -> UNIT_MAX_LONGSHOT cap (1.0u)
+    units, tag = recommend_units(0.35, 5.50)
+    assert units <= 1.0
+
+
+def test_recommend_units_standard_cap():
+    # book_odds < 5.0 -> UNIT_MAX cap (3.0u); huge prob will hit it
+    units, tag = recommend_units(0.90, 2.50)
+    assert units <= 3.0
+    assert units > 0
+
+
+def test_recommend_units_no_edge_returns_no_bet():
+    units, tag = recommend_units(0.40, 2.10)
+    assert units == 0.0
+    assert tag == "NO BET"
+
+
+def test_recommend_units_promo_only():
+    # No edge on base but positive promo_ev
+    units, tag = recommend_units(0.40, 2.10, promo_ev=0.05)
+    assert units == 0.5
+    assert tag == "PROMO ONLY"
+
+
+def test_recommend_units_model_only_no_book_odds():
+    # No book price at all -> MODEL-ONLY, never staked
+    units, tag = recommend_units(0.70, None)
+    assert units == 0.0
+    assert tag == "MODEL-ONLY"
+
+
+def test_recommend_units_minimum_unit_step():
+    # Any positive Kelly (even tiny) must return at least UNIT_STEP, not 0
+    # prob slightly above breakeven: kelly(0.505, 2.0) = 0.01 -> frac=0.0025
+    # raw_units = 0.0025 * 1500 / 15 = 0.25 -> exactly UNIT_STEP
+    units, tag = recommend_units(0.505, 2.0)
+    assert units == UNIT_STEP
+    assert tag == f"{UNIT_STEP}u"

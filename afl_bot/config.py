@@ -229,6 +229,26 @@ KELLY_FRACTION = 0.25       # fractional Kelly (0.25x) — full Kelly is too vol
 KELLY_PER_BET_CAP = 0.05    # max fraction of bankroll on any one bet
 KELLY_PER_ROUND_CAP = 0.15  # max total fraction of bankroll staked across a round
 DEFAULT_BANKROLL = 1000.0
+
+# Unit staking (live bankroll config).
+# BANKROLL and UNIT_SIZE are the live values Ben uses; DEFAULT_BANKROLL above
+# is kept for the bankroll-sim API which takes bankroll as a parameter.
+BANKROLL = 1500.0        # live bankroll ($)
+UNIT_SIZE = 15.0         # 1 unit = $15 (1% of bankroll)
+UNIT_STEP = 0.25         # round stakes to nearest 0.25u
+UNIT_MAX = 3.0           # hard cap: never more than 3u on one multi
+UNIT_MAX_LONGSHOT = 1.0  # tighter cap when combined odds >= 5.0 (Kelly noisiest there)
+PROMO_FLAT_UNITS = 0.5   # flat stake for promo-only plays (negative base EV, positive promo EV)
+
+# ── PointsBet Pull 'Em SGM constants ────────────────────────────────────────
+# All three are ASSUMED PRIORS, not fitted — no historical Pull 'Em data exists.
+# Label any output that uses these with "(assumed prior)".
+PULL_DETECTION_PROB = 0.70   # assumed: P(Pull 'Em triggered | exactly one anchor misses)
+PULL_EM_N_LEGS = 4           # total legs in a Pull 'Em SGM (3 anchors + 1 booster)
+PULL_EM_ANCHOR_MIN_P = 0.70  # minimum model prob for disposal anchor legs
+PULL_EM_BOOSTER_MIN_P = 0.45 # minimum model prob for the booster leg
+PULL_EM_BOOSTER_MAX_P = 0.65 # maximum model prob for the booster leg
+
 # Player props are noisier than H2H and compound multiplicatively in multis, so
 # stake them at half the Kelly fraction even after calibration (round-2 §2.5).
 PROP_KELLY_MULTIPLIER = 0.5

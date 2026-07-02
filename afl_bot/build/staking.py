@@ -15,7 +15,12 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from afl_bot.config import KELLY_FRACTION, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP
+import math
+
+from afl_bot.config import (
+    BANKROLL, KELLY_FRACTION, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP,
+    PROMO_FLAT_UNITS, UNIT_MAX, UNIT_MAX_LONGSHOT, UNIT_SIZE, UNIT_STEP,
+)
 
 
 def kelly_fraction(prob: float, odds: float) -> float:
@@ -175,6 +180,51 @@ def multi_outcome_kelly(
         f_star = 1.0
 
     return min(fraction * f_star, cap)
+
+
+def recommend_units(
+    joint_prob: float | None,
+    book_odds: float | None,
+    promo_ev: float | None = None,
+    *,
+    bankroll: float = BANKROLL,
+    unit_size: float = UNIT_SIZE,
+    unit_step: float = UNIT_STEP,
+    unit_max: float = UNIT_MAX,
+    unit_max_longshot: float = UNIT_MAX_LONGSHOT,
+    promo_flat: float = PROMO_FLAT_UNITS,
+) -> tuple[float, str]:
+    """Return ``(units, tag)`` for a multi rung.
+
+    Rules:
+    - No book price at all → ``(0.0, "MODEL-ONLY")`` — never stake off model fair odds.
+    - Positive edge (market-shrunk prob × book_odds > 1) → Kelly → rounded down to
+      ``unit_step``, clipped to ``[unit_step, unit_max]`` (``unit_max_longshot`` when
+      book_odds >= 5.0). Tag = ``"Nu"``.
+    - No/negative edge but positive ``promo_ev`` → ``(promo_flat, "PROMO ONLY")``.
+    - No edge, no promo → ``(0.0, "NO BET")``.
+
+    The per-round governor (KELLY_PER_ROUND_CAP) is applied by the caller across the
+    full round's Kelly bets via ``stake_bets``; this function sizes individual bets.
+    """
+    if book_odds is None:
+        return (0.0, "MODEL-ONLY")
+
+    frac = (fractional_kelly_fraction(joint_prob or 0.0, book_odds)
+            if joint_prob is not None else 0.0)
+    raw_units = frac * bankroll / unit_size
+
+    if raw_units > 0.0:
+        # Round DOWN to nearest unit_step, apply longshot cap.
+        cap = unit_max_longshot if book_odds >= 5.0 else unit_max
+        units = min(math.floor(raw_units / unit_step) * unit_step, cap)
+        units = max(units, unit_step)   # at least 0.25u if Kelly says anything
+        return (units, f"{units:g}u")
+
+    if promo_ev is not None and promo_ev > 0.0:
+        return (promo_flat, "PROMO ONLY")
+
+    return (0.0, "NO BET")
 
 
 def bankroll_report(sim: dict, bankroll0: float) -> dict:

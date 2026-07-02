@@ -26,6 +26,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,7 @@ from afl_bot.build.multi import (
 )
 from afl_bot.build.report import (
     build_odds_template,
+    build_pull_em_sgm,
     is_bookable_model_only_leg,
     projection_rows,
     render_markdown,
@@ -52,6 +54,7 @@ from afl_bot.build.report import (
 )
 from afl_bot.build.staking import (
     bankroll_report,
+    recommend_units,
     simulate_bankroll,
     simulate_bankroll_joint,
     stake_bets,
@@ -748,7 +751,18 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
         "suggested_stake": rung.get("suggested_stake"),
         "value_pick": bool(rung.get("value_pick", False)),
         "greasiness": round(greasiness, 3),
+        **_units_fields(rung),
     }
+
+
+def _units_fields(rung: dict) -> dict:
+    """Compute units/tag for a rung and return as a dict to merge into the record."""
+    units, tag = recommend_units(
+        rung.get("joint_prob"),
+        rung.get("book_odds"),
+        rung.get("promo_ev"),
+    )
+    return {"units": units, "units_tag": tag}
 
 
 def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
@@ -1214,10 +1228,37 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                     r, ladder_label, year, round_no,
                     home_name, away_name, leg_by_name, odds_book,
                     greasiness=greasiness))
+        for r in sgms + market_sgms:
+            r.update(_units_fields(r))
+        pull_em = (build_pull_em_sgm(ladder_legs, odds_book=odds_book)
+                   if odds_book else None)
+        if pull_em:
+            h = home_name.replace(" ", "_")
+            a = away_name.replace(" ", "_")
+            pull_em_record = {
+                "id": f"{year}-r{round_no}-{h}-{a}-pull_em",
+                "year": year,
+                "round": round_no,
+                "game": f"{home_name} vs {away_name}",
+                "ladder": "pull_em",
+                "book": "pointsbet",
+                "leg_names": pull_em["leg_names"],
+                "anchor_names": pull_em["anchor_names"],
+                "booster_name": pull_em["booster_name"],
+                "anchor_probs": pull_em["anchor_probs"],
+                "booster_prob": pull_em["booster_prob"],
+                "book_odds_per_leg": pull_em["book_odds_per_leg"],
+                "book_combo": pull_em["book_combo"],
+                "option_ev": pull_em["option_ev"],
+                "option_ev_breakdown": pull_em["option_ev_breakdown"],
+                "pull_decision_rule": pull_em["pull_decision_rule"],
+            }
+            multis_records.append(pull_em_record)
         matches.append({
             "header": header, "projections": projections,
             "sgms": sgms, "market_sgms": market_sgms, "priced_legs": priced_legs,
             "n_legs": len(match_legs),     # so the report can explain an empty ladder
+            "pull_em": pull_em,
         })
 
     # Warn on odds-file keys that never matched a priceable leg (a typo = a
@@ -1248,7 +1289,23 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     pd.DataFrame(predictions).to_csv(pred_path, index=False)
     # Stage 2A: machine-readable multis JSON for the dashboard.
     multis_path = out_dir / f"{year}_r{round_no}_multis.json"
-    multis_path.write_text(json.dumps(multis_records, indent=2), encoding="utf-8")
+    multis_payload = {
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+        "year": year,
+        "round": round_no,
+        "records": multis_records,
+    }
+    multis_path.write_text(json.dumps(multis_payload, indent=2), encoding="utf-8")
+    # PointsBet Pull 'Em odds template: leg names -> null for each match that
+    # has a Pull 'Em SGM, so it can be filled in and passed back via --pb-odds.
+    pull_em_records = [r for r in multis_records if r.get("ladder") == "pull_em"]
+    if pull_em_records:
+        pb_template = {}
+        for rec in pull_em_records:
+            for name in rec.get("leg_names", []):
+                pb_template[name] = None
+        pb_template_path = out_dir / f"{year}_r{round_no}_pointsbet_odds.json"
+        pb_template_path.write_text(json.dumps(pb_template, indent=2), encoding="utf-8")
     # Odds template (model-upgrade audit Phase 4 STEP 1.2): every priceable
     # leg's exact name -> null, copy-paste-able into a fresh --odds file.
     template_path = out_dir / f"{year}_r{round_no}_odds_template.json"

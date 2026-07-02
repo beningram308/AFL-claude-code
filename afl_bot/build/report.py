@@ -30,7 +30,12 @@ from afl_bot.config import (
     MULTI_MARKET_SHRINK,
     MULTI_TARGET_ODDS,
     PROMO_MIN_LEGS,
+    PULL_DETECTION_PROB,
+    PULL_EM_ANCHOR_MIN_P,
+    PULL_EM_BOOSTER_MAX_P,
+    PULL_EM_BOOSTER_MIN_P,
     STAT_PREFERENCE,
+    UNIT_SIZE,
 )
 from afl_bot.pricing.edge import fair_odds, market_anchored_prob, mc_standard_error
 
@@ -723,8 +728,8 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             header = "| Legs | Band | Joint prob | Fair odds | Corr gain |"
             sep = "|---|--:|--:|--:|--:|"
             if has_odds:
-                header += " Book | Edge | Total EV | Stake |"
-                sep += "--:|--:|--:|--:|"
+                header += " Book | Edge | Total EV | Stake | Units | $ |"
+                sep += "--:|--:|--:|--:|--:|--:|"
             header += " Pick |"
             sep += "---|"
             out.append(header)
@@ -739,10 +744,13 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                         tev_str = f"{tev * 100:+.1f}%" if tev is not None else "—"
                         stk = s.get("suggested_stake")
                         stk_str = f"{stk * 100:.1f}%" if stk is not None else "—"
+                        units_tag = s.get("units_tag", "—")
+                        units_val = s.get("units", 0.0)
+                        dollar_str = f"${units_val * UNIT_SIZE:.2f}" if units_val > 0 else "—"
                         line += (f" {s['book_odds']:.2f} | {s['edge'] * 100:+.1f}%"
-                                 f" | {tev_str} | {stk_str} |")
+                                 f" | {tev_str} | {stk_str} | {units_tag} | {dollar_str} |")
                     else:
-                        line += " - | - | - | - |"
+                        line += " - | - | - | - | — | — |"
                 if s.get("value_pick"):
                     line += " **VALUE PICK** |"
                 elif "book_odds" not in s:
@@ -764,18 +772,52 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                        "(only individual legs are scraped, not the SGM special itself) — "
                        "use the per-leg book prices as the source of truth._")
             out.append("")
-            out.append("| Legs | Book odds (combo) | Model joint % | Model fair | Edge | Total EV | Stake | Pick |")
-            out.append("|---|--:|--:|--:|--:|--:|--:|---|")
+            out.append("| Legs | Book odds (combo) | Model joint % | Model fair | Edge | Total EV | Stake | Units | $ | Pick |")
+            out.append("|---|--:|--:|--:|--:|--:|--:|--:|--:|---|")
             for s in market_sgms:
                 tev = s.get("total_ev")
                 tev_str = f"{tev * 100:+.1f}%" if tev is not None else "—"
                 stk = s.get("suggested_stake")
                 stk_str = f"{stk * 100:.1f}%" if stk is not None else "—"
+                units_tag = s.get("units_tag", "—")
+                units_val = s.get("units", 0.0)
+                dollar_str = f"${units_val * UNIT_SIZE:.2f}" if units_val > 0 else "—"
                 line = (f"| {' + '.join(s['legs'])} | {s['book_odds']:.2f} "
                         f"| {_fmt_pct(s['joint_prob'])} | {s['fair_odds']:.2f} "
-                        f"| {s['edge'] * 100:+.1f}% | {tev_str} | {stk_str} |")
+                        f"| {s['edge'] * 100:+.1f}% | {tev_str} | {stk_str} "
+                        f"| {units_tag} | {dollar_str} |")
                 line += " **VALUE PICK** |" if s.get("value_pick") else "  |"
                 out.append(line)
+            out.append("")
+
+        # ── PointsBet Pull 'Em block ──────────────────────────────────────
+        pull_em = m.get("pull_em")
+        if pull_em:
+            out.append("### PointsBet Pull 'Em")
+            out.append(f"_Book combo: ${pull_em['book_combo']:.2f} · "
+                       f"Option EV (assumed prior): **{pull_em['option_ev']:+.2f}%**_")
+            out.append("")
+            out.append("| Leg | Role | Prob | Leg odds |")
+            out.append("|---|---|--:|--:|")
+            anchor_set = set(pull_em["anchor_names"])
+            all_probs = pull_em["anchor_probs"] + [pull_em["booster_prob"]]
+            for name, prob, book_o in zip(
+                pull_em["leg_names"], all_probs, pull_em["book_odds_per_leg"]
+            ):
+                role = "Anchor" if name in anchor_set else "Booster"
+                out.append(f"| {name} | {role} | {prob * 100:.0f}% | {book_o:.2f} |")
+            out.append("")
+            out.append("**Option EV breakdown** _(PULL_DETECTION_PROB=0.70 — assumed prior, not fitted)_:")
+            out.append("")
+            out.append("| Pulled leg | P(others hit) | P(miss) | Reduced odds | EV contrib |")
+            out.append("|---|--:|--:|--:|--:|")
+            for b in pull_em["option_ev_breakdown"]:
+                out.append(f"| {b['leg']} | {b['p_others_hit'] * 100:.1f}%"
+                           f" | {b['p_miss'] * 100:.1f}%"
+                           f" | {b['reduced_odds']:.2f}"
+                           f" | {b['option_ev_contrib']:+.3f}% |")
+            out.append("")
+            out.append(f"**Pull decision rule:** {pull_em['pull_decision_rule']}")
             out.append("")
 
     if multis_section:
@@ -783,3 +825,134 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
     out.append("\n_Modelling tool only - even a well-calibrated model loses regularly. "
                "Gambling Help Online 1800 858 858._")
     return "\n".join(out)
+
+
+def build_pull_em_sgm(
+    legs: list[LegCandidate],
+    *,
+    odds_book: dict[str, float],
+    pull_detection_prob: float = PULL_DETECTION_PROB,
+    anchor_min_p: float = PULL_EM_ANCHOR_MIN_P,
+    booster_min_p: float = PULL_EM_BOOSTER_MIN_P,
+    booster_max_p: float = PULL_EM_BOOSTER_MAX_P,
+) -> dict | None:
+    """Build the best PointsBet Pull 'Em SGM for a match.
+
+    Selects 3 disposal anchor legs (model_prob >= anchor_min_p, one per player,
+    must be priced in odds_book) and 1 booster leg (booster_min_p <= prob <=
+    booster_max_p, different player, respects <=1 tackle/marks cap).
+
+    Option EV per leg = sum over each leg as the "pulled" one:
+        P(other 3 win) × P(that leg misses) × PULL_DETECTION_PROB
+            × (book_combo / missed_leg_book_odds - 1)
+
+    where book_combo = product of all 4 leg book_odds.
+
+    Returns a dict with keys:
+        legs, leg_names, anchor_probs, booster_prob,
+        book_combo, option_ev, option_ev_breakdown,
+        pull_decision_rule
+    or None if a valid 4-leg combo cannot be assembled.
+
+    PULL_DETECTION_PROB is an ASSUMED PRIOR (not fitted). All EV figures
+    are labelled as estimates under this prior.
+    """
+    # Candidate pools: only priced legs
+    priced = [l for l in legs if l.name in odds_book]
+
+    disposals = [
+        l for l in priced
+        if l.market in ("player_disposals", "disposals")
+        and l.fair_prob >= anchor_min_p
+        and l.fair_prob <= 0.78  # LEG_PROB_MAX
+    ]
+    # One anchor per player (pick highest-prob line per player)
+    by_player: dict[str, LegCandidate] = {}
+    for l in disposals:
+        if l.subject not in by_player or l.fair_prob > by_player[l.subject].fair_prob:
+            by_player[l.subject] = l
+    anchor_pool = list(by_player.values())
+
+    if len(anchor_pool) < 3:
+        return None
+
+    boosters = [
+        l for l in priced
+        if booster_min_p <= l.fair_prob <= booster_max_p
+        and l.fair_prob <= 0.78
+    ]
+
+    best: dict | None = None
+
+    for anchor_combo in combinations(anchor_pool, 3):
+        # One player per leg
+        if len({l.subject for l in anchor_combo}) < 3:
+            continue
+        anchor_names = [l.name for l in anchor_combo]
+
+        for booster in boosters:
+            # Different player from all anchors
+            if booster.subject in {l.subject for l in anchor_combo}:
+                continue
+            # Tackle/marks cap: at most 1 of the 4 legs can be tackles/marks
+            n_tm = sum(
+                1 for l in (*anchor_combo, booster)
+                if l.market in ("player_tackles", "player_marks", "tackles", "marks")
+            )
+            if n_tm > 1:
+                continue
+
+            all_legs = [*anchor_combo, booster]
+            book_odds_vals = [odds_book[l.name] for l in all_legs]
+            book_combo = 1.0
+            for o in book_odds_vals:
+                book_combo *= o
+
+            # Option EV: for each leg as "miss", compute the partial EV
+            option_ev_breakdown = []
+            total_option_ev = 0.0
+            for i, miss_leg in enumerate(all_legs):
+                others = [l for j, l in enumerate(all_legs) if j != i]
+                # P(all others hit) × P(miss_leg misses)
+                p_others_hit = 1.0
+                for ol in others:
+                    p_others_hit *= ol.fair_prob
+                p_miss = 1.0 - miss_leg.fair_prob
+                miss_book = book_odds_vals[i]
+                reduced_odds = book_combo / miss_book  # payout if that leg is "pulled"
+                leg_option_ev = (p_others_hit * p_miss
+                                 * pull_detection_prob
+                                 * (reduced_odds - 1.0))
+                option_ev_breakdown.append({
+                    "leg": miss_leg.name,
+                    "p_others_hit": round(p_others_hit, 4),
+                    "p_miss": round(p_miss, 4),
+                    "reduced_odds": round(reduced_odds, 2),
+                    "option_ev_contrib": round(leg_option_ev * 100, 3),
+                })
+                total_option_ev += leg_option_ev
+
+            # Score by option_ev (primary) then sum of anchor probs (secondary)
+            score = (total_option_ev, sum(l.fair_prob for l in anchor_combo))
+            if best is None or score > best["_score"]:
+                best = {
+                    "legs": all_legs,
+                    "leg_names": [l.name for l in all_legs],
+                    "anchor_names": anchor_names,
+                    "booster_name": booster.name,
+                    "anchor_probs": [round(l.fair_prob, 4) for l in anchor_combo],
+                    "booster_prob": round(booster.fair_prob, 4),
+                    "book_odds_per_leg": book_odds_vals,
+                    "book_combo": round(book_combo, 2),
+                    "option_ev": round(total_option_ev * 100, 3),
+                    "option_ev_breakdown": option_ev_breakdown,
+                    "pull_decision_rule": (
+                        f"Pull if ≥1 anchor misses AND the other 3 are all winning "
+                        f"(assumed P(pull triggered)={pull_detection_prob:.0%} — PRIOR, not fitted)."
+                    ),
+                    "_score": score,
+                }
+
+    if best:
+        del best["_score"]
+    return best
