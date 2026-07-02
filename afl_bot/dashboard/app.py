@@ -25,7 +25,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template_string, request, url_for
 
-from afl_bot.config import ROOT_DIR
+from afl_bot.config import BANKROLL, KELLY_PER_ROUND_CAP, ROOT_DIR, UNIT_SIZE
 from afl_bot.dashboard.ledger import (
     add_bet,
     add_manual_bet,
@@ -47,13 +47,18 @@ app.secret_key = "afl_dashboard_secret"
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _load_multis_files() -> dict[str, list[dict]]:
-    """Return {'{year}_r{round}': [records]} for all multis JSON files."""
-    result: dict[str, list[dict]] = {}
+def _load_multis_files() -> dict[str, dict]:
+    """Return {'{year}_r{round}': {"records": [...], "generated_at": "..."}} for all multis JSON files."""
+    result: dict[str, dict] = {}
     for p in sorted(glob.glob(str(REPORTS_DIR / "*_multis.json"))):
         name = Path(p).stem.replace("_multis", "")   # e.g. "2026_r16"
         try:
-            result[name] = json.loads(Path(p).read_text(encoding="utf-8"))
+            raw = json.loads(Path(p).read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                # Legacy format: plain list of records, no generated_at
+                result[name] = {"records": raw, "generated_at": None}
+            else:
+                result[name] = {"records": raw.get("records", []), "generated_at": raw.get("generated_at")}
         except Exception:
             pass
     return result
@@ -74,9 +79,13 @@ def _group_by_game(records: list[dict]) -> list[dict]:
     for r in records:
         gid = r["game"]
         if gid not in games:
-            games[gid] = {"game": gid, "model": [], "sportsbet": [],
+            games[gid] = {"game": gid, "model": [], "sportsbet": [], "pull_em": None,
                           "greasiness": r.get("greasiness", 0.0)}
-        games[gid][r["ladder"]].append(r)
+        ladder = r.get("ladder", "model")
+        if ladder == "pull_em":
+            games[gid]["pull_em"] = r
+        else:
+            games[gid][ladder].append(r)
     for g in games.values():
         g["model"].sort(key=lambda r: r["band"])
         g["sportsbet"].sort(key=lambda r: r["band"])
@@ -89,7 +98,23 @@ def _group_by_game(records: list[dict]) -> list[dict]:
 def index():
     all_files = _load_multis_files()
     selected = request.args.get("round_key") or _latest_round_key(all_files)
-    records = all_files.get(selected, []) if selected else []
+    file_entry = all_files.get(selected, {"records": [], "generated_at": None}) if selected else {"records": [], "generated_at": None}
+    records = file_entry["records"]
+    generated_at = file_entry["generated_at"]
+    # Stale check: compare generated_at timestamp against the file mtime on disk.
+    stale_warning = None
+    if selected and generated_at:
+        multis_path = REPORTS_DIR / f"{selected}_multis.json"
+        if multis_path.exists():
+            import os
+            file_mtime = os.path.getmtime(str(multis_path))
+            from datetime import datetime, timezone as _tz
+            try:
+                gen_ts = datetime.fromisoformat(generated_at).timestamp()
+                if file_mtime > gen_ts + 5:  # >5s newer → stale in memory
+                    stale_warning = f"Data may be stale — file updated after last load. Reload to refresh."
+            except Exception:
+                pass
     games = _group_by_game(records)
     rounds = _round_options(all_files)
     bets = load_ledger(LEDGER_PATH)
@@ -102,6 +127,9 @@ def index():
                         if b["status"] == "pending" and not b.get("close_captured_at"))
     n_clv_unavail = sum(1 for b in bets if b.get("close_captured_at")
                         and not b.get("clv_available"))
+    round_total_units = sum(r.get("units", 0.0) for r in records if r.get("units", 0.0) > 0)
+    round_cap_units = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
+    round_total_dollars = round_total_units * UNIT_SIZE
     return render_template_string(
         _TEMPLATE,
         games=games, rounds=rounds, selected=selected,
@@ -109,6 +137,11 @@ def index():
         all_multis={r["id"]: r for r in records},
         clv_all=clv_all, clv_by_mkt=clv_by_mkt,
         n_clv_pending=n_clv_pending, n_clv_unavail=n_clv_unavail,
+        round_total_units=round_total_units,
+        round_total_dollars=round_total_dollars,
+        round_cap_units=round_cap_units,
+        generated_at=generated_at,
+        stale_warning=stale_warning,
     )
 
 
@@ -120,7 +153,7 @@ def place_bet():
     round_key = request.form.get("round_key", "")
 
     all_files = _load_multis_files()
-    records = all_files.get(round_key, [])
+    records = all_files.get(round_key, {}).get("records", [])
     record = next((r for r in records if r["id"] == multi_id), None)
     if record is None or not stake or not taken_odds:
         return redirect(url_for("index", round_key=round_key))
@@ -148,6 +181,7 @@ def add_manual_bet_route():
         stake = float(request.form.get("manual_stake", 0))
         taken_odds = float(request.form.get("manual_odds", 0))
         label = request.form.get("manual_label", "").strip()
+        book = request.form.get("manual_book", "other").strip() or "other"
     except (ValueError, TypeError):
         return redirect(url_for("index", round_key=round_key) + "#tracker")
 
@@ -209,6 +243,14 @@ def add_manual_bet_route():
                     "name": text,
                     "book_odds": None,
                 })
+        # attach per-leg odds if supplied
+        if legs:
+            try:
+                leg_odds_val = float(request.form.get(f"leg_odds_{i}", "") or "")
+                if leg_odds_val >= 1.01:
+                    legs[-1]["book_odds"] = leg_odds_val
+            except (ValueError, TypeError):
+                pass
 
     if not legs:
         return redirect(url_for("index", round_key=round_key) + "#tracker")
@@ -216,7 +258,7 @@ def add_manual_bet_route():
     LEDGER_PATH.parent.mkdir(exist_ok=True)
     add_manual_bet(LEDGER_PATH, year=year, round_no=round_no, game=game,
                    stake=stake, taken_odds=taken_odds, legs=legs,
-                   label=label or None)
+                   label=label or None, book=book)
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
@@ -353,8 +395,23 @@ _TEMPLATE = r"""<!DOCTYPE html>
     <label><input type="checkbox" id="value-only" onchange="applyFilter()"> Value picks only</label>
   </div>
 
+  {% if stale_warning %}
+  <div style="margin:8px 0 10px 0;padding:8px 12px;background:rgba(210,153,34,0.15);border:1px solid var(--yellow);border-radius:4px;font-size:12px;color:var(--yellow);display:flex;align-items:center;gap:10px">
+    ⚠ {{ stale_warning }}
+    <a href="/?round_key={{ selected }}" style="color:var(--yellow);text-decoration:underline">Reload data</a>
+  </div>
+  {% endif %}
+  {% if generated_at %}
+  <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Generated: {{ generated_at[:19].replace('T',' ') }} UTC · <a href="/?round_key={{ selected }}" style="color:var(--muted);text-decoration:underline">↻ Reload</a></div>
+  {% endif %}
+
   {% if not games %}
   <div id="no-data">No multis data for this round. Run <code>round-report --sportsbet</code> first.</div>
+  {% else %}
+  <div style="margin:8px 0 12px 0;font-size:12px;color:var(--muted)">
+    Round total: <strong style="color:{% if round_total_units > round_cap_units %}var(--red){% else %}var(--green){% endif %}">{{ '%.2f'|format(round_total_units) }}u / ${{ '%.2f'|format(round_total_dollars) }}</strong>
+    of {{ '%.0f'|format(round_cap_units) }}u cap
+  </div>
   {% endif %}
 
   {% for g in games %}
@@ -379,7 +436,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
     </p>
     <table>
       <tr><th>Legs</th><th>Band</th><th>Joint%</th><th>Fair</th>
-        <th>Book combo</th><th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
+        <th>Book combo</th><th>Edge</th><th>Total EV</th><th>Stake</th><th>Units</th><th>$</th><th>Pick</th><th></th></tr>
       {% for r in g.model %}
       <tr class="rung-row" data-ladder="model" data-value="{{ 'true' if r.value_pick else 'false' }}">
         <td>{% for leg in r.legs %}{{ leg.name }}{% if leg.hit_prob %} <span style="color:var(--muted);font-size:11px">({{ '%.0f'|format(leg.hit_prob * 100) }}%)</span>{% else %} <span style="color:var(--muted);font-size:11px">(—)</span>{% endif %}{% if not loop.last %} + {% endif %}{% endfor %}</td>
@@ -406,9 +463,11 @@ _TEMPLATE = r"""<!DOCTYPE html>
           <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
           {% else %}—{% endif %}
         </td>
+        <td>{% set utag = r.get('units_tag') %}{% if utag and utag != 'MODEL-ONLY' and utag != 'NO BET' %}<span class="value">{{ utag }}</span>{% else %}<span style="color:var(--muted)">{{ utag or '—' }}</span>{% endif %}</td>
+        <td>{% set uval = r.get('units', 0) %}{% if uval > 0 %}<span class="value">${{ '%.2f'|format(uval * 15) }}</span>{% else %}—{% endif %}</td>
         <td>{% if r.value_pick %}<span class="value">★ VALUE</span>{% else %}—{% endif %}</td>
         <td>
-          <button class="btn btn-sm btn-primary" onclick="openPlace('{{ r.id }}','{{ r.game }}',{{ r.book_combo or r.model_fair }})">Place</button>
+          <button class="btn btn-sm btn-primary" onclick="openPlace('{{ r.id }}','{{ r.game }}',{{ r.book_combo or r.model_fair }},{{ r.get('units', 0) * 15 }})">Place</button>
         </td>
       </tr>
       {% endfor %}
@@ -423,7 +482,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
     </p>
     <table>
       <tr><th>Legs</th><th>Band</th><th>Book combo</th><th>Model joint%</th><th>Model fair</th>
-        <th>Edge</th><th>Total EV</th><th>Stake</th><th>Pick</th><th></th></tr>
+        <th>Edge</th><th>Total EV</th><th>Stake</th><th>Units</th><th>$</th><th>Pick</th><th></th></tr>
       {% for r in g.sportsbet %}
       <tr class="rung-row" data-ladder="sportsbet" data-value="{{ 'true' if r.value_pick else 'false' }}">
         <td>{% for leg in r.legs %}{{ leg.name }}{% if leg.hit_prob %} <span style="color:var(--muted);font-size:11px">({{ '%.0f'|format(leg.hit_prob * 100) }}%)</span>{% else %} <span style="color:var(--muted);font-size:11px">(—)</span>{% endif %}{% if not loop.last %} + {% endif %}{% endfor %}</td>
@@ -450,13 +509,38 @@ _TEMPLATE = r"""<!DOCTYPE html>
           <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
           {% else %}—{% endif %}
         </td>
+        <td>{% set utag = r.get('units_tag') %}{% if utag and utag != 'MODEL-ONLY' and utag != 'NO BET' %}<span class="value">{{ utag }}</span>{% else %}<span style="color:var(--muted)">{{ utag or '—' }}</span>{% endif %}</td>
+        <td>{% set uval = r.get('units', 0) %}{% if uval > 0 %}<span class="value">${{ '%.2f'|format(uval * 15) }}</span>{% else %}—{% endif %}</td>
         <td>{% if r.value_pick %}<span class="value">★ VALUE</span>{% else %}—{% endif %}</td>
         <td>
-          <button class="btn btn-sm btn-primary" onclick="openPlace('{{ r.id }}','{{ r.game }}',{{ r.book_combo or r.model_fair }})">Place</button>
+          <button class="btn btn-sm btn-primary" onclick="openPlace('{{ r.id }}','{{ r.game }}',{{ r.book_combo or r.model_fair }},{{ r.get('units', 0) * 15 }})">Place</button>
         </td>
       </tr>
       {% endfor %}
     </table>
+    {% endif %}
+
+    {% if g.pull_em %}
+    {% set pe = g.pull_em %}
+    <div class="section-label" style="margin-top:12px">PointsBet Pull 'Em</div>
+    <p style="font-size:11px;color:var(--muted);margin:4px 0 8px 0">
+      Option EV uses <strong>PULL_DETECTION_PROB=0.70 (assumed prior — not fitted)</strong>.
+      Book combo: ${{ '%.2f'|format(pe.book_combo) }} ·
+      Option EV: <strong class="{{ 'value' if pe.option_ev > 0 else 'neg' }}">{{ '%+.2f'|format(pe.option_ev) }}%</strong>
+    </p>
+    <table>
+      <tr><th>Leg</th><th>Role</th><th>Prob</th><th>Leg odds</th></tr>
+      {% set anchor_set = pe.anchor_names %}
+      {% for i in range(pe.leg_names|length) %}
+      <tr>
+        <td>{{ pe.leg_names[i] }}</td>
+        <td>{% if pe.leg_names[i] in anchor_set %}Anchor{% else %}Booster{% endif %}</td>
+        <td>{{ '%.0f'|format((pe.anchor_probs + [pe.booster_prob])[i] * 100) }}%</td>
+        <td>{{ '%.2f'|format(pe.book_odds_per_leg[i]) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 4px 0"><em>{{ pe.pull_decision_rule }}</em></p>
     {% endif %}
 
     <!-- inline place-bet form -->
@@ -467,7 +551,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <b id="pleg-{{ loop.index }}" style="font-size:12px;color:var(--muted)"></b>
         <div class="form-row">
           <label>Stake ($)</label>
-          <input type="number" name="stake" min="1" step="0.50" value="25" style="width:90px">
+          <input type="number" name="stake" id="pstake-{{ loop.index }}" min="1" step="0.50" value="25" style="width:90px">
           <label>Odds taken</label>
           <input type="number" name="taken_odds" id="podds-{{ loop.index }}" min="1.01" step="0.01" style="width:90px">
           <button type="submit" class="btn btn-primary btn-sm">Confirm</button>
@@ -510,7 +594,14 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <label>Stake ($)</label>
         <input type="number" name="manual_stake" min="0.01" step="0.50" value="25" style="width:80px" required>
         <label>Odds</label>
-        <input type="number" name="manual_odds" min="1.01" step="0.01" style="width:80px" required>
+        <input type="number" name="manual_odds" id="manual_odds" min="1.01" step="0.01" style="width:80px" required>
+        <label>Bookie</label>
+        <select name="manual_book" style="width:120px">
+          <option value="sportsbet">Sportsbet</option>
+          <option value="pointsbet">PointsBet</option>
+          <option value="tab">TAB</option>
+          <option value="other" selected>Other</option>
+        </select>
         <label>Label</label>
         <input type="text" name="manual_label" placeholder="optional" style="width:120px">
       </div>
@@ -740,7 +831,7 @@ function showTab(name){
 if(location.hash==='#tracker') showTab('tracker');
 if(location.hash==='#clv') showTab('clv');
 
-function openPlace(multiId, game, defaultOdds){
+function openPlace(multiId, game, defaultOdds, defaultStake){
   document.querySelectorAll('.place-form').forEach(f=>{f.classList.remove('open')});
   const btns = document.querySelectorAll('[onclick*="'+multiId+'"]');
   if(!btns.length) return;
@@ -752,6 +843,10 @@ function openPlace(multiId, game, defaultOdds){
   document.getElementById('pleg-'+idx).textContent = game + ' / ' + multiId.split('-').slice(4).join(' ');
   const oddsInput = document.getElementById('podds-'+idx);
   oddsInput.value = parseFloat(defaultOdds).toFixed(2);
+  if(defaultStake && parseFloat(defaultStake) > 0){
+    const stakeInput = document.getElementById('pstake-'+idx);
+    if(stakeInput) stakeInput.value = parseFloat(defaultStake).toFixed(2);
+  }
   pform.classList.add('open');
   pform.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -806,18 +901,30 @@ function addLeg(){
       <input type="number" name="leg_line_${n}" placeholder="Line" min="1" style="width:60px">
     </span>
     <span id="lf_other_${n}" style="display:none">
-      <input type="text" name="leg_text_${n}" placeholder="Free text description" style="width:260px">
+      <input type="text" name="leg_text_${n}" placeholder="Free text description" style="width:220px">
     </span>
+    <input type="number" name="leg_odds_${n}" placeholder="Leg odds" min="1.01" step="0.01" style="width:80px" oninput="recalcComboOdds()" title="Per-leg price (optional, auto-multiplies into combined odds)">
     <button type="button" class="btn btn-sm" style="background:var(--border);color:var(--red)" onclick="removeLeg(${n})">✕</button>
   `;
   document.getElementById('leg-rows').appendChild(wrap);
+}
+
+function recalcComboOdds(){
+  const inputs=[...document.querySelectorAll('#leg-rows input[name^="leg_odds_"]')];
+  let product=1.0;
+  let anyFilled=false;
+  inputs.forEach(el=>{
+    const v=parseFloat(el.value);
+    if(v>=1.01){product*=v;anyFilled=true;}
+  });
+  const oddsField=document.getElementById('manual_odds');
+  if(oddsField&&anyFilled) oddsField.value=product.toFixed(2);
 }
 
 function changeLegType(n,val){
   document.getElementById('lt_'+n).value=val;
   const stdFields=document.getElementById('lf_'+n);
   const otherFields=document.getElementById('lf_other_'+n);
-  // rebuild the standard fields area depending on type
   if(val==='prop'){
     stdFields.style.display='';
     stdFields.innerHTML=`

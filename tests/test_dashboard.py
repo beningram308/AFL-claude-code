@@ -446,7 +446,8 @@ def test_loading_same_multis_json_twice_gives_identical_output(tmp_path):
 
     assert first == second
     # grouping is also stable
-    assert _group_by_game(first.get("2026_r16", [])) == _group_by_game(second.get("2026_r16", []))
+    assert (_group_by_game(first.get("2026_r16", {}).get("records", []))
+            == _group_by_game(second.get("2026_r16", {}).get("records", [])))
 
 
 def test_dashboard_total_ev_and_stake_render(tmp_path):
@@ -664,6 +665,102 @@ def test_settle_other_market_leg_keeps_bet_pending(tmp_path):
     assert bets[0]["status"] == "pending"   # "other" leg blocks auto-settlement
 
 
+# ── Part 4: generated_at and stale banner tests ───────────────────────────────
+
+def test_multis_json_contains_generated_at(tmp_path):
+    """round_report emits multis.json with a 'generated_at' key."""
+    import json as _json
+    from afl_bot.dashboard.app import _load_multis_files
+
+    # Write a multis.json with new format
+    payload = {
+        "generated_at": "2026-07-01T10:00:00+00:00",
+        "year": 2026,
+        "round": 17,
+        "records": [],
+    }
+    (tmp_path / "2026_r17_multis.json").write_text(_json.dumps(payload), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        files = _load_multis_files()
+
+    assert "2026_r17" in files
+    assert files["2026_r17"]["generated_at"] == "2026-07-01T10:00:00+00:00"
+    assert files["2026_r17"]["records"] == []
+
+
+def test_multis_json_legacy_format_read(tmp_path):
+    """Legacy multis.json (plain list) is read without error; generated_at is None."""
+    import json as _json
+    from afl_bot.dashboard.app import _load_multis_files
+
+    (tmp_path / "2026_r16_multis.json").write_text(_json.dumps([{"id": "x"}]), encoding="utf-8")
+
+    with patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path):
+        files = _load_multis_files()
+
+    assert "2026_r16" in files
+    assert files["2026_r16"]["generated_at"] is None
+    assert files["2026_r16"]["records"] == [{"id": "x"}]
+
+
+def test_dashboard_shows_generated_at_timestamp(tmp_path):
+    """Dashboard renders the generated_at timestamp when it exists."""
+    import json as _json
+    from afl_bot.dashboard.app import app
+
+    payload = {
+        "generated_at": "2026-07-01T10:00:00+00:00",
+        "year": 2026,
+        "round": 17,
+        "records": [],
+    }
+    (tmp_path / "2026_r17_multis.json").write_text(_json.dumps(payload), encoding="utf-8")
+    ledger_path = tmp_path / "bets_ledger.json"
+
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert "2026-07-01" in body   # generated_at is visible
+    assert "Reload" in body        # Reload link present
+
+
+def test_dashboard_stale_banner_shown_for_old_generated_at(tmp_path):
+    """Stale banner appears when generated_at is older than the file mtime."""
+    import json as _json
+    import time
+    from afl_bot.dashboard.app import app
+
+    # Write file with old timestamp (well in the past)
+    past_ts = "2020-01-01T00:00:00+00:00"
+    payload = {
+        "generated_at": past_ts,
+        "year": 2026,
+        "round": 17,
+        "records": [],
+    }
+    multis_file = tmp_path / "2026_r17_multis.json"
+    multis_file.write_text(_json.dumps(payload), encoding="utf-8")
+    ledger_path = tmp_path / "bets_ledger.json"
+
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert "stale" in body.lower() or "Reload" in body
+
+
 # ── Part 3 manual bets tests ─────────────────────────────────────────────────
 
 def test_add_manual_bet_appends_pending_record(tmp_path):
@@ -855,6 +952,101 @@ def test_dashboard_shows_manual_badge(tmp_path):
     assert resp.status_code == 200
     assert "badge-manual" in body
     assert "Test punt" in body
+
+
+def test_add_manual_bet_stores_book(tmp_path):
+    """add_manual_bet persists the bookie field on the ledger entry."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "Will Day", "market": "player_disposals", "line": 20,
+             "name": "Will Day 20+ disposals", "book_odds": 1.50}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=17,
+                         game="Hawthorn vs GWS", stake=15.0, taken_odds=3.50,
+                         legs=legs, book="sportsbet")
+    assert bet["book"] == "sportsbet"
+    saved = load_ledger(ledger_path)
+    assert saved[0]["book"] == "sportsbet"
+
+
+def test_add_manual_bet_per_leg_odds(tmp_path):
+    """Legs passed with book_odds are stored verbatim on the ledger entry."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Charlie Curnow", "market": "player_goals", "line": 2,
+         "name": "Charlie Curnow 2+ goals", "book_odds": 1.85},
+        {"player": "Harry McKay", "market": "player_goals", "line": 1,
+         "name": "Harry McKay 1+ goals", "book_odds": 1.30},
+    ]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=17,
+                         game="Carlton vs Essendon", stake=20.0, taken_odds=2.40,
+                         legs=legs, book="tab")
+    assert bet["legs"][0]["book_odds"] == 1.85
+    assert bet["legs"][1]["book_odds"] == 1.30
+    assert bet["book"] == "tab"
+
+
+def test_add_manual_bet_default_book(tmp_path):
+    """book defaults to 'other' when not supplied."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "Carlton", "market": "h2h", "line": None,
+             "name": "Carlton to win", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=17,
+                         game="Carlton vs Essendon", stake=10.0, taken_odds=1.90,
+                         legs=legs)
+    assert bet["book"] == "other"
+
+
+def test_dashboard_add_my_own_bet_form_visible(tmp_path):
+    """GET / renders the Add My Own Bet button in the tracker panel."""
+    from afl_bot.dashboard.app import app
+
+    (tmp_path / "2026_r17_multis.json").write_text(json.dumps([]), encoding="utf-8")
+    ledger_path = tmp_path / "bets_ledger.json"
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        resp = app.test_client().get("/")
+
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert "Add my own bet" in body
+    assert "add-manual-bet" in body
+
+
+def test_dashboard_post_manual_bet_stores_book(tmp_path):
+    """POST /add-manual-bet stores the bookie field from the form."""
+    from afl_bot.dashboard.app import app
+
+    (tmp_path / "2026_r17_multis.json").write_text(json.dumps([]), encoding="utf-8")
+    ledger_path = tmp_path / "bets_ledger.json"
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        client = app.test_client()
+        resp = client.post("/add-manual-bet", data={
+            "round_key": "2026_r17",
+            "manual_year": "2026",
+            "manual_round": "17",
+            "manual_game": "Geelong vs Brisbane Lions",
+            "manual_stake": "15.0",
+            "manual_odds": "3.50",
+            "manual_book": "pointsbet",
+            "manual_label": "",
+            "leg_type_1": "prop",
+            "leg_player_1": "Patrick Dangerfield",
+            "leg_stat_1": "disposals",
+            "leg_line_1": "25",
+            "leg_odds_1": "1.50",
+        }, follow_redirects=False)
+
+    assert resp.status_code in (301, 302)
+    bets = load_ledger(ledger_path)
+    assert len(bets) == 1
+    assert bets[0]["book"] == "pointsbet"
+    assert bets[0]["legs"][0]["book_odds"] == 1.50
 
 
 def test_selection_is_deterministic_under_equal_scoring(tmp_path):

@@ -102,6 +102,7 @@ def add_manual_bet(
     taken_odds: float,
     legs: list[dict],
     label: str | None = None,
+    book: str = "other",
 ) -> dict:
     """Append a manually-entered bet to the ledger.
 
@@ -128,6 +129,7 @@ def add_manual_bet(
         "payout": None,
         "leg_results": None,
         "source": "manual",
+        "book": book,
         "manual_result": None,
         "label": label or "",
         "close_captured_at": None,
