@@ -975,7 +975,7 @@ def build_pull_em_sgm(
                     "promo_p_dead": round(p_dead_pe, 6),
                     "promo_R_eff": round(R_eff, 4),
                     "pull_decision_rule": (
-                        f"Pull if ≥1 anchor misses AND the other 3 are all winning "
+                        f"Pull if >=1 anchor misses AND the other 3 are all winning "
                         f"(assumed P(pull triggered)={pull_detection_prob:.0%} — PRIOR, not fitted)."
                     ),
                     "_score": score,
