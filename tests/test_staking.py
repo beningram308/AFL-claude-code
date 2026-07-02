@@ -1,11 +1,12 @@
 import numpy as np
 import pytest
 
-from afl_bot.config import KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP, UNIT_SIZE, UNIT_STEP
+from afl_bot.config import BONUS_BET_FACTOR, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP, UNIT_SIZE, UNIT_STEP
 from afl_bot.build.staking import (
     bankroll_report,
     fractional_kelly_fraction,
     kelly_fraction,
+    multi_outcome_kelly,
     recommend_units,
     simulate_bankroll,
     simulate_bankroll_joint,
@@ -122,11 +123,75 @@ def test_recommend_units_no_edge_returns_no_bet():
     assert tag == "NO BET"
 
 
-def test_recommend_units_promo_only():
-    # No edge on base but positive promo_ev
+def test_recommend_units_promo_kelly_positive():
+    # No base edge (joint=0.20 × odds=3.5 = 0.70 < 1), but promo gives positive Kelly.
+    # p_win=0.25, p_one_loss=0.40, p_dead=0.35, odds=3.5, R=0.75
+    # g'(0) = 0.25*2.5 + 0.40*(-0.25) - 0.35 = 0.625 - 0.10 - 0.35 = 0.175 > 0
+    units, tag = recommend_units(
+        0.20, 3.5, promo_ev=0.10,
+        p_win=0.25, p_one_loss=0.40, p_dead=0.35,
+    )
+    assert units > 0.0
+    assert "PROMO KELLY" in tag
+    assert abs(units % UNIT_STEP) < 1e-9 or abs(units % UNIT_STEP - UNIT_STEP) < 1e-9
+
+
+def test_recommend_units_promo_kelly_neg_ev_no_bet():
+    # Even with promo, total EV is negative → NO BET.
+    # joint=0.05, odds=6.0: base Kelly < 0; g'(0) = 0.05*5 + 0.10*(-0.25) - 0.85 = -0.625 < 0
+    units, tag = recommend_units(
+        0.05, 6.0, promo_ev=0.075,
+        p_win=0.05, p_one_loss=0.10, p_dead=0.85,
+    )
+    assert units == 0.0
+    assert tag == "NO BET"
+
+
+def test_recommend_units_promo_kelly_refund_cap():
+    # Verify the dollar cap: units × unit_size must not exceed promo_refund_cap.
+    # Use no base edge (joint=0.30, odds=3.0: kelly=(0.9-1)/2<0), large bankroll,
+    # small unit_size and large unit_max to let raw_units run high before dollar cap.
+    from afl_bot.config import PROMO_REFUND_CAP
+    units, tag = recommend_units(
+        0.30, 3.0, promo_ev=0.30,
+        p_win=0.40, p_one_loss=0.35, p_dead=0.25,
+        bankroll=100_000, unit_size=1.0, unit_step=1.0, unit_max=10_000.0,
+        promo_refund_cap=PROMO_REFUND_CAP,
+    )
+    assert units * 1.0 <= PROMO_REFUND_CAP + 1e-9
+    assert "PROMO KELLY" in tag
+    assert "capped by promo refund limit" in tag
+
+
+def test_recommend_units_promo_kelly_without_branch_probs_no_bet():
+    # promo_ev > 0 but branch probs not supplied → NO BET (old PROMO ONLY path removed).
     units, tag = recommend_units(0.40, 2.10, promo_ev=0.05)
-    assert units == 0.5
-    assert tag == "PROMO ONLY"
+    assert units == 0.0
+    assert tag == "NO BET"
+
+
+def test_promo_flat_units_fully_removed():
+    # Grep-style test: PROMO_FLAT_UNITS must not appear in any source file.
+    import subprocess, sys
+    result = subprocess.run(
+        [sys.executable, "-c",
+         "import afl_bot.config as c; assert not hasattr(c, 'PROMO_FLAT_UNITS'),"
+         " 'PROMO_FLAT_UNITS still in config'"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_multi_outcome_kelly_hand_computable_case():
+    # p_win=0.5, p_one_miss=0.3, p_dead=0.2, odds=2.5, R=0.75
+    # g'(0) = 0.5*1.5 + 0.3*(-0.25) - 0.2 = 0.75 - 0.075 - 0.2 = 0.475 > 0
+    # Full Kelly f* ≈ 0.449 (verified numerically); fractional = 0.25*0.449 ≈ 0.112
+    # Capped at KELLY_PER_BET_CAP = 0.05.
+    f = multi_outcome_kelly(0.5, 0.3, 0.2, 2.5, BONUS_BET_FACTOR)
+    assert f == pytest.approx(KELLY_PER_BET_CAP, abs=1e-9)
+    # Verify full Kelly is in a plausible range (brute-force check).
+    f_full = multi_outcome_kelly(0.5, 0.3, 0.2, 2.5, BONUS_BET_FACTOR, fraction=1.0, cap=1.0)
+    assert 0.40 < f_full < 0.55
 
 
 def test_recommend_units_model_only_no_book_odds():

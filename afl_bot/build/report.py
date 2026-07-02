@@ -794,8 +794,12 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
         pull_em = m.get("pull_em")
         if pull_em:
             out.append("### PointsBet Pull 'Em")
+            pe_units_tag = pull_em.get("units_tag", "—")
+            pe_units_val = pull_em.get("units", 0.0)
+            pe_dollar = f"${pe_units_val * UNIT_SIZE:.2f}" if pe_units_val > 0 else "—"
             out.append(f"_Book combo: ${pull_em['book_combo']:.2f} · "
-                       f"Option EV (assumed prior): **{pull_em['option_ev']:+.2f}%**_")
+                       f"Option EV (assumed prior): **{pull_em['option_ev']:+.2f}%** · "
+                       f"Stake: **{pe_units_tag}** ({pe_dollar})_")
             out.append("")
             out.append("| Leg | Role | Prob | Leg odds |")
             out.append("|---|---|--:|--:|")
@@ -932,6 +936,26 @@ def build_pull_em_sgm(
                 })
                 total_option_ev += leg_option_ev
 
+            # Promo branch probs for multi-outcome Kelly sizing.
+            # p_win = all 4 legs hit (independence of model probs).
+            p_win_pe = booster.fair_prob
+            for al in anchor_combo:
+                p_win_pe *= al.fair_prob
+            # p_one_miss = Σ P(exactly one anchor misses AND pull triggered).
+            p_one_miss_pe = sum(
+                b["p_others_hit"] * b["p_miss"] * pull_detection_prob
+                for b in option_ev_breakdown
+            )
+            p_dead_pe = max(0.0, 1.0 - p_win_pe - p_one_miss_pe)
+            # Weighted average recovery odds (R_eff): expected return per unit when pulled.
+            if p_one_miss_pe > 0:
+                R_eff = sum(
+                    b["p_others_hit"] * b["p_miss"] * pull_detection_prob * b["reduced_odds"]
+                    for b in option_ev_breakdown
+                ) / p_one_miss_pe
+            else:
+                R_eff = 1.0
+
             # Score by option_ev (primary) then sum of anchor probs (secondary)
             score = (total_option_ev, sum(l.fair_prob for l in anchor_combo))
             if best is None or score > best["_score"]:
@@ -946,6 +970,10 @@ def build_pull_em_sgm(
                     "book_combo": round(book_combo, 2),
                     "option_ev": round(total_option_ev * 100, 3),
                     "option_ev_breakdown": option_ev_breakdown,
+                    "promo_p_win": round(p_win_pe, 6),
+                    "promo_p_one_miss": round(p_one_miss_pe, 6),
+                    "promo_p_dead": round(p_dead_pe, 6),
+                    "promo_R_eff": round(R_eff, 4),
                     "pull_decision_rule": (
                         f"Pull if ≥1 anchor misses AND the other 3 are all winning "
                         f"(assumed P(pull triggered)={pull_detection_prob:.0%} — PRIOR, not fitted)."

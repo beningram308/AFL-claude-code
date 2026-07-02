@@ -18,8 +18,8 @@ import numpy as np
 import math
 
 from afl_bot.config import (
-    BANKROLL, KELLY_FRACTION, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP,
-    PROMO_FLAT_UNITS, UNIT_MAX, UNIT_MAX_LONGSHOT, UNIT_SIZE, UNIT_STEP,
+    BANKROLL, BONUS_BET_FACTOR, KELLY_FRACTION, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP,
+    PROMO_REFUND_CAP, UNIT_MAX, UNIT_MAX_LONGSHOT, UNIT_SIZE, UNIT_STEP,
 )
 
 
@@ -187,12 +187,16 @@ def recommend_units(
     book_odds: float | None,
     promo_ev: float | None = None,
     *,
+    p_win: float | None = None,
+    p_one_loss: float | None = None,
+    p_dead: float | None = None,
+    refund_factor: float = BONUS_BET_FACTOR,
     bankroll: float = BANKROLL,
     unit_size: float = UNIT_SIZE,
     unit_step: float = UNIT_STEP,
     unit_max: float = UNIT_MAX,
     unit_max_longshot: float = UNIT_MAX_LONGSHOT,
-    promo_flat: float = PROMO_FLAT_UNITS,
+    promo_refund_cap: float = PROMO_REFUND_CAP,
 ) -> tuple[float, str]:
     """Return ``(units, tag)`` for a multi rung.
 
@@ -201,11 +205,17 @@ def recommend_units(
     - Positive edge (market-shrunk prob × book_odds > 1) → Kelly → rounded down to
       ``unit_step``, clipped to ``[unit_step, unit_max]`` (``unit_max_longshot`` when
       book_odds >= 5.0). Tag = ``"Nu"``.
-    - No/negative edge but positive ``promo_ev`` → ``(promo_flat, "PROMO ONLY")``.
+    - No/negative edge, promo branch probs available, and positive promo_ev → multi-outcome
+      Kelly on the promo-adjusted payout; if f* ≤ 0 → ``(0.0, "NO BET")``, else
+      ``(units, "Nu PROMO KELLY")``. Dollar stake capped at ``promo_refund_cap`` (bookie
+      bonus-back cap); prints "(capped by promo refund limit)" when the cap bites.
     - No edge, no promo → ``(0.0, "NO BET")``.
 
     The per-round governor (KELLY_PER_ROUND_CAP) is applied by the caller across the
     full round's Kelly bets via ``stake_bets``; this function sizes individual bets.
+    ``refund_factor`` (default BONUS_BET_FACTOR=0.75) is the value of the returned stake
+    as a fraction; pass a higher R for Pull 'Em where the recovery payout can exceed the
+    original stake.
     """
     if book_odds is None:
         return (0.0, "MODEL-ONLY")
@@ -221,8 +231,26 @@ def recommend_units(
         units = max(units, unit_step)   # at least 0.25u if Kelly says anything
         return (units, f"{units:g}u")
 
-    if promo_ev is not None and promo_ev > 0.0:
-        return (promo_flat, "PROMO ONLY")
+    if (p_win is not None and p_one_loss is not None and p_dead is not None
+            and promo_ev is not None and promo_ev > 0.0):
+        frac_promo = multi_outcome_kelly(
+            p_win, p_one_loss, p_dead, book_odds, refund_factor,
+        )
+        if frac_promo <= 0.0:
+            return (0.0, "NO BET")
+        raw_units_promo = frac_promo * bankroll / unit_size
+        cap = unit_max_longshot if book_odds >= 5.0 else unit_max
+        units = min(math.floor(raw_units_promo / unit_step) * unit_step, cap)
+        units = max(units, unit_step)
+        capped = False
+        if units * unit_size > promo_refund_cap:
+            units = math.floor(promo_refund_cap / unit_size / unit_step) * unit_step
+            units = max(units, unit_step)
+            capped = True
+        tag = f"{units:g}u PROMO KELLY"
+        if capped:
+            tag += " (capped by promo refund limit)"
+        return (units, tag)
 
     return (0.0, "NO BET")
 

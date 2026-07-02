@@ -238,7 +238,7 @@ UNIT_SIZE = 15.0         # 1 unit = $15 (1% of bankroll)
 UNIT_STEP = 0.25         # round stakes to nearest 0.25u
 UNIT_MAX = 3.0           # hard cap: never more than 3u on one multi
 UNIT_MAX_LONGSHOT = 1.0  # tighter cap when combined odds >= 5.0 (Kelly noisiest there)
-PROMO_FLAT_UNITS = 0.5   # flat stake for promo-only plays (negative base EV, positive promo EV)
+PROMO_REFUND_CAP = 50.0  # max stake in dollars covered by bookie bonus-back (Sportsbet/PointsBet)
 
 # ── PointsBet Pull 'Em SGM constants ────────────────────────────────────────
 # All three are ASSUMED PRIORS, not fitted — no historical Pull 'Em data exists.

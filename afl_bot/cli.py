@@ -54,6 +54,7 @@ from afl_bot.build.report import (
 )
 from afl_bot.build.staking import (
     bankroll_report,
+    multi_outcome_kelly,
     recommend_units,
     simulate_bankroll,
     simulate_bankroll_joint,
@@ -62,12 +63,14 @@ from afl_bot.build.staking import (
 from afl_bot.config import (
     ALLOW_TOTAL_POINTS_IN_MULTI,
     ANCHOR_MIN_PROB,
+    BANKROLL,
     BOOKABLE_TOP_N_BY_STAT,
     CACHE_DIR,
     CORR_GAIN_HAIRCUT,
     DEFAULT_BANKROLL,
     LEG_PROB_MAX,
     LEG_PROB_MIN,
+    MANUALLY_UNAVAILABLE,
     MC_SE_TARGET,
     MULTI_CALIBRATION_LOOKBACK,
     MULTI_MARKET_SHRINK,
@@ -78,12 +81,17 @@ from afl_bot.config import (
     PROP_LINES,
     PROP_MARKET_BLEND_WEIGHT,
     PROP_RECENT_SEASONS,
-    MANUALLY_UNAVAILABLE,
+    PROMO_REFUND_CAP,
+    PULL_DETECTION_PROB,
     ROOT_DIR,
     SHARE_CONCENTRATION,
     SIM_ITERATIONS,
     TEAM_STAT_DISPERSION,
     TOG_RETURN_DEFAULT,
+    UNIT_MAX,
+    UNIT_MAX_LONGSHOT,
+    UNIT_SIZE,
+    UNIT_STEP,
     WET_THRESHOLD_MM,
 )
 from afl_bot.data.odds import fetch_historical_odds
@@ -761,7 +769,48 @@ def _units_fields(rung: dict) -> dict:
         rung.get("joint_prob"),
         rung.get("book_odds"),
         rung.get("promo_ev"),
+        p_win=rung.get("p_all_win"),
+        p_one_loss=rung.get("p_one_loss"),
+        p_dead=rung.get("p_two_plus_loss"),
     )
+    return {"units": units, "units_tag": tag}
+
+
+def _pull_em_units_fields(pull_em: dict) -> dict:
+    """Compute multi-outcome Kelly units for a Pull 'Em SGM.
+
+    Uses the promo branch probs computed in build_pull_em_sgm (promo_p_win,
+    promo_p_one_miss, promo_p_dead, promo_R_eff) which capture the recovery
+    probability via PULL_DETECTION_PROB and the weighted average reduced odds.
+    """
+    import math as _math
+    p_win = pull_em.get("promo_p_win")
+    p_one_miss = pull_em.get("promo_p_one_miss")
+    p_dead = pull_em.get("promo_p_dead")
+    R_eff = pull_em.get("promo_R_eff")
+    option_ev = pull_em.get("option_ev", 0.0)
+
+    if (p_win is None or p_one_miss is None or p_dead is None
+            or R_eff is None or option_ev <= 0 or p_one_miss <= 0):
+        return {"units": 0.0, "units_tag": "NO BET"}
+
+    book_combo = pull_em["book_combo"]
+    frac = multi_outcome_kelly(p_win, p_one_miss, p_dead, book_combo, R_eff)
+    if frac <= 0.0:
+        return {"units": 0.0, "units_tag": "NO BET"}
+
+    raw_units = frac * BANKROLL / UNIT_SIZE
+    cap = UNIT_MAX_LONGSHOT if book_combo >= 5.0 else UNIT_MAX
+    units = min(_math.floor(raw_units / UNIT_STEP) * UNIT_STEP, cap)
+    units = max(units, UNIT_STEP)
+    capped = False
+    if units * UNIT_SIZE > PROMO_REFUND_CAP:
+        units = _math.floor(PROMO_REFUND_CAP / UNIT_SIZE / UNIT_STEP) * UNIT_STEP
+        units = max(units, UNIT_STEP)
+        capped = True
+    tag = f"{units:g}u PROMO KELLY"
+    if capped:
+        tag += " (capped by promo refund limit)"
     return {"units": units, "units_tag": tag}
 
 
@@ -1235,6 +1284,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         if pull_em:
             h = home_name.replace(" ", "_")
             a = away_name.replace(" ", "_")
+            pe_units = _pull_em_units_fields(pull_em)
+            pull_em.update(pe_units)
             pull_em_record = {
                 "id": f"{year}-r{round_no}-{h}-{a}-pull_em",
                 "year": year,
@@ -1252,6 +1303,8 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                 "option_ev": pull_em["option_ev"],
                 "option_ev_breakdown": pull_em["option_ev_breakdown"],
                 "pull_decision_rule": pull_em["pull_decision_rule"],
+                "units": pull_em.get("units", 0.0),
+                "units_tag": pull_em.get("units_tag", "NO BET"),
             }
             multis_records.append(pull_em_record)
         matches.append({
