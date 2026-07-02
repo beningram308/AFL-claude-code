@@ -334,11 +334,21 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         if leg_masks is not None and n_legs >= PROMO_MIN_LEGS:
             masks_arr = np.vstack([np.asarray(m, dtype=bool) for m in leg_masks])
             n_win = masks_arr.sum(axis=0)
-            p_all = float((n_win == n_legs).mean())
-            p_one = float((n_win == n_legs - 1).mean())
-            p_dead = max(0.0, 1.0 - p_all - p_one)
+            p_all_raw = float((n_win == n_legs).mean())
+            p_one_raw = float((n_win == n_legs - 1).mean())
+            p_dead_raw = max(0.0, 1.0 - p_all_raw - p_one_raw)
+            # Rescale to market-anchored basis so Kelly g'(0) and displayed
+            # Total EV share the same numbers: total_ev > 0 iff g'(0) > 0.
+            book = c.get("book_odds")
+            if book is not None and priced_edge is not None and p_all_raw < 1.0:
+                p_win = (priced_edge + 1.0) / book
+                scale = (1.0 - p_win) / (1.0 - p_all_raw)
+                p_one = p_one_raw * scale
+                p_dead = max(0.0, p_dead_raw * scale)
+            else:
+                p_win, p_one, p_dead = p_all_raw, p_one_raw, p_dead_raw
             promo = p_one * BONUS_BET_FACTOR
-            c["_p_all_win"] = p_all
+            c["_p_all_win"] = p_win
             c["_p_one_loss"] = p_one
             c["_p_two_plus_loss"] = p_dead
             c["_promo_ev"] = promo
@@ -540,11 +550,20 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         if leg_masks is not None and n_legs >= PROMO_MIN_LEGS:
             masks_arr = np.vstack([np.asarray(m, dtype=bool) for m in leg_masks])
             n_win = masks_arr.sum(axis=0)
-            p_all = float((n_win == n_legs).mean())
-            p_one = float((n_win == n_legs - 1).mean())
-            p_dead = max(0.0, 1.0 - p_all - p_one)
+            p_all_raw = float((n_win == n_legs).mean())
+            p_one_raw = float((n_win == n_legs - 1).mean())
+            p_dead_raw = max(0.0, 1.0 - p_all_raw - p_one_raw)
+            # Rescale to market-anchored basis (c["edge"] = shrunk*book - 1).
+            book = c["book_odds"]
+            if p_all_raw < 1.0:
+                p_win = (c["edge"] + 1.0) / book
+                scale = (1.0 - p_win) / (1.0 - p_all_raw)
+                p_one = p_one_raw * scale
+                p_dead = max(0.0, p_dead_raw * scale)
+            else:
+                p_win, p_one, p_dead = p_all_raw, p_one_raw, p_dead_raw
             promo = p_one * BONUS_BET_FACTOR
-            c["_p_all_win"] = p_all
+            c["_p_all_win"] = p_win
             c["_p_one_loss"] = p_one
             c["_p_two_plus_loss"] = p_dead
             c["_promo_ev"] = promo

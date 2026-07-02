@@ -6,7 +6,8 @@ import pytest
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import search_market_sgms, search_match_sgms
 from afl_bot.build.staking import fractional_kelly_fraction, multi_outcome_kelly
-from afl_bot.config import BONUS_BET_FACTOR, KELLY_FRACTION, KELLY_PER_BET_CAP, PROMO_MIN_LEGS
+from afl_bot.config import BONUS_BET_FACTOR, KELLY_FRACTION, KELLY_PER_BET_CAP, MULTI_MARKET_SHRINK, PROMO_MIN_LEGS
+from afl_bot.pricing.edge import market_anchored_prob
 
 
 # ---------------------------------------------------------------------------
@@ -47,14 +48,17 @@ def _independent_legs(n=50_000, probs=(0.75, 0.70, 0.65), seed=7):
 # ---------------------------------------------------------------------------
 
 def test_promo_p_all_win_matches_joint_from_masks_for_perfect_corr():
-    """Perfectly correlated legs: p_all_win == raw joint prob (every sim either
-    all-win or all-lose); p_one_loss == 0 by construction."""
+    """Perfectly correlated legs: p_all_win equals the market-anchored joint prob
+    (shrunk toward 1/book); p_one_loss == 0 by construction (no 2-win-1-loss path)."""
     legs, p_joint = _correlated_legs()
     odds_book = {leg.name: leg.market_odds for leg in legs}
     out = search_match_sgms(legs, odds_book=odds_book, target_odds=(1.5,), min_joint_prob=0.0)
     r = out[0]
     assert r["p_all_win"] is not None
-    assert abs(r["p_all_win"] - p_joint) < 0.01
+    # After fix: p_all_win is market-anchored, not the raw mask mean.
+    book = legs[0].market_odds ** 3  # combined_odds = product of three equal-odds legs
+    p_win_expected = market_anchored_prob(p_joint, book, MULTI_MARKET_SHRINK)
+    assert abs(r["p_all_win"] - p_win_expected) < 0.01
     assert abs(r["p_one_loss"]) < 0.01        # perfect corr -> no 2-win-1-loss path
 
 
@@ -307,3 +311,68 @@ def test_promo_stats_present_on_all_rungs_in_full_ladder():
         # total_ev >= edge (promo adds non-negative value)
         if r.get("edge") is not None:
             assert r["total_ev"] >= r["edge"] - 1e-9
+
+
+# ---------------------------------------------------------------------------
+# FIX-KELLY-EV-SAME-BASIS: market-anchored rescaling invariants
+# ---------------------------------------------------------------------------
+
+def test_anchored_branch_probs_sum_to_one_and_preserve_ratio():
+    """Rescaled branch probs sum to 1.0 and the conditional p_one/(p_one+p_dead)
+    ratio is preserved from the raw mask values."""
+    p_all_raw, p_one_raw, p_dead_raw = 0.48, 0.40, 0.12
+    book = 1.39
+    priced_edge = market_anchored_prob(p_all_raw, book, MULTI_MARKET_SHRINK) * book - 1.0
+    p_win = (priced_edge + 1.0) / book
+    scale = (1.0 - p_win) / (1.0 - p_all_raw)
+    p_one = p_one_raw * scale
+    p_dead = max(0.0, p_dead_raw * scale)
+
+    assert abs(p_win + p_one + p_dead - 1.0) < 1e-9
+    ratio_raw = p_one_raw / (p_one_raw + p_dead_raw)
+    ratio_anc = p_one / (p_one + p_dead)
+    assert abs(ratio_raw - ratio_anc) < 1e-9
+
+
+def test_live_bug_case_no_bet_becomes_staked():
+    """Live bug: raw joint 0.48, book 1.39, p_one_raw 0.40, p_dead_raw 0.12.
+    Raw-prob Kelly g'(0) < 0 (old code: NO BET). Anchored Kelly g'(0) > 0 (fix: staked)."""
+    p_all_raw, p_one_raw, p_dead_raw = 0.48, 0.40, 0.12
+    book = 1.39
+
+    g_prime_raw = p_all_raw * (book - 1) + p_one_raw * (BONUS_BET_FACTOR - 1) - p_dead_raw
+    assert g_prime_raw < 0, "Raw probs must give g'(0) < 0 to reproduce the bug"
+
+    priced_edge = market_anchored_prob(p_all_raw, book, MULTI_MARKET_SHRINK) * book - 1.0
+    p_win = (priced_edge + 1.0) / book
+    scale = (1.0 - p_win) / (1.0 - p_all_raw)
+    p_one = p_one_raw * scale
+    p_dead = max(0.0, p_dead_raw * scale)
+
+    total_ev = priced_edge + p_one * BONUS_BET_FACTOR
+    assert total_ev > 0, f"Post-fix total_ev={total_ev:.4f} should be positive"
+
+    f = multi_outcome_kelly(p_win, p_one, p_dead, book, BONUS_BET_FACTOR)
+    assert f > 0.0, f"Post-fix Kelly f*={f:.4f} should be positive (pre-fix was NO BET)"
+
+
+def test_total_ev_positive_iff_suggested_stake_positive_invariant():
+    """Invariant: for every search_match_sgms rung with a book price and promo masks,
+    total_ev > 0 ⟺ suggested_stake > 0 (Kelly and displayed EV on the same basis)."""
+    legs, _ = _independent_legs(probs=(0.75, 0.70, 0.65))
+    # Fair odds — base edge ≈ 0; promo can push total_ev positive for shorter rungs.
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_match_sgms(legs, odds_book=odds_book,
+                            target_odds=(1.5, 3.0, 5.0), min_joint_prob=0.0)
+    for r in out:
+        if r.get("total_ev") is None or r.get("p_all_win") is None:
+            continue
+        if r["total_ev"] > 0:
+            assert r["suggested_stake"] is not None and r["suggested_stake"] > 0, (
+                f"total_ev={r['total_ev']:.4f} > 0 but suggested_stake={r['suggested_stake']!r}"
+            )
+        else:
+            stake = r.get("suggested_stake")
+            assert stake is None or stake == 0.0, (
+                f"total_ev={r['total_ev']:.4f} <= 0 but suggested_stake={stake!r}"
+            )
