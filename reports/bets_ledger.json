@@ -296,5 +296,103 @@
     "clv_pct": null,
     "clv_available": false,
     "close_legs": null
+  },
+  {
+    "bet_id": "6a3171ba-14cf-493c-bf88-b94129b6e9a3",
+    "multi_id": "2026-r17-Geelong-Brisbane_Lions-sportsbet-15.00",
+    "year": 2026,
+    "round": 17,
+    "game": "Geelong vs Brisbane Lions",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Geelong",
+        "market": "h2h",
+        "line": null,
+        "name": "Geelong to win",
+        "book_odds": 1.49,
+        "hit_prob": 0.696
+      },
+      {
+        "player": "Bailey Smith",
+        "market": "goals",
+        "line": 1,
+        "name": "Bailey Smith 1+ goals",
+        "book_odds": 2.55,
+        "hit_prob": 0.3522
+      },
+      {
+        "player": "Oliver Dempsey",
+        "market": "goals",
+        "line": 1,
+        "name": "Oliver Dempsey 1+ goals",
+        "book_odds": 1.5,
+        "hit_prob": 0.6547
+      }
+    ],
+    "stake": 5.0,
+    "open_odds": 3.33,
+    "taken_odds": 3.33,
+    "placed_at": "2026-07-02T17:42:42.232144+10:00",
+    "status": "pending",
+    "settled_at": null,
+    "payout": null,
+    "leg_results": null,
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
+  },
+  {
+    "bet_id": "841db8fc-d4fb-4405-bc00-66ca87ce1517",
+    "multi_id": "2026-r17-Geelong-Brisbane_Lions-sportsbet-2.10",
+    "year": 2026,
+    "round": 17,
+    "game": "Geelong vs Brisbane Lions",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Oliver Dempsey",
+        "market": "disposals",
+        "line": 15,
+        "name": "Oliver Dempsey 15+ disposals",
+        "book_odds": 1.28,
+        "hit_prob": 0.7244
+      },
+      {
+        "player": "Darcy Wilmot",
+        "market": "disposals",
+        "line": 20,
+        "name": "Darcy Wilmot 20+ disposals",
+        "book_odds": 1.15,
+        "hit_prob": 0.7642
+      },
+      {
+        "player": "Josh Dunkley",
+        "market": "disposals",
+        "line": 20,
+        "name": "Josh Dunkley 20+ disposals",
+        "book_odds": 1.43,
+        "hit_prob": 0.5912
+      }
+    ],
+    "stake": 7.5,
+    "open_odds": 2.19,
+    "taken_odds": 2.19,
+    "placed_at": "2026-07-02T17:59:41.015322+10:00",
+    "status": "pending",
+    "settled_at": null,
+    "payout": null,
+    "leg_results": null,
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null
   }
 ]
