@@ -6,6 +6,7 @@ import pytest
 from afl_bot.build.multi import LegCandidate
 from afl_bot.build.report import (
     build_odds_template,
+    build_pull_em_sgm,
     build_sgm_candidates,
     is_bookable_model_only_leg,
     projection_rows,
@@ -15,7 +16,7 @@ from afl_bot.build.report import (
     select_ladder_lines,
     top_n_players_by_stat,
 )
-from afl_bot.config import MULTI_TARGET_ODDS
+from afl_bot.config import MULTI_TARGET_ODDS, PULL_DETECTION_PROB
 
 LINES = {"disposals": [15, 20, 25], "goals": [1, 2], "marks": [4, 6], "tackles": [3, 5]}
 
@@ -1229,3 +1230,130 @@ def test_prop_calibration_check_saves_file(tmp_path, capsys, monkeypatch):
     assert "Prop Calibration Check" in content
     assert "disposals" in content
     assert "Verdict" in content
+
+
+# ── build_pull_em_sgm ─────────────────────────────────────────────────────────
+
+def _disp_leg(name, player, prob):
+    mask = np.random.default_rng(abs(hash(name)) % 2**31).random(20_000) < prob
+    return LegCandidate(name=name, match_id="m1", market="player_disposals",
+                        subject=player, fair_prob=prob,
+                        market_odds=round(1 / prob, 2), mask=mask)
+
+
+def _goal_leg(name, player, prob):
+    mask = np.random.default_rng(abs(hash(name)) % 2**31).random(20_000) < prob
+    return LegCandidate(name=name, match_id="m1", market="player_goals",
+                        subject=player, fair_prob=prob,
+                        market_odds=round(1 / prob, 2), mask=mask)
+
+
+def test_pull_em_basic_composition():
+    """build_pull_em_sgm returns 3 anchor disposals + 1 booster."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _goal_leg("D 1+ goals", "D", 0.55),  # booster
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    assert result is not None
+    assert len(result["leg_names"]) == 4
+    assert len(result["anchor_names"]) == 3
+    assert result["booster_name"] not in result["anchor_names"]
+    # All anchors must be from different players
+    anchor_probs = result["anchor_probs"]
+    assert all(p >= 0.70 for p in anchor_probs)
+
+
+def test_pull_em_option_ev_math():
+    """Option EV is computed as sum over each leg as 'pulled'."""
+    p_a, p_b, p_c, p_d = 0.75, 0.72, 0.71, 0.55
+    odds_a, odds_b, odds_c, odds_d = 1 / p_a, 1 / p_b, 1 / p_c, 1 / p_d
+    legs = [
+        _disp_leg("A 25+ disposals", "A", p_a),
+        _disp_leg("B 20+ disposals", "B", p_b),
+        _disp_leg("C 30+ disposals", "C", p_c),
+        _goal_leg("D 1+ goals", "D", p_d),
+    ]
+    odds_book = {"A 25+ disposals": odds_a, "B 20+ disposals": odds_b,
+                 "C 30+ disposals": odds_c, "D 1+ goals": odds_d}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    assert result is not None
+
+    book_combo = odds_a * odds_b * odds_c * odds_d
+    probs = [p_a, p_b, p_c, p_d]
+    expected_total = 0.0
+    for i in range(4):
+        p_others = 1.0
+        for j, p in enumerate(probs):
+            if j != i:
+                p_others *= p
+        p_miss = 1.0 - probs[i]
+        reduced = book_combo / [odds_a, odds_b, odds_c, odds_d][i]
+        expected_total += p_others * p_miss * PULL_DETECTION_PROB * (reduced - 1.0)
+
+    assert abs(result["option_ev"] / 100 - expected_total) < 1e-4
+
+
+def test_pull_em_respects_tackle_marks_cap():
+    """At most 1 tackle/marks leg allowed in a Pull 'Em SGM."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+    ]
+    # booster candidates: one tackles leg only
+    tackle_mask = np.random.default_rng(0).random(20_000) < 0.55
+    tackle_booster = LegCandidate("T 3+ tackles", "T", "player_tackles", "T",
+                                  0.55, 1 / 0.55, mask=tackle_mask)
+    legs.append(tackle_booster)
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    if result is not None:
+        n_tm = sum(1 for n in result["leg_names"]
+                   if "tackles" in n.lower() or "marks" in n.lower())
+        assert n_tm <= 1
+
+
+def test_pull_em_returns_none_with_fewer_than_3_anchors():
+    """Returns None when there are not enough disposal anchor legs."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        # Only 2 disposal anchors — need 3
+        _goal_leg("C 1+ goals", "C", 0.55),
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    assert result is None
+
+
+def test_pull_em_returns_none_when_no_legs_priced():
+    """build_pull_em_sgm returns None when odds_book is empty."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _goal_leg("D 1+ goals", "D", 0.55),
+    ]
+    result = build_pull_em_sgm(legs, odds_book={})
+    assert result is None
+
+
+def test_pull_em_one_player_per_leg():
+    """No two legs in a Pull 'Em SGM can be for the same player."""
+    # A appears in two disposal lines
+    legs = [
+        _disp_leg("A 20+ disposals", "A", 0.75),
+        _disp_leg("A 25+ disposals", "A", 0.71),   # same player
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _goal_leg("D 1+ goals", "D", 0.55),
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    if result is not None:
+        subjects = [l.subject for l in result["legs"]]
+        assert len(subjects) == len(set(subjects)), "duplicate player in Pull 'Em"
