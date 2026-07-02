@@ -846,6 +846,68 @@ def test_final_rungs_have_no_internal_tackle_marks_field():
         assert "_n_tackle_marks" not in r
 
 
+def test_disposals_first_beats_closer_marks_combo_model_ladder():
+    # All-disposals combo reaches the target but sits FARTHER from it than a
+    # 2-disp+marks combo that also reaches. Under the disposals-first rule the
+    # all-disposals combo must win (n_tackle_marks=0 tier beats tm=1 tier
+    # regardless of odds proximity).
+    #
+    # D1/D2/D3 prob=0.70, M1 (marks) prob=0.90 (no masks -> naive product).
+    # D1+D2+D3: joint=0.343, fair~2.92  -> reaches $2.10, tm=0
+    # D1+D2+M1: joint=0.441, fair~2.27  -> reaches $2.10, tm=1, CLOSER to target
+    # Old code would pick D1+D2+M1 (highest joint); new code must pick D1+D2+D3.
+    legs = [
+        _leg("D1 25+ disp", 0.70, None, "D1"),
+        _leg("D2 25+ disp", 0.70, None, "D2"),
+        _leg("D3 25+ disp", 0.70, None, "D3"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.90),
+    ]
+    out = search_match_sgms(legs, target_odds=(2.10,), min_joint_prob=0.0)
+    assert len(out) == 1
+    assert "M1 4+ marks" not in out[0]["legs"], (
+        "disposals-first: all-disposals combo must win even when farther from target"
+    )
+
+
+def test_disposals_first_beats_closer_marks_combo_sportsbet_ladder():
+    # Mirror of the model-ladder test but using search_market_sgms (book_odds path).
+    # With legs priced at fair odds:
+    # D1+D2+D3 book_odds ~2.92 -> reaches $2.10, tm=0
+    # D1+D2+M1 book_odds ~2.27 -> reaches $2.10, tm=1, CHEAPER (closer from above)
+    # Old code: min(book_odds) = 2.27 (marks combo wins); new code: tier 0 wins.
+    legs = [
+        _leg("D1 25+ disp", 0.70, None, "D1"),
+        _leg("D2 25+ disp", 0.70, None, "D2"),
+        _leg("D3 25+ disp", 0.70, None, "D3"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.90),
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(2.10,),
+                             min_joint_prob=0.0)
+    assert len(out) == 1
+    assert "M1 4+ marks" not in out[0]["legs"], (
+        "disposals-first: sportsbet ladder must prefer all-disposals combo"
+    )
+
+
+def test_fallback_to_marks_when_no_disposals_combo_reaches_target():
+    # When the only combo that reaches the target band includes a marks leg,
+    # it must still be selected (necessary fallback, not blocked by the cap).
+    # Only 2 disposals legs exist -> no 3-disp combo possible. The marks leg
+    # is needed to form the only 3-leg combo that can reach $5.
+    # D1 prob=0.60, D2 prob=0.55, M1 (marks) prob=0.50 -> joint~0.165, fair~6.1
+    legs = [
+        _leg("D1 30+ disp", 0.60, None, "D1"),
+        _leg("D2 30+ disp", 0.55, None, "D2"),
+        _marks_leg("M1 5+ marks", "M1", prob=0.50),
+    ]
+    out = search_match_sgms(legs, target_odds=(5.0,), min_joint_prob=0.0)
+    assert len(out) == 1
+    assert "M1 5+ marks" in out[0]["legs"], (
+        "marks leg must appear when no all-disposals combo can reach the target"
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Total-points legs excluded from multis (FIX-TOTAL-POINTS-LEGS)
 # --------------------------------------------------------------------------- #

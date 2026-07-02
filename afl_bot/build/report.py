@@ -372,14 +372,27 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
         # diagnostic whose whole point is to flip the pick via the
         # lcb-adjusted distance, which this "land at/above" preference would
         # short-circuit.
-        # PREF: preference score is a SECONDARY key — only breaks ties within
-        # the closest-to-target primary rule (disposals > marks).
+        # DISPOSALS-FIRST: within the reachable pool, prefer combos with zero
+        # tackles/marks legs (tier 0) before any combo that includes a tackle
+        # or marks leg (tier 1). This makes the disposals preference dominate
+        # the selection, not just break ties. Only fall back to tier 1 when
+        # no tier-0 combo can reach the target at all. Within each tier the
+        # existing rule applies: highest priced joint (closest from above),
+        # then pref_score, then stable leg-key.
         if lcb_z <= 0.0:
             reaches_target = [c for c in available if c["_priced_joint"] <= 1.0 / target]
             if reaches_target:
-                return max(reaches_target, key=lambda c: (
+                best_tm = min(c.get("_n_tackle_marks", 0) for c in reaches_target)
+                tier = [c for c in reaches_target if c.get("_n_tackle_marks", 0) == best_tm]
+                return max(tier, key=lambda c: (
                     c["_priced_joint"], c.get("_pref_score", 0.0),
                     -_distance(c, target), _leg_key(c)))
+            # Fallback: nothing reaches target — still prefer fewer tackle/marks.
+            best_tm = min(c.get("_n_tackle_marks", 0) for c in available)
+            tier = [c for c in available if c.get("_n_tackle_marks", 0) == best_tm]
+            return min(tier, key=lambda c: (
+                _distance(c, target), -c.get("_pref_score", 0.0),
+                -_lcb_value(c), _leg_key(c)))
         return min(available, key=lambda c: (
             _distance(c, target), -c.get("_pref_score", 0.0),
             -_lcb_value(c), _leg_key(c)))
@@ -499,10 +512,21 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         return tuple(sorted(c["legs"]))
 
     def _select_for_target(available: list[dict], target: float) -> dict:
+        # DISPOSALS-FIRST: among combos that reach the book-odds target, prefer
+        # those with zero tackles/marks legs (tier 0) before falling back to
+        # combos with a tackle/marks leg (tier 1). Within the best available
+        # tier, pick the cheapest book_odds that still clears the target (closest
+        # from above), with pref_score as the secondary key so disposals beat
+        # goals/h2h within the same tier. Fall back to the closest combo below
+        # the target only when nothing reaches, again tiering by n_tackle_marks.
         reaches = [c for c in available if c["book_odds"] >= target]
         if reaches:
-            return min(reaches, key=lambda c: (c["book_odds"], -c.get("_pref_score", 0.0), _leg_key(c)))
-        return max(available, key=lambda c: (c["book_odds"], c.get("_pref_score", 0.0), _leg_key(c)))
+            best_tm = min(c.get("_n_tackle_marks", 0) for c in reaches)
+            tier = [c for c in reaches if c.get("_n_tackle_marks", 0) == best_tm]
+            return min(tier, key=lambda c: (c["book_odds"], -c.get("_pref_score", 0.0), _leg_key(c)))
+        best_tm = min(c.get("_n_tackle_marks", 0) for c in available)
+        tier = [c for c in available if c.get("_n_tackle_marks", 0) == best_tm]
+        return max(tier, key=lambda c: (c["book_odds"], c.get("_pref_score", 0.0), _leg_key(c)))
 
     # PHASE 2 STEP 1: Compute promo branch probabilities from sim masks.
     for c in priced:
