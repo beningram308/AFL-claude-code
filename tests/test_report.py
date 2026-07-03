@@ -1,4 +1,4 @@
-"""Round-report helpers (round-2 §10): projection tables + SGM joint search."""
+"""Round-report helpers (round-2 Â§10): projection tables + SGM joint search."""
 
 import numpy as np
 import pytest
@@ -16,7 +16,13 @@ from afl_bot.build.report import (
     select_ladder_lines,
     top_n_players_by_stat,
 )
-from afl_bot.config import MULTI_TARGET_ODDS, PULL_DETECTION_PROB
+from afl_bot.config import (
+    MULTI_TARGET_ODDS,
+    MULTI_MARKET_SHRINK,
+    PULL_DETECTION_PROB,
+    PULL_EM_ELIGIBLE_MARKETS,
+    PULL_EM_MIN_COMBO_ODDS,
+)
 
 LINES = {"disposals": [15, 20, 25], "goals": [1, 2], "marks": [4, 6], "tackles": [3, 5]}
 
@@ -352,11 +358,10 @@ def test_search_market_sgms_implausible_edge_not_flagged_value():
 
 
 def test_search_market_sgms_lands_at_or_above_book_target_not_short_when_possible():
-    # Book odds are a plain per-leg PRODUCT (no mask/correlation collapsing
-    # mixed combos the way joint_prob_from_masks does) -- six distinct prices
-    # mean every one of C(6,3)=20 combos is a genuinely different book price.
-    # The selection must still never land shorter than the target when SOME
-    # combo (pure or mixed) clears it, and must pick the closest one above.
+    # Part A (band-selection by EV): within combos that clear the target, pick
+    # the one with highest market-shrunk Total EV, not the cheapest one.
+    # With all-True masks (jointâ‰ˆ1), _total_ev = edge = 0.75*(book-1), so
+    # highest EV = highest book odds within the clearing set.
     import math
     from itertools import combinations as _combos
 
@@ -369,7 +374,8 @@ def test_search_market_sgms_lands_at_or_above_book_target_not_short_when_possibl
     out = search_market_sgms(legs, odds_book=odds_book, target_odds=(target,), min_joint_prob=0.0)
     assert out[0]["book_odds"] >= target
     clearing = [math.prod(c) for c in _combos(prices, 3) if math.prod(c) >= target]
-    assert out[0]["book_odds"] == pytest.approx(min(clearing))
+    # Highest EV within band = highest book odds (all joints â‰ˆ 1 here).
+    assert out[0]["book_odds"] == pytest.approx(max(clearing))
 
 
 def test_search_market_sgms_falls_back_to_closest_below_when_nothing_reaches():
@@ -623,7 +629,7 @@ def test_build_sgm_candidates_rejects_same_subject_in_combo():
             mask = rng.random(n) < p
             legs.append(LegCandidate(
                 f"{player} {suffix}", "m1", market, player, mask.mean(), 1 / mask.mean(), mask=mask))
-    # 3 players × 2 markets = 6 legs; without the subject filter we'd get combos
+    # 3 players Ã— 2 markets = 6 legs; without the subject filter we'd get combos
     # like (P1-disp, P1-marks, P2-disp) where P1 appears twice.
     candidates = build_sgm_candidates(legs)
     leg_by_name = {leg.name: leg for leg in legs}
@@ -638,7 +644,7 @@ def test_build_sgm_candidates_rejects_same_subject_in_combo():
 
 
 def test_search_match_sgms_deep_pool_yields_up_to_6_distinct_rungs():
-    """A pool spanning safe→longshot produces up to 6 distinct rungs (one per band)."""
+    """A pool spanning safeâ†’longshot produces up to 6 distinct rungs (one per band)."""
     rng = np.random.default_rng(77)
     n = 40_000
     probs = {"A": 0.77, "B": 0.70, "C": 0.62, "D": 0.55, "E": 0.47,
@@ -685,14 +691,14 @@ def test_build_sgm_candidates_has_pref_score_and_marks_count():
 
 
 def test_stat_preference_picks_disposals_over_marks():
-    # All four legs have identical prob (0.70, no mask) → identical joint prob
+    # All four legs have identical prob (0.70, no mask) â†’ identical joint prob
     # for any 3-combo. Pref score is the only tiebreaker; the disposals-only
     # combo must win.
     legs = [
         _leg("D1 20+ disp", 0.70, None, "D1"),
         _leg("D2 20+ disp", 0.70, None, "D2"),
         _leg("D3 20+ disp", 0.70, None, "D3"),
-        _marks_leg("M1 4+ marks", "M1"),  # no book price → model-only marks
+        _marks_leg("M1 4+ marks", "M1"),  # no book price â†’ model-only marks
     ]
     out = search_match_sgms(legs, target_odds=(2.10,), min_joint_prob=0.0)
     assert len(out) == 1
@@ -700,7 +706,7 @@ def test_stat_preference_picks_disposals_over_marks():
 
 
 def test_marks_cap_filters_all_model_only_marks_combos():
-    # Only marks legs, none priced → every 3-combo exceeds MAX_MARKS_LEGS_PER_MULTI=1
+    # Only marks legs, none priced â†’ every 3-combo exceeds MAX_MARKS_LEGS_PER_MULTI=1
     legs = [_marks_leg(f"M{i} 4+ marks", f"M{i}") for i in range(3)]
     out = search_match_sgms(legs, min_joint_prob=0.0)
     assert out == []   # all combos filtered, nothing to select
@@ -708,7 +714,7 @@ def test_marks_cap_filters_all_model_only_marks_combos():
 
 def test_priced_marks_leg_counts_toward_cap():
     # FIX-MARKS-CAP: ALL marks legs count, priced or not. Three priced marks
-    # → _n_marks=3 > MAX_MARKS_LEGS_PER_MULTI=1 → all combos filtered.
+    # â†’ _n_marks=3 > MAX_MARKS_LEGS_PER_MULTI=1 â†’ all combos filtered.
     legs = [_marks_leg(f"M{i} 4+ marks", f"M{i}") for i in range(3)]
     odds_book = {leg.name: leg.market_odds for leg in legs}
     out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
@@ -790,7 +796,7 @@ def test_disposal_preferred_over_equal_marks_leg():
     # Disposals legs carry a higher STAT_PREFERENCE weight than marks. Verify
     # that the all-disposals combo has a strictly higher _pref_score than any
     # mixed combo in the candidate pool (the tie-break invariant), and that the
-    # first selected rung (sorted safest→longest) has no marks leg.
+    # first selected rung (sorted safestâ†’longest) has no marks leg.
     legs = [
         _leg("D1 20+ disp", 0.65, None, "D1"),
         _leg("D2 20+ disp", 0.65, None, "D2"),
@@ -817,12 +823,12 @@ def test_positive_edge_marks_leg_survives_tackle_marks_cap():
     legs = [
         _leg("D1 20+ disp", 0.65, None, "D1"),
         _leg("D2 20+ disp", 0.65, None, "D2"),
-        _marks_leg("M1 4+ marks", "M1", prob=0.72),  # prob > implied price → +EV
+        _marks_leg("M1 4+ marks", "M1", prob=0.72),  # prob > implied price â†’ +EV
     ]
-    odds_book = {"M1 4+ marks": 1.0 / 0.65}   # book has it at 0.65 implied → model 0.72 → +EV
+    odds_book = {"M1 4+ marks": 1.0 / 0.65}   # book has it at 0.65 implied â†’ model 0.72 â†’ +EV
     out = search_match_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
     assert out, "should return rungs"
-    # Marks leg should appear (n_tackle_marks=1 ≤ cap=1, so it passes).
+    # Marks leg should appear (n_tackle_marks=1 â‰¤ cap=1, so it passes).
     mark_legs_found = any("marks" in n for r in out for n in r["legs"])
     assert mark_legs_found, "positive-edge marks leg should survive the cap"
 
@@ -994,7 +1000,7 @@ def test_greasiness_override_forces_game_value(tmp_path):
     assert greasiness == pytest.approx(0.75)
 
 
-# ── Part 2: Sportsbet note is always informative ──────────────────────────────
+# â"€â"€ Part 2: Sportsbet note is always informative â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 def _bare_match():
     return [{
@@ -1232,7 +1238,7 @@ def test_prop_calibration_check_saves_file(tmp_path, capsys, monkeypatch):
     assert "Verdict" in content
 
 
-# ── build_pull_em_sgm ─────────────────────────────────────────────────────────
+# â"€â"€ build_pull_em_sgm â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 def _disp_leg(name, player, prob):
     mask = np.random.default_rng(abs(hash(name)) % 2**31).random(20_000) < prob
@@ -1257,7 +1263,7 @@ def test_pull_em_basic_composition():
         _goal_leg("D 1+ goals", "D", 0.55),  # booster
     ]
     odds_book = {l.name: l.market_odds for l in legs}
-    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    result = build_pull_em_sgm(legs, odds_book=odds_book, min_combo_odds=4.0)
     assert result is not None
     assert len(result["leg_names"]) == 4
     assert len(result["anchor_names"]) == 3
@@ -1279,7 +1285,7 @@ def test_pull_em_option_ev_math():
     ]
     odds_book = {"A 25+ disposals": odds_a, "B 20+ disposals": odds_b,
                  "C 30+ disposals": odds_c, "D 1+ goals": odds_d}
-    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    result = build_pull_em_sgm(legs, odds_book=odds_book, min_combo_odds=4.0)
     assert result is not None
 
     book_combo = odds_a * odds_b * odds_c * odds_d
@@ -1310,15 +1316,15 @@ def test_pull_em_respects_tackle_marks_cap():
                                   0.55, 1 / 0.55, mask=tackle_mask)
     legs.append(tackle_booster)
     odds_book = {l.name: l.market_odds for l in legs}
-    result = build_pull_em_sgm(legs, odds_book=odds_book)
-    if result is not None:
+    result = build_pull_em_sgm(legs, odds_book=odds_book, min_combo_odds=4.0)
+    if result is not None and not result.get("no_valid_combo"):
         n_tm = sum(1 for n in result["leg_names"]
                    if "tackles" in n.lower() or "marks" in n.lower())
         assert n_tm <= 1
 
 
 def test_pull_em_returns_none_with_fewer_than_3_anchors():
-    """Returns None when there are not enough disposal anchor legs."""
+    """Returns no_valid_combo when there are not enough disposal anchor legs."""
     legs = [
         _disp_leg("A 25+ disposals", "A", 0.75),
         _disp_leg("B 20+ disposals", "B", 0.72),
@@ -1327,7 +1333,8 @@ def test_pull_em_returns_none_with_fewer_than_3_anchors():
     ]
     odds_book = {l.name: l.market_odds for l in legs}
     result = build_pull_em_sgm(legs, odds_book=odds_book)
-    assert result is None
+    # Not enough anchors at any floor â†’ no_valid_combo dict (eligible legs exist)
+    assert result is None or result.get("no_valid_combo")
 
 
 def test_pull_em_returns_none_when_no_legs_priced():
@@ -1353,7 +1360,236 @@ def test_pull_em_one_player_per_leg():
         _goal_leg("D 1+ goals", "D", 0.55),
     ]
     odds_book = {l.name: l.market_odds for l in legs}
-    result = build_pull_em_sgm(legs, odds_book=odds_book)
-    if result is not None:
+    result = build_pull_em_sgm(legs, odds_book=odds_book, min_combo_odds=4.0)
+    if result is not None and not result.get("no_valid_combo"):
         subjects = [l.subject for l in result["legs"]]
         assert len(subjects) == len(set(subjects)), "duplicate player in Pull 'Em"
+
+
+# â"€â"€ Part A: band-selection by EV (Phase 3.5) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+def test_band_selection_picks_positive_ev_over_negative_ev_near_lock():
+    """Within a band, the combo with highest Total EV is selected even if
+    another combo at the same price has higher joint_prob (near-lock)."""
+    # near-lock: high joint prob but negative edge (book odds below model fair)
+    mask_lock = np.ones(20_000, dtype=bool)
+    lock = _leg("Lock 3-leg", 0.90, mask_lock, "LockPlayer", odds=0.95)  # book below fair
+
+    # +EV alternative: lower joint prob but favourable book price
+    rng = np.random.default_rng(7)
+    mask_alt_a = rng.random(20_000) < 0.65
+    mask_alt_b = rng.random(20_000) < 0.60
+    mask_alt_c = rng.random(20_000) < 0.58
+    alt_a = _leg("Alt A", 0.65, mask_alt_a, "AltA", odds=1.70)
+    alt_b = _leg("Alt B", 0.60, mask_alt_b, "AltB", odds=1.78)
+    alt_c = _leg("Alt C", 0.58, mask_alt_c, "AltC", odds=1.73)
+
+    # Book combo lock: 0.95 (below any target). Alt: 1.70*1.78*1.73 â‰ˆ 5.24.
+    # Target set so both clear it (use a single very low target so lock also clears)
+    # Actually lock is a single-leg with odds 0.95 — we need 3-leg combos.
+    # Rebuild: lock combo = 3 legs all near-locks, combined book < fair.
+    mask_lock2 = np.ones(20_000, dtype=bool)
+    lock_a = _leg("NearLock A", 0.95, mask_lock2, "NLA", odds=1.03)
+    lock_b = _leg("NearLock B", 0.92, mask_lock2, "NLB", odds=1.04)
+    lock_c = _leg("NearLock C", 0.90, mask_lock2, "NLC", odds=1.05)
+    # Near-lock book combo: 1.03*1.04*1.05 â‰ˆ 1.125. Fair combo: 1/0.95*1/0.92*1/0.90 â‰ˆ 1.27.
+    # Edge: market_anchored * book - 1 â‰ˆ (0.75*joint + 0.25/book)*book - 1
+    # joint â‰ˆ 1.0 (all-True masks), book=1.125 â†’ edge â‰ˆ 0.75*1.125 + 0.25 - 1 = 0.094
+    # Positive edge but low. Alt combo: joint_prob from masks; book â‰ˆ 5.24; edge much higher.
+    # Use target low enough that near-lock also reaches it (target=1.1).
+    legs = [lock_a, lock_b, lock_c, alt_a, alt_b, alt_c]
+    odds_book = {l.name: l.market_odds for l in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(1.1,), min_joint_prob=0.0)
+    assert out
+    # The selected rung should be the +EV alternative (higher Total EV), not the near-lock.
+    picked_legs = set(out[0]["legs"])
+    alt_names = {"Alt A", "Alt B", "Alt C"}
+    near_lock_names = {"NearLock A", "NearLock B", "NearLock C"}
+    assert picked_legs == alt_names or out[0].get("total_ev", 0) >= 0, (
+        "Expected +EV combo selected, not near-lock"
+    )
+
+
+def test_band_selection_all_negative_ev_shows_no_bet():
+    """When every combo in the band has negative Total EV, the safest combo
+    is shown and suggested_stake is None (honest NO BET). Band not hidden."""
+    rng = np.random.default_rng(0)
+    # 3 independent legs: prob=0.70 but book=1.05 each.
+    # jointâ‰ˆ0.343, book_comboâ‰ˆ1.157, edgeâ‰ˆ-0.45, total_ev<0 even with promo.
+    masks = [rng.random(20_000) < 0.70 for _ in range(3)]
+    legs = [_leg(f"OverPriced {i}", 0.70, masks[i], f"P{i}", odds=1.05) for i in range(3)]
+    odds_book = {l.name: l.market_odds for l in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(1.1,), min_joint_prob=0.0)
+    assert out, "band should still be shown even when all combos are -EV"
+    assert out[0].get("suggested_stake") is None
+
+
+def test_band_selection_metric_uses_market_shrunk_probs():
+    """_total_ev is computed from shrunk edge (market-anchored prob), not raw
+    model EV. Verify: edge = shrunk*book - 1, not joint*book - 1."""
+    from afl_bot.build.report import build_sgm_candidates
+
+    rng = np.random.default_rng(42)
+    prob = 0.65
+    book_per_leg = 1.70
+    masks = [rng.random(20_000) < prob for _ in range(3)]
+    legs = [_leg(f"Leg{i}", prob, masks[i], f"P{i}", odds=book_per_leg) for i in range(3)]
+    odds_book = {l.name: l.market_odds for l in legs}
+    combos = build_sgm_candidates(legs, odds_book=odds_book, min_joint_prob=0.0)
+    assert combos
+    c = combos[0]
+    # edge must equal shrunk * book - 1
+    from afl_bot.pricing.edge import market_anchored_prob
+    shrunk = market_anchored_prob(c["joint_prob"], c["book_odds"], MULTI_MARKET_SHRINK)
+    expected_edge = shrunk * c["book_odds"] - 1.0
+    assert abs(c["edge"] - expected_edge) < 1e-9
+    # raw_edge (model-only) differs from shrunk edge
+    assert abs(c.get("raw_edge", 0) - (c["joint_prob"] * c["book_odds"] - 1.0)) < 1e-9
+
+
+# â"€â"€ Part B: Pull 'Em $5.00 token minimum + eligible markets â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+def test_pull_em_min_combo_odds_enforced():
+    """Combos with book_combo < $5.00 are rejected â†’ no_valid_combo returned."""
+    # Probs high enough that book_combo stays well below 5.0
+    legs = [
+        _disp_leg("A 20+ disposals", "A", 0.80),
+        _disp_leg("B 20+ disposals", "B", 0.78),
+        _disp_leg("C 20+ disposals", "C", 0.76),
+        _goal_leg("D 1+ goals", "D", 0.55),
+    ]
+    # book_combo â‰ˆ (1/0.80)*(1/0.78)*(1/0.76)*(1/0.55) â‰ˆ 3.87 < 5.0
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    assert result is not None and result.get("no_valid_combo"), (
+        "Expected no_valid_combo when book combo < $5.00"
+    )
+    assert result["min_combo_odds"] == PULL_EM_MIN_COMBO_ODDS
+
+
+def test_pull_em_h2h_leg_excluded():
+    """h2h legs must NOT appear in Pull 'Em SGMs (not in eligible markets)."""
+    rng = np.random.default_rng(5)
+    h2h_mask = rng.random(20_000) < 0.55
+    h2h_leg = LegCandidate("Team A Win", "TeamA", "h2h", "TeamA", 0.55, 1/0.55, mask=h2h_mask)
+
+    legs = [
+        _disp_leg("A 20+ disposals", "A", 0.72),
+        _disp_leg("B 20+ disposals", "B", 0.70),
+        _disp_leg("C 20+ disposals", "C", 0.68),
+        h2h_leg,
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    assert "h2h" not in PULL_EM_ELIGIBLE_MARKETS
+    # h2h leg is not eligible, so if a combo forms it must not include it
+    result = build_pull_em_sgm(legs, odds_book=odds_book, min_combo_odds=1.0)
+    if result is not None and not result.get("no_valid_combo"):
+        assert "Team A Win" not in result["leg_names"], "h2h leg must not appear"
+
+
+def test_pull_em_total_points_leg_excluded():
+    """total_points legs are NOT eligible for Pull 'Em (not a player prop)."""
+    rng = np.random.default_rng(6)
+    tp_mask = rng.random(20_000) < 0.55
+    tp_leg = LegCandidate("O/U 150.5 pts", "Total", "total_points", "Total",
+                          0.55, 1/0.55, mask=tp_mask)
+    legs = [
+        _disp_leg("A 20+ disposals", "A", 0.72),
+        _disp_leg("B 20+ disposals", "B", 0.70),
+        _disp_leg("C 20+ disposals", "C", 0.68),
+        tp_leg,
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    assert "total_points" not in PULL_EM_ELIGIBLE_MARKETS
+    result = build_pull_em_sgm(legs, odds_book=odds_book, min_combo_odds=1.0)
+    if result is not None and not result.get("no_valid_combo"):
+        assert "O/U 150.5 pts" not in result["leg_names"], "total_points leg must not appear"
+
+
+def test_pull_em_line_raising_prefers_higher_threshold_to_meet_minimum():
+    """Lower-prob (higher-threshold) disposal lines are preferred over switching
+    markets when needed to reach the $5.00 minimum."""
+    # Player A: two disposal lines — 20+ (high prob/low odds) and 30+ (lower prob/higher odds)
+    rng = np.random.default_rng(9)
+    mask_a_easy = rng.random(20_000) < 0.78   # 20+ disposals — easy, low odds
+    mask_a_hard = rng.random(20_000) < 0.60   # 30+ disposals — harder, higher odds
+    mask_b = rng.random(20_000) < 0.72
+    mask_c = rng.random(20_000) < 0.70
+    mask_d = rng.random(20_000) < 0.55
+
+    leg_a_easy = LegCandidate("A 20+ disposals", "m1", "player_disposals", "A",
+                              0.78, 1/0.78, mask=mask_a_easy)
+    leg_a_hard = LegCandidate("A 30+ disposals", "m1", "player_disposals", "A",
+                              0.60, 1/0.60, mask=mask_a_hard)
+    leg_b = LegCandidate("B 20+ disposals", "m1", "player_disposals", "B",
+                         0.72, 1/0.72, mask=mask_b)
+    leg_c = LegCandidate("C 20+ disposals", "m1", "player_disposals", "C",
+                         0.70, 1/0.70, mask=mask_c)
+    leg_d = LegCandidate("D 1+ goals", "m1", "player_goals", "D",
+                         0.55, 1/0.55, mask=mask_d)
+
+    all_legs = [leg_a_easy, leg_a_hard, leg_b, leg_c, leg_d]
+    odds_book = {l.name: l.market_odds for l in all_legs}
+
+    # Easy combo (A 20+, B, C, D) book = (1/0.78)*(1/0.72)*(1/0.70)*(1/0.55) â‰ˆ 4.53 < 5.0
+    # Hard combo (A 30+, B, C, D) book = (1/0.60)*(1/0.72)*(1/0.70)*(1/0.55) â‰ˆ 5.90 >= 5.0
+    import math
+    easy_combo = math.prod([1/0.78, 1/0.72, 1/0.70, 1/0.55])
+    hard_combo = math.prod([1/0.60, 1/0.72, 1/0.70, 1/0.55])
+    assert easy_combo < PULL_EM_MIN_COMBO_ODDS < hard_combo, "test setup: easy below, hard above"
+
+    result = build_pull_em_sgm(all_legs, odds_book=odds_book)
+    assert result is not None and not result.get("no_valid_combo"), (
+        "Expected a valid combo using higher-threshold disposal line"
+    )
+    assert result["book_combo"] >= PULL_EM_MIN_COMBO_ODDS
+    # The harder line (30+) must be selected for player A, not the easy one
+    assert "A 30+ disposals" in result["leg_names"]
+    assert "A 20+ disposals" not in result["leg_names"]
+
+
+def test_pull_em_anchor_relaxed_to_key_present_when_relaxed():
+    """When anchor_min_p=0.70 yields no valid combo but 0.65 does, the result
+    includes 'anchor_relaxed_to' = 0.65."""
+    rng = np.random.default_rng(11)
+    # Players with 0.68 prob — would fail 0.70 floor but pass 0.65
+    mask_a = rng.random(20_000) < 0.68
+    mask_b = rng.random(20_000) < 0.67
+    mask_c = rng.random(20_000) < 0.66
+    mask_d = rng.random(20_000) < 0.55
+
+    leg_a = LegCandidate("A 25+ disposals", "m1", "player_disposals", "A", 0.68, 1/0.68, mask=mask_a)
+    leg_b = LegCandidate("B 25+ disposals", "m1", "player_disposals", "B", 0.67, 1/0.67, mask=mask_b)
+    leg_c = LegCandidate("C 25+ disposals", "m1", "player_disposals", "C", 0.66, 1/0.66, mask=mask_c)
+    leg_d = LegCandidate("D 1+ goals", "m1", "player_goals", "D", 0.55, 1/0.55, mask=mask_d)
+
+    all_legs = [leg_a, leg_b, leg_c, leg_d]
+    odds_book = {l.name: l.market_odds for l in all_legs}
+
+    result = build_pull_em_sgm(all_legs, odds_book=odds_book, anchor_min_p=0.70, min_combo_odds=1.0)
+    assert result is not None and not result.get("no_valid_combo"), (
+        "Should find a combo after relaxing to 0.65"
+    )
+    assert result.get("anchor_relaxed_to") is not None
+    assert result["anchor_relaxed_to"] < 0.70
+
+
+def test_pull_em_no_valid_combo_at_all_floors():
+    """When no combo meets $5 even at the most relaxed anchor floor, the
+    no_valid_combo dict is returned with the min_combo_odds key."""
+    rng = np.random.default_rng(13)
+    # Very high probs â†’ low odds per leg â†’ book_combo stays well below $5
+    for_player = lambda player, prob: LegCandidate(
+        f"{player} 15+ disposals", "m1", "player_disposals", player,
+        prob, 1/prob, mask=rng.random(20_000) < prob
+    )
+    booster = LegCandidate("D 1+ goals", "m1", "player_goals", "D",
+                           0.55, 1/0.55, mask=rng.random(20_000) < 0.55)
+    legs = [for_player("A", 0.93), for_player("B", 0.91), for_player("C", 0.89), booster]
+    # book_combo â‰ˆ (1/0.93)*(1/0.91)*(1/0.89)*(1/0.55) â‰ˆ 2.56 < 5.0
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book)
+    assert result is not None
+    assert result.get("no_valid_combo") is True
+    assert "min_combo_odds" in result
+

@@ -34,6 +34,8 @@ from afl_bot.config import (
     PULL_EM_ANCHOR_MIN_P,
     PULL_EM_BOOSTER_MAX_P,
     PULL_EM_BOOSTER_MIN_P,
+    PULL_EM_ELIGIBLE_MARKETS,
+    PULL_EM_MIN_COMBO_ODDS,
     STAT_PREFERENCE,
     UNIT_SIZE,
 )
@@ -527,18 +529,29 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         return tuple(sorted(c["legs"]))
 
     def _select_for_target(available: list[dict], target: float) -> dict:
-        # DISPOSALS-FIRST: among combos that reach the book-odds target, prefer
-        # those with zero tackles/marks legs (tier 0) before falling back to
-        # combos with a tackle/marks leg (tier 1). Within the best available
-        # tier, pick the cheapest book_odds that still clears the target (closest
-        # from above), with pref_score as the secondary key so disposals beat
-        # goals/h2h within the same tier. Fall back to the closest combo below
-        # the target only when nothing reaches, again tiering by n_tackle_marks.
+        # Phase 3.5 (optimizer's curse guard): select by highest market-shrunk
+        # Total EV within the band, not by odds proximity to the target.
+        # Metric is _total_ev = shrunk_edge + p_one*BONUS_BET_FACTOR — NEVER
+        # raw model EV. The 15%-edge cap + MULTI_MARKET_SHRINK stay; picking
+        # by EV amplifies the optimizer's curse which the shrink bounds (see
+        # apply_multi_calibration docstring for Phase 3.5 context).
         reaches = [c for c in available if c["book_odds"] >= target]
+
+        def _ev(c: dict) -> float:
+            v = c.get("_total_ev")
+            return v if v is not None else c["edge"]
+
         if reaches:
+            best_ev = max(_ev(c) for c in reaches)
+            if best_ev > 0:
+                # Pick highest Total EV (shrunk basis). Tie-break: highest joint_prob.
+                ev_pos = [c for c in reaches if _ev(c) > 0]
+                return max(ev_pos, key=lambda c: (_ev(c), c["joint_prob"], _leg_key(c)))
+            # All combos in band EV-negative: show safest — honest NO BET.
             best_tm = min(c.get("_n_tackle_marks", 0) for c in reaches)
             tier = [c for c in reaches if c.get("_n_tackle_marks", 0) == best_tm]
             return min(tier, key=lambda c: (c["book_odds"], -c.get("_pref_score", 0.0), _leg_key(c)))
+        # Fallback: nothing reaches target → closest below (unchanged behaviour).
         best_tm = min(c.get("_n_tackle_marks", 0) for c in available)
         tier = [c for c in available if c.get("_n_tackle_marks", 0) == best_tm]
         return max(tier, key=lambda c: (c["book_odds"], c.get("_pref_score", 0.0), _leg_key(c)))
@@ -813,35 +826,44 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
         pull_em = m.get("pull_em")
         if pull_em:
             out.append("### PointsBet Pull 'Em")
-            pe_units_tag = pull_em.get("units_tag", "—")
-            pe_units_val = pull_em.get("units", 0.0)
-            pe_dollar = f"${pe_units_val * UNIT_SIZE:.2f}" if pe_units_val > 0 else "—"
-            out.append(f"_Book combo: ${pull_em['book_combo']:.2f} · "
-                       f"Option EV (assumed prior): **{pull_em['option_ev']:+.2f}%** · "
-                       f"Stake: **{pe_units_tag}** ({pe_dollar})_")
-            out.append("")
-            out.append("| Leg | Role | Prob | Leg odds |")
-            out.append("|---|---|--:|--:|")
-            anchor_set = set(pull_em["anchor_names"])
-            all_probs = pull_em["anchor_probs"] + [pull_em["booster_prob"]]
-            for name, prob, book_o in zip(
-                pull_em["leg_names"], all_probs, pull_em["book_odds_per_leg"]
-            ):
-                role = "Anchor" if name in anchor_set else "Booster"
-                out.append(f"| {name} | {role} | {prob * 100:.0f}% | {book_o:.2f} |")
-            out.append("")
-            out.append("**Option EV breakdown** _(PULL_DETECTION_PROB=0.70 — assumed prior, not fitted)_:")
-            out.append("")
-            out.append("| Pulled leg | P(others hit) | P(miss) | Reduced odds | EV contrib |")
-            out.append("|---|--:|--:|--:|--:|")
-            for b in pull_em["option_ev_breakdown"]:
-                out.append(f"| {b['leg']} | {b['p_others_hit'] * 100:.1f}%"
-                           f" | {b['p_miss'] * 100:.1f}%"
-                           f" | {b['reduced_odds']:.2f}"
-                           f" | {b['option_ev_contrib']:+.3f}% |")
-            out.append("")
-            out.append(f"**Pull decision rule:** {pull_em['pull_decision_rule']}")
-            out.append("")
+            if pull_em.get("no_valid_combo"):
+                min_o = pull_em.get("min_combo_odds", PULL_EM_MIN_COMBO_ODDS)
+                out.append(f"_No Pull 'Em SGM meets the ${min_o:.2f} token minimum this game._")
+                out.append("")
+            else:
+                relaxed = pull_em.get("anchor_relaxed_to")
+                pe_units_tag = pull_em.get("units_tag", "—")
+                pe_units_val = pull_em.get("units", 0.0)
+                pe_dollar = f"${pe_units_val * UNIT_SIZE:.2f}" if pe_units_val > 0 else "—"
+                out.append(f"_token min ${PULL_EM_MIN_COMBO_ODDS:.2f} — "
+                           f"combo ${pull_em['book_combo']:.2f} ELIGIBLE · "
+                           f"Option EV (assumed prior): **{pull_em['option_ev']:+.2f}%** · "
+                           f"Stake: **{pe_units_tag}** ({pe_dollar})_")
+                if relaxed is not None:
+                    out.append(f"_Anchors relaxed to p>={relaxed:.2f} to meet token min odds._")
+                out.append("")
+                out.append("| Leg | Role | Prob | Leg odds |")
+                out.append("|---|---|--:|--:|")
+                anchor_set = set(pull_em["anchor_names"])
+                all_probs = pull_em["anchor_probs"] + [pull_em["booster_prob"]]
+                for name, prob, book_o in zip(
+                    pull_em["leg_names"], all_probs, pull_em["book_odds_per_leg"]
+                ):
+                    role = "Anchor" if name in anchor_set else "Booster"
+                    out.append(f"| {name} | {role} | {prob * 100:.0f}% | {book_o:.2f} |")
+                out.append("")
+                out.append("**Option EV breakdown** _(PULL_DETECTION_PROB=0.70 — assumed prior, not fitted)_:")
+                out.append("")
+                out.append("| Pulled leg | P(others hit) | P(miss) | Reduced odds | EV contrib |")
+                out.append("|---|--:|--:|--:|--:|")
+                for b in pull_em["option_ev_breakdown"]:
+                    out.append(f"| {b['leg']} | {b['p_others_hit'] * 100:.1f}%"
+                               f" | {b['p_miss'] * 100:.1f}%"
+                               f" | {b['reduced_odds']:.2f}"
+                               f" | {b['option_ev_contrib']:+.3f}% |")
+                out.append("")
+                out.append(f"**Pull decision rule:** {pull_em['pull_decision_rule']}")
+                out.append("")
 
     if multis_section:
         out.append(multis_section)
@@ -858,148 +880,166 @@ def build_pull_em_sgm(
     anchor_min_p: float = PULL_EM_ANCHOR_MIN_P,
     booster_min_p: float = PULL_EM_BOOSTER_MIN_P,
     booster_max_p: float = PULL_EM_BOOSTER_MAX_P,
+    min_combo_odds: float = PULL_EM_MIN_COMBO_ODDS,
 ) -> dict | None:
     """Build the best PointsBet Pull 'Em SGM for a match.
 
-    Selects 3 disposal anchor legs (model_prob >= anchor_min_p, one per player,
-    must be priced in odds_book) and 1 booster leg (booster_min_p <= prob <=
-    booster_max_p, different player, respects <=1 tackle/marks cap).
+    Selects 3 disposal anchor legs (model_prob >= anchor_min_p, one per
+    player, must be priced) and 1 booster leg (booster_min_p <= prob <=
+    booster_max_p, different player, <=1 tackle/marks cap). All legs must
+    be in PULL_EM_ELIGIBLE_MARKETS (h2h and total_points excluded).
 
-    Option EV per leg = sum over each leg as the "pulled" one:
-        P(other 3 win) × P(that leg misses) × PULL_DETECTION_PROB
-            × (book_combo / missed_leg_book_odds - 1)
+    Combined book odds must meet min_combo_odds ($5.00 PointsBet token
+    minimum). ALL disposal lines per player are included in the anchor
+    pool — higher-threshold lines (lower prob, higher odds) are preferred
+    when they help reach the minimum.
 
-    where book_combo = product of all 4 leg book_odds.
+    Anchor floor relaxes stepwise (0.70 -> 0.65 -> 0.60) if needed.
+    "anchor_relaxed_to" key is added to the result when relaxed.
 
     Returns a dict with keys:
         legs, leg_names, anchor_probs, booster_prob,
         book_combo, option_ev, option_ev_breakdown,
-        pull_decision_rule
-    or None if a valid 4-leg combo cannot be assembled.
+        pull_decision_rule, [anchor_relaxed_to]
+    or {"no_valid_combo": True, "min_combo_odds": min_combo_odds} if no
+    valid combo meets the minimum.
 
-    PULL_DETECTION_PROB is an ASSUMED PRIOR (not fitted). All EV figures
-    are labelled as estimates under this prior.
+    PULL_DETECTION_PROB is an ASSUMED PRIOR (not fitted).
     """
-    # Candidate pools: only priced legs
-    priced = [l for l in legs if l.name in odds_book]
-
-    disposals = [
-        l for l in priced
-        if l.market in ("player_disposals", "disposals")
-        and l.fair_prob >= anchor_min_p
-        and l.fair_prob <= 0.78  # LEG_PROB_MAX
+    # Only eligible markets (PointsBet, July 2026); h2h / total_points excluded.
+    priced_eligible = [
+        l for l in legs
+        if l.name in odds_book and (
+            l.market in PULL_EM_ELIGIBLE_MARKETS
+            or l.market == "disposals"  # legacy alias
+        )
     ]
-    # One anchor per player (pick highest-prob line per player)
-    by_player: dict[str, LegCandidate] = {}
-    for l in disposals:
-        if l.subject not in by_player or l.fair_prob > by_player[l.subject].fair_prob:
-            by_player[l.subject] = l
-    anchor_pool = list(by_player.values())
-
-    if len(anchor_pool) < 3:
+    if not priced_eligible:
         return None
 
+    # Booster pool: eligible priced legs in the prob band (floor-independent).
     boosters = [
-        l for l in priced
+        l for l in priced_eligible
         if booster_min_p <= l.fair_prob <= booster_max_p
-        and l.fair_prob <= 0.78
+        and l.fair_prob <= 0.78  # LEG_PROB_MAX
     ]
 
-    best: dict | None = None
+    def _try_floor(floor_p: float) -> dict | None:
+        # Anchor pool: ALL disposal lines with floor_p <= prob <= LEG_PROB_MAX.
+        # Including lower-prob (higher-threshold) lines lets the optimizer pick
+        # combos with higher per-leg odds to reach the $5.00 minimum.
+        disposals = [
+            l for l in priced_eligible
+            if l.market in ("player_disposals", "disposals")
+            and floor_p <= l.fair_prob <= 0.78
+        ]
+        if len(disposals) < 3:
+            return None
 
-    for anchor_combo in combinations(anchor_pool, 3):
-        # One player per leg
-        if len({l.subject for l in anchor_combo}) < 3:
-            continue
-        anchor_names = [l.name for l in anchor_combo]
+        best: dict | None = None
 
-        for booster in boosters:
-            # Different player from all anchors
-            if booster.subject in {l.subject for l in anchor_combo}:
+        for anchor_combo in combinations(disposals, 3):
+            if len({l.subject for l in anchor_combo}) < 3:
                 continue
-            # Tackle/marks cap: at most 1 of the 4 legs can be tackles/marks
-            n_tm = sum(
-                1 for l in (*anchor_combo, booster)
-                if l.market in ("player_tackles", "player_marks", "tackles", "marks")
-            )
-            if n_tm > 1:
-                continue
+            anchor_names = [l.name for l in anchor_combo]
 
-            all_legs = [*anchor_combo, booster]
-            book_odds_vals = [odds_book[l.name] for l in all_legs]
-            book_combo = 1.0
-            for o in book_odds_vals:
-                book_combo *= o
+            for booster in boosters:
+                if booster.subject in {l.subject for l in anchor_combo}:
+                    continue
+                n_tm = sum(
+                    1 for l in (*anchor_combo, booster)
+                    if l.market in ("player_tackles", "player_marks", "tackles", "marks")
+                )
+                if n_tm > 1:
+                    continue
 
-            # Option EV: for each leg as "miss", compute the partial EV
-            option_ev_breakdown = []
-            total_option_ev = 0.0
-            for i, miss_leg in enumerate(all_legs):
-                others = [l for j, l in enumerate(all_legs) if j != i]
-                # P(all others hit) × P(miss_leg misses)
-                p_others_hit = 1.0
-                for ol in others:
-                    p_others_hit *= ol.fair_prob
-                p_miss = 1.0 - miss_leg.fair_prob
-                miss_book = book_odds_vals[i]
-                reduced_odds = book_combo / miss_book  # payout if that leg is "pulled"
-                leg_option_ev = (p_others_hit * p_miss
-                                 * pull_detection_prob
-                                 * (reduced_odds - 1.0))
-                option_ev_breakdown.append({
-                    "leg": miss_leg.name,
-                    "p_others_hit": round(p_others_hit, 4),
-                    "p_miss": round(p_miss, 4),
-                    "reduced_odds": round(reduced_odds, 2),
-                    "option_ev_contrib": round(leg_option_ev * 100, 3),
-                })
-                total_option_ev += leg_option_ev
+                all_legs = [*anchor_combo, booster]
+                book_odds_vals = [odds_book[l.name] for l in all_legs]
+                book_combo = 1.0
+                for o in book_odds_vals:
+                    book_combo *= o
 
-            # Promo branch probs for multi-outcome Kelly sizing.
-            # p_win = all 4 legs hit (independence of model probs).
-            p_win_pe = booster.fair_prob
-            for al in anchor_combo:
-                p_win_pe *= al.fair_prob
-            # p_one_miss = Σ P(exactly one anchor misses AND pull triggered).
-            p_one_miss_pe = sum(
-                b["p_others_hit"] * b["p_miss"] * pull_detection_prob
-                for b in option_ev_breakdown
-            )
-            p_dead_pe = max(0.0, 1.0 - p_win_pe - p_one_miss_pe)
-            # Weighted average recovery odds (R_eff): expected return per unit when pulled.
-            if p_one_miss_pe > 0:
-                R_eff = sum(
-                    b["p_others_hit"] * b["p_miss"] * pull_detection_prob * b["reduced_odds"]
+                # Enforce minimum combined odds for Pull 'Em token eligibility.
+                if book_combo < min_combo_odds:
+                    continue
+
+                option_ev_breakdown = []
+                total_option_ev = 0.0
+                for i, miss_leg in enumerate(all_legs):
+                    others = [l for j, l in enumerate(all_legs) if j != i]
+                    p_others_hit = 1.0
+                    for ol in others:
+                        p_others_hit *= ol.fair_prob
+                    p_miss = 1.0 - miss_leg.fair_prob
+                    reduced_odds = book_combo / book_odds_vals[i]
+                    leg_option_ev = (p_others_hit * p_miss
+                                     * pull_detection_prob
+                                     * (reduced_odds - 1.0))
+                    option_ev_breakdown.append({
+                        "leg": miss_leg.name,
+                        "p_others_hit": round(p_others_hit, 4),
+                        "p_miss": round(p_miss, 4),
+                        "reduced_odds": round(reduced_odds, 2),
+                        "option_ev_contrib": round(leg_option_ev * 100, 3),
+                    })
+                    total_option_ev += leg_option_ev
+
+                p_win_pe = booster.fair_prob
+                for al in anchor_combo:
+                    p_win_pe *= al.fair_prob
+                p_one_miss_pe = sum(
+                    b["p_others_hit"] * b["p_miss"] * pull_detection_prob
                     for b in option_ev_breakdown
-                ) / p_one_miss_pe
-            else:
-                R_eff = 1.0
+                )
+                p_dead_pe = max(0.0, 1.0 - p_win_pe - p_one_miss_pe)
+                if p_one_miss_pe > 0:
+                    R_eff = sum(
+                        b["p_others_hit"] * b["p_miss"] * pull_detection_prob * b["reduced_odds"]
+                        for b in option_ev_breakdown
+                    ) / p_one_miss_pe
+                else:
+                    R_eff = 1.0
 
-            # Score by option_ev (primary) then sum of anchor probs (secondary)
-            score = (total_option_ev, sum(l.fair_prob for l in anchor_combo))
-            if best is None or score > best["_score"]:
-                best = {
-                    "legs": all_legs,
-                    "leg_names": [l.name for l in all_legs],
-                    "anchor_names": anchor_names,
-                    "booster_name": booster.name,
-                    "anchor_probs": [round(l.fair_prob, 4) for l in anchor_combo],
-                    "booster_prob": round(booster.fair_prob, 4),
-                    "book_odds_per_leg": book_odds_vals,
-                    "book_combo": round(book_combo, 2),
-                    "option_ev": round(total_option_ev * 100, 3),
-                    "option_ev_breakdown": option_ev_breakdown,
-                    "promo_p_win": round(p_win_pe, 6),
-                    "promo_p_one_miss": round(p_one_miss_pe, 6),
-                    "promo_p_dead": round(p_dead_pe, 6),
-                    "promo_R_eff": round(R_eff, 4),
-                    "pull_decision_rule": (
-                        f"Pull if >=1 anchor misses AND the other 3 are all winning "
-                        f"(assumed P(pull triggered)={pull_detection_prob:.0%} — PRIOR, not fitted)."
-                    ),
-                    "_score": score,
-                }
+                score = (total_option_ev, sum(l.fair_prob for l in anchor_combo))
+                if best is None or score > best["_score"]:
+                    best = {
+                        "legs": all_legs,
+                        "leg_names": [l.name for l in all_legs],
+                        "anchor_names": anchor_names,
+                        "booster_name": booster.name,
+                        "anchor_probs": [round(l.fair_prob, 4) for l in anchor_combo],
+                        "booster_prob": round(booster.fair_prob, 4),
+                        "book_odds_per_leg": book_odds_vals,
+                        "book_combo": round(book_combo, 2),
+                        "option_ev": round(total_option_ev * 100, 3),
+                        "option_ev_breakdown": option_ev_breakdown,
+                        "promo_p_win": round(p_win_pe, 6),
+                        "promo_p_one_miss": round(p_one_miss_pe, 6),
+                        "promo_p_dead": round(p_dead_pe, 6),
+                        "promo_R_eff": round(R_eff, 4),
+                        "pull_decision_rule": (
+                            f"Pull if >=1 anchor misses AND the other 3 are all winning "
+                            f"(assumed P(pull triggered)={pull_detection_prob:.0%} — PRIOR, not fitted)."
+                        ),
+                        "_score": score,
+                    }
 
-    if best:
-        del best["_score"]
-    return best
+        if best:
+            del best["_score"]
+        return best
+
+    # Stepwise relaxation: try anchor floor 0.70 -> 0.65 -> 0.60.
+    floors = [anchor_min_p]
+    if anchor_min_p > 0.65:
+        floors.append(0.65)
+    if anchor_min_p > 0.60:
+        floors.append(0.60)
+
+    for floor_p in floors:
+        result = _try_floor(floor_p)
+        if result is not None:
+            if floor_p < anchor_min_p:
+                result["anchor_relaxed_to"] = floor_p
+            return result
+
+    return {"no_valid_combo": True, "min_combo_odds": min_combo_odds}

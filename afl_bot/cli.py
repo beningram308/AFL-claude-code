@@ -1281,7 +1281,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             r.update(_units_fields(r))
         pull_em = (build_pull_em_sgm(ladder_legs, odds_book=odds_book)
                    if odds_book else None)
-        if pull_em:
+        if pull_em and not pull_em.get("no_valid_combo"):
             h = home_name.replace(" ", "_")
             a = away_name.replace(" ", "_")
             pe_units = _pull_em_units_fields(pull_em)

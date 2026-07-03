@@ -248,6 +248,14 @@ PULL_EM_N_LEGS = 4           # total legs in a Pull 'Em SGM (3 anchors + 1 boost
 PULL_EM_ANCHOR_MIN_P = 0.70  # minimum model prob for disposal anchor legs
 PULL_EM_BOOSTER_MIN_P = 0.45 # minimum model prob for the booster leg
 PULL_EM_BOOSTER_MAX_P = 0.65 # maximum model prob for the booster leg
+PULL_EM_MIN_COMBO_ODDS = 5.0 # PointsBet token minimum combined odds
+# Markets eligible for Pull 'Em legs (PointsBet support, July 2026).
+# h2h and total_points are NOT eligible.
+PULL_EM_ELIGIBLE_MARKETS = frozenset({
+    "player_disposals", "player_goals",
+    "player_marks",     "player_tackles",
+    "player_kicks",     "player_fantasy",
+})
 
 # Player props are noisier than H2H and compound multiplicatively in multis, so
 # stake them at half the Kelly fraction even after calibration (round-2 §2.5).
