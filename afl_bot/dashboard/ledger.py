@@ -30,30 +30,135 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
+import sys
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+from afl_bot.io_utils import atomic_write_text
+
+# Rolling backup: keep at most this many daily snapshots.
+_BACKUP_KEEP = 14
+# Sidecar written on corruption so the dashboard can show a red banner.
+_CORRUPTION_NOTICE_NAME = "ledger-corruption-notice.json"
+
 
 def _melbourne_now() -> str:
     """Current time as ISO-8601 string in Australia/Melbourne (+10/+11)."""
-    import time as _time
-    # Simple DST approximation: AEDT (+11) from first Sun in Oct to first Sun in Apr,
-    # AEST (+10) otherwise.  Python's datetime has no built-in IANA tz on Windows,
-    # so we use a fixed +10 offset for simplicity (acceptable for bet timestamps).
     offset = timedelta(hours=10)
     return datetime.now(tz=timezone(offset)).isoformat()
+
+
+def _write_backup(ledger_path: Path, bets: list[dict]) -> None:
+    """Write a dated rolling backup; prune to the most recent _BACKUP_KEEP."""
+    backup_dir = ledger_path.parent / "ledger_backups"
+    backup_dir.mkdir(exist_ok=True)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    backup_path = backup_dir / f"bets_ledger.{date_str}.json"
+    atomic_write_text(backup_path, json.dumps(bets, indent=2))
+    # Prune old backups
+    backups = sorted(backup_dir.glob("bets_ledger.*.json"))
+    for old in backups[:-_BACKUP_KEEP]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
 
 
 def load_ledger(ledger_path: str | Path) -> list[dict]:
     p = Path(ledger_path)
     if not p.exists():
         return []
-    return json.loads(p.read_text(encoding="utf-8"))
+    text = p.read_text(encoding="utf-8")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return _recover_ledger(p, text)
+
+
+def _recover_ledger(p: Path, text: str) -> list[dict]:
+    """Corruption recovery: save a backup of the corrupt file, attempt to
+    parse all complete JSON objects out of the partial content, then
+    atomically overwrite the ledger with only the recovered records.
+
+    Writes a sidecar file so the dashboard can display a red banner.
+    """
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    corrupt_backup = p.with_name(f"bets_ledger.corrupt-{ts}.json")
+    try:
+        shutil.copy2(p, corrupt_backup)
+    except OSError as e:
+        print(f"[LEDGER] WARNING: could not copy corrupt file: {e}", file=sys.stderr)
+
+    # Recover complete JSON objects using raw_decode
+    recovered: list[dict] = []
+    decoder = json.JSONDecoder()
+    raw = text.strip().lstrip("[")
+    pos = 0
+    while pos < len(raw):
+        chunk = raw[pos:].lstrip(" \t\n\r,")
+        if not chunk or chunk.startswith("]"):
+            break
+        skip = len(raw[pos:]) - len(chunk)
+        try:
+            obj, end = decoder.raw_decode(chunk)
+            if isinstance(obj, dict):
+                recovered.append(obj)
+            pos = pos + skip + end
+        except json.JSONDecodeError:
+            break
+
+    n_expected = text.count('"bet_id"')
+    n_lost = max(0, n_expected - len(recovered))
+    msg = (
+        f"CORRUPTION DETECTED in {p.name} — "
+        f"{len(recovered)} bets recovered, {n_lost} lost. "
+        f"Corrupt backup: {corrupt_backup.name}"
+    )
+    print(f"[LEDGER] {msg}", file=sys.stderr)
+
+    # Atomically overwrite with recovered data
+    atomic_write_text(p, json.dumps(recovered, indent=2))
+
+    # Write sidecar so dashboard can show red banner
+    notice = {
+        "timestamp": ts,
+        "recovered": len(recovered),
+        "lost": n_lost,
+        "corrupt_backup": str(corrupt_backup.name),
+        "message": msg,
+    }
+    notice_path = p.parent / _CORRUPTION_NOTICE_NAME
+    atomic_write_text(notice_path, json.dumps(notice, indent=2))
+
+    return recovered
+
+
+def load_corruption_notice(ledger_path: str | Path) -> dict | None:
+    """Return the corruption notice dict if one exists, else None."""
+    p = Path(ledger_path).parent / _CORRUPTION_NOTICE_NAME
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def dismiss_corruption_notice(ledger_path: str | Path) -> None:
+    """Delete the corruption notice file (user has acknowledged it)."""
+    p = Path(ledger_path).parent / _CORRUPTION_NOTICE_NAME
+    try:
+        p.unlink()
+    except OSError:
+        pass
 
 
 def save_ledger(ledger_path: str | Path, bets: list[dict]) -> None:
-    Path(ledger_path).write_text(json.dumps(bets, indent=2), encoding="utf-8")
+    p = Path(ledger_path)
+    _write_backup(p, bets)
+    atomic_write_text(p, json.dumps(bets, indent=2))
 
 
 def add_bet(ledger_path: str | Path, multi_record: dict,
@@ -67,9 +172,9 @@ def add_bet(ledger_path: str | Path, multi_record: dict,
         "round": multi_record["round"],
         "game": multi_record["game"],
         "ladder": multi_record["ladder"],
-        "legs": copy.deepcopy(multi_record["legs"]),  # deep snapshot at placement
+        "legs": copy.deepcopy(multi_record["legs"]),
         "stake": float(stake),
-        "open_odds": float(taken_odds),  # CLV baseline = fill price at placement
+        "open_odds": float(taken_odds),
         "taken_odds": float(taken_odds),
         "placed_at": _melbourne_now(),
         "status": "pending",
@@ -104,12 +209,7 @@ def add_manual_bet(
     label: str | None = None,
     book: str = "other",
 ) -> dict:
-    """Append a manually-entered bet to the ledger.
-
-    ``legs`` is a list of dicts already in the standard leg schema:
-    ``{player, market, line, name, book_odds}``.  Callers build them from
-    the form fields (player prop / team to win / total points / other).
-    """
+    """Append a manually-entered bet to the ledger."""
     bet_id = str(uuid.uuid4())
     multi_id = f"manual-{year}-r{round_no}-{bet_id[:8]}"
     bet = {
@@ -152,10 +252,9 @@ def manual_settle_bet(
     *,
     outcome: str,
 ) -> bool:
-    """Manually force the outcome of a bet to ``outcome`` ("won"/"lost"/"void").
+    """Manually force the outcome of a bet to *outcome* ("won"/"lost"/"void").
 
-    Sets ``manual_result`` so ``settle_bets`` will honour it on the next pass
-    (or this write immediately applies it if the ledger is then re-read).
+    Sets ``manual_result`` so ``settle_bets`` will honour it on the next pass.
     Returns True if the bet was found, False otherwise.
     """
     if outcome not in ("won", "lost", "void"):
@@ -175,6 +274,22 @@ def manual_settle_bet(
             bet["status"] = "void"
             bet["payout"] = bet["stake"]
         bet["settled_at"] = _melbourne_now()
+        save_ledger(ledger_path, bets)
+        return True
+    return False
+
+
+def reopen_bet(ledger_path: str | Path, bet_id: str) -> bool:
+    """Clear ``manual_result`` and reset the bet to pending so the next
+    settle pass re-grades it from real stats.  Returns True if found."""
+    bets = load_ledger(ledger_path)
+    for bet in bets:
+        if bet["bet_id"] != bet_id:
+            continue
+        bet["manual_result"] = None
+        bet["status"] = "pending"
+        bet["payout"] = None
+        bet["settled_at"] = None
         save_ledger(ledger_path, bets)
         return True
     return False

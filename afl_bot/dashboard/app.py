@@ -30,9 +30,12 @@ from afl_bot.dashboard.ledger import (
     add_bet,
     add_manual_bet,
     cumulative_profit,
+    dismiss_corruption_notice,
+    load_corruption_notice,
     load_ledger,
     manual_settle_bet,
     pnl_summary,
+    reopen_bet,
     save_ledger,
 )
 from afl_bot.dashboard.clv import clv_breakdown_by_market, clv_stats
@@ -118,6 +121,7 @@ def index():
     games = _group_by_game(records)
     rounds = _round_options(all_files)
     bets = load_ledger(LEDGER_PATH)
+    ledger_corruption = load_corruption_notice(LEDGER_PATH)
     summary = pnl_summary(bets)
     chart_data = cumulative_profit(bets)
     clv_avail = [b for b in bets if b.get("clv_available")]
@@ -142,6 +146,7 @@ def index():
         round_cap_units=round_cap_units,
         generated_at=generated_at,
         stale_warning=stale_warning,
+        ledger_corruption=ledger_corruption,
     )
 
 
@@ -159,7 +164,18 @@ def place_bet():
         return redirect(url_for("index", round_key=round_key))
 
     LEDGER_PATH.parent.mkdir(exist_ok=True)
-    add_bet(LEDGER_PATH, record, stake, taken_odds)
+    try:
+        bet = add_bet(LEDGER_PATH, record, stake, taken_odds)
+        # Verify the bet was actually persisted before redirecting.
+        saved = load_ledger(LEDGER_PATH)
+        if not any(b["bet_id"] == bet["bet_id"] for b in saved):
+            return render_template_string(
+                "<h2 style='color:red'>SAVE FAILED — bet not recorded. "
+                "Check disk / permissions and try again.</h2>", ), 500
+    except Exception as exc:
+        return render_template_string(
+            "<h2 style='color:red'>Error placing bet: {{ err }}</h2>",
+            err=str(exc)), 500
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
@@ -171,9 +187,28 @@ def settle():
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
+def _manual_bet_error(round_key: str, msg: str, form_vals: dict):
+    """Render an error page with the form values pre-filled so the user can
+    correct and re-submit without losing their entry."""
+    return render_template_string(
+        """<!doctype html><html><head><title>Manual bet error</title>
+        <style>body{font-family:sans-serif;background:#0d1117;color:#cdd9e5;padding:32px}
+        .err{background:#3a1a1a;border:1px solid #f85149;border-radius:6px;padding:16px;margin-bottom:24px}
+        a{color:#79c0ff}</style></head><body>
+        <div class="err"><b style="color:#f85149">Error adding manual bet:</b><br>{{ msg }}</div>
+        <p>Please <a href="{{ back }}#tracker">go back</a> and try again. Your entries were:<br>
+        <pre>{{ vals }}</pre></p></body></html>""",
+        msg=msg, back=url_for("index", round_key=round_key),
+        vals="\n".join(f"  {k}: {v}" for k, v in form_vals.items() if v),
+    ), 400
+
+
 @app.route("/add-manual-bet", methods=["POST"])
 def add_manual_bet_route():
     round_key = request.form.get("round_key", "")
+    form_vals = {k: request.form.get(k, "") for k in
+                 ["manual_year", "manual_round", "manual_game", "manual_stake",
+                  "manual_odds", "manual_label", "manual_book"]}
     try:
         year = int(request.form.get("manual_year", 0))
         round_no = int(request.form.get("manual_round", 0))
@@ -182,16 +217,16 @@ def add_manual_bet_route():
         taken_odds = float(request.form.get("manual_odds", 0))
         label = request.form.get("manual_label", "").strip()
         book = request.form.get("manual_book", "other").strip() or "other"
-    except (ValueError, TypeError):
-        return redirect(url_for("index", round_key=round_key) + "#tracker")
+    except (ValueError, TypeError) as exc:
+        return _manual_bet_error(round_key, f"Invalid field: {exc}", form_vals)
 
     if not year or not round_no or not game or not stake or not taken_odds:
-        return redirect(url_for("index", round_key=round_key) + "#tracker")
+        missing = [f for f, v in [("year", year), ("round", round_no), ("game", game),
+                                   ("stake", stake), ("odds", taken_odds)] if not v]
+        return _manual_bet_error(round_key, f"Required fields missing: {', '.join(missing)}", form_vals)
 
-    # Build legs from the dynamic repeating form fields.
-    # Each leg is submitted as leg_type_N, leg_player_N, leg_stat_N, leg_line_N, leg_text_N.
     legs = []
-    for i in range(1, 8):   # support up to 7 legs
+    for i in range(1, 8):
         leg_type = request.form.get(f"leg_type_{i}", "")
         if not leg_type:
             break
@@ -243,7 +278,6 @@ def add_manual_bet_route():
                     "name": text,
                     "book_odds": None,
                 })
-        # attach per-leg odds if supplied
         if legs:
             try:
                 leg_odds_val = float(request.form.get(f"leg_odds_{i}", "") or "")
@@ -253,12 +287,22 @@ def add_manual_bet_route():
                 pass
 
     if not legs:
-        return redirect(url_for("index", round_key=round_key) + "#tracker")
+        return _manual_bet_error(round_key, "No valid legs were entered.", form_vals)
 
     LEDGER_PATH.parent.mkdir(exist_ok=True)
-    add_manual_bet(LEDGER_PATH, year=year, round_no=round_no, game=game,
-                   stake=stake, taken_odds=taken_odds, legs=legs,
-                   label=label or None, book=book)
+    try:
+        bet = add_manual_bet(LEDGER_PATH, year=year, round_no=round_no, game=game,
+                             stake=stake, taken_odds=taken_odds, legs=legs,
+                             label=label or None, book=book)
+        # Verify the bet was persisted before redirecting.
+        saved = load_ledger(LEDGER_PATH)
+        if not any(b["bet_id"] == bet["bet_id"] for b in saved):
+            return _manual_bet_error(round_key,
+                "SAVE FAILED — bet not recorded. Check disk / permissions.",
+                form_vals)
+    except Exception as exc:
+        return _manual_bet_error(round_key, str(exc), form_vals)
+
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
@@ -270,6 +314,23 @@ def manual_settle():
     if bet_id and outcome in ("won", "lost", "void"):
         LEDGER_PATH.parent.mkdir(exist_ok=True)
         manual_settle_bet(LEDGER_PATH, bet_id, outcome=outcome)
+    return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+
+@app.route("/reopen-bet", methods=["POST"])
+def reopen_bet_route():
+    bet_id = request.form.get("bet_id", "")
+    round_key = request.form.get("round_key", "")
+    if bet_id:
+        LEDGER_PATH.parent.mkdir(exist_ok=True)
+        reopen_bet(LEDGER_PATH, bet_id)
+    return redirect(url_for("index", round_key=round_key) + "#tracker")
+
+
+@app.route("/dismiss-corruption-notice", methods=["POST"])
+def dismiss_corruption_notice_route():
+    round_key = request.form.get("round_key", "")
+    dismiss_corruption_notice(LEDGER_PATH)
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
@@ -365,6 +426,22 @@ _TEMPLATE = r"""<!DOCTYPE html>
 </head>
 <body>
 <h1>AFL Multis Dashboard</h1>
+
+{% if ledger_corruption %}
+<div style="background:#3a1a1a;border-bottom:2px solid var(--red);padding:12px 20px;display:flex;align-items:center;gap:16px">
+  <span style="color:var(--red);font-weight:700">&#9888; LEDGER CORRUPTION DETECTED</span>
+  <span style="color:#cdd9e5;font-size:13px">
+    {{ ledger_corruption.recovered }} bets recovered,
+    {{ ledger_corruption.lost }} lost.
+    Corrupt backup: <code>{{ ledger_corruption.corrupt_backup }}</code>
+    ({{ ledger_corruption.timestamp }})
+  </span>
+  <form method="post" action="/dismiss-corruption-notice" style="margin:0">
+    <input type="hidden" name="round_key" value="{{ selected }}">
+    <button class="btn btn-sm" style="background:var(--border);color:var(--muted)">Dismiss</button>
+  </form>
+</div>
+{% endif %}
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('rounds')">Round View</div>
@@ -679,9 +756,9 @@ _TEMPLATE = r"""<!DOCTYPE html>
       <form method="post" action="/manual-settle" style="display:contents">
         <input type="hidden" name="bet_id" value="{{ b.bet_id }}">
         <input type="hidden" name="round_key" value="{{ selected }}">
-        <button name="outcome" value="won" class="btn btn-sm" style="background:#1a3a2a;color:var(--green);border:1px solid var(--green)">Won</button>
-        <button name="outcome" value="lost" class="btn btn-sm" style="background:#3a1a1a;color:var(--red);border:1px solid var(--red)">Lost</button>
-        <button name="outcome" value="void" class="btn btn-sm" style="background:var(--border);color:var(--muted)">Void</button>
+        <button name="outcome" value="won" class="btn btn-sm" style="background:#1a3a2a;color:var(--green);border:1px solid var(--green)" onclick="return confirm('Mark this bet WON? This overrides auto-settlement.')">Won</button>
+        <button name="outcome" value="lost" class="btn btn-sm" style="background:#3a1a1a;color:var(--red);border:1px solid var(--red)" onclick="return confirm('Mark this bet LOST? This overrides auto-settlement.')">Lost</button>
+        <button name="outcome" value="void" class="btn btn-sm" style="background:var(--border);color:var(--muted)" onclick="return confirm('Mark this bet VOID? This overrides auto-settlement.')">Void</button>
       </form>
     </div>
     {% endif %}
@@ -727,6 +804,17 @@ _TEMPLATE = r"""<!DOCTYPE html>
         {{ lr.name }}
       </span>
       {% endfor %}
+    </div>
+    {% endif %}
+    {% if b.get('manual_result') %}
+    <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:11px;color:var(--muted)">Manually settled as {{ b.manual_result }}</span>
+      <form method="post" action="/reopen-bet" style="margin:0">
+        <input type="hidden" name="bet_id" value="{{ b.bet_id }}">
+        <input type="hidden" name="round_key" value="{{ selected }}">
+        <button class="btn btn-sm" style="background:#1a2a3a;color:#79c0ff;border:1px solid #79c0ff"
+          onclick="return confirm('Re-open this bet? It will return to pending and be re-graded on the next settle-bets run.')">Re-open</button>
+      </form>
     </div>
     {% endif %}
   </div>

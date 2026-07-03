@@ -199,7 +199,8 @@ def fetch_event_odds(event_id: str, *, cache_seconds: float = 120.0,
     if odds:
         try:
             cache_dir.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps(odds))
+            from afl_bot.io_utils import atomic_write_text
+            atomic_write_text(cache_path, json.dumps(odds))
         except OSError:
             pass
     return odds

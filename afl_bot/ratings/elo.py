@@ -179,7 +179,8 @@ class EloRatings:
 
     def save(self, path=RATINGS_PATH) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({
+        from afl_bot.io_utils import atomic_write_text
+        atomic_write_text(path, json.dumps({
             "ratings": self.ratings,
             "k": self.k,
             "home_advantage": self.home_advantage,

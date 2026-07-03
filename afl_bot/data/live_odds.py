@@ -125,7 +125,8 @@ def fetch_live_odds(round_no: int | None = None, *, api_key: str | None = None,
 
     odds = parse_events(events)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(json.dumps(odds))
+    from afl_bot.io_utils import atomic_write_text
+    atomic_write_text(cache_path, json.dumps(odds))
     return odds
 
 
@@ -228,5 +229,6 @@ def fetch_live_props(round_no: int | None = None, *, api_key: str | None = None,
 
     if all_props:
         cache_dir.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps(all_props))
+        from afl_bot.io_utils import atomic_write_text
+        atomic_write_text(cache_path, json.dumps(all_props))
     return all_props

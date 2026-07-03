@@ -33,9 +33,9 @@
     "open_odds": 2.31,
     "taken_odds": 2.31,
     "placed_at": "2026-06-27T12:45:52.500782+10:00",
-    "status": "void",
-    "settled_at": "2026-06-27T12:55:13.225781+10:00",
-    "payout": 5.0,
+    "status": "pending",
+    "settled_at": null,
+    "payout": null,
     "leg_results": [
       {
         "name": "Harley Reid 3+ tackles",
@@ -56,7 +56,13 @@
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "ungradeable_legs": [
+      "Harley Reid 3+ tackles",
+      "Liam Duggan 6+ marks",
+      "Willem Duursma 3+ tackles"
+    ],
+    "manual_result": "void"
   },
   {
     "bet_id": "6c3069c4-16fc-4b0a-a956-92326cfea8de",
@@ -92,9 +98,9 @@
     "open_odds": 2.31,
     "taken_odds": 2.31,
     "placed_at": "2026-06-27T12:56:10.814745+10:00",
-    "status": "void",
-    "settled_at": "2026-06-27T18:33:23.563551+10:00",
-    "payout": 5.0,
+    "status": "pending",
+    "settled_at": null,
+    "payout": null,
     "leg_results": [
       {
         "name": "Harley Reid 3+ tackles",
@@ -115,7 +121,13 @@
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "ungradeable_legs": [
+      "Harley Reid 3+ tackles",
+      "Liam Duggan 6+ marks",
+      "Willem Duursma 3+ tackles"
+    ],
+    "manual_result": "void"
   },
   {
     "bet_id": "f9d9d5a9-3b20-4f2e-ad79-dbe634a44847",
@@ -151,9 +163,9 @@
     "open_odds": 7.0,
     "taken_odds": 7.0,
     "placed_at": "2026-06-27T12:57:42.265376+10:00",
-    "status": "void",
-    "settled_at": "2026-06-27T18:33:23.563571+10:00",
-    "payout": 5.0,
+    "status": "lost",
+    "settled_at": "2026-07-03T18:23:13.999331+10:00",
+    "payout": 0.0,
     "leg_results": [
       {
         "name": "Nic Newman 25+ disposals",
@@ -174,7 +186,13 @@
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "ungradeable_legs": [
+      "Nic Newman 25+ disposals",
+      "Billy Wilson 4+ marks",
+      "Harley Reid 1+ goals"
+    ],
+    "manual_result": "lost"
   },
   {
     "bet_id": "f8821d98-650f-490e-9f68-dea0dab819f7",
@@ -210,9 +228,9 @@
     "open_odds": 3.2,
     "taken_odds": 3.2,
     "placed_at": "2026-06-27T13:05:59.635318+10:00",
-    "status": "won",
-    "settled_at": "2026-06-27T18:33:23.563590+10:00",
-    "payout": 16.0,
+    "status": "lost",
+    "settled_at": "2026-07-03T18:23:29.750578+10:00",
+    "payout": 0.0,
     "leg_results": [
       {
         "name": "Carlton to win",
@@ -233,7 +251,12 @@
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "ungradeable_legs": [
+      "Oliver Florent 4+ marks",
+      "Jack Graham 20+ disposals"
+    ],
+    "manual_result": "lost"
   },
   {
     "bet_id": "92ab5549-1a7d-43b8-8225-1dae1607e422",
@@ -272,9 +295,9 @@
     "open_odds": 2.8,
     "taken_odds": 2.8,
     "placed_at": "2026-06-27T19:16:10.167537+10:00",
-    "status": "void",
-    "settled_at": "2026-06-27T19:30:47.938872+10:00",
-    "payout": 7.5,
+    "status": "lost",
+    "settled_at": "2026-07-03T18:23:39.693299+10:00",
+    "payout": 0.0,
     "leg_results": [
       {
         "name": "Jason Horne-Francis 20+ disposals",
@@ -295,7 +318,13 @@
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "ungradeable_legs": [
+      "Jason Horne-Francis 20+ disposals",
+      "Jordan Dawson 7+ tackles",
+      "Brayden Cook 15+ disposals"
+    ],
+    "manual_result": "lost"
   },
   {
     "bet_id": "6a3171ba-14cf-493c-bf88-b94129b6e9a3",
@@ -334,17 +363,31 @@
     "open_odds": 3.33,
     "taken_odds": 3.33,
     "placed_at": "2026-07-02T17:42:42.232144+10:00",
-    "status": "pending",
-    "settled_at": null,
-    "payout": null,
-    "leg_results": null,
+    "status": "lost",
+    "settled_at": "2026-07-04T00:05:53.007103+10:00",
+    "payout": 0.0,
+    "leg_results": [
+      {
+        "name": "Geelong to win",
+        "hit": false
+      },
+      {
+        "name": "Bailey Smith 1+ goals",
+        "hit": null
+      },
+      {
+        "name": "Oliver Dempsey 1+ goals",
+        "hit": null
+      }
+    ],
     "close_captured_at": null,
     "close_ref_odds": null,
     "close_ref_source": null,
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "manual_result": null
   },
   {
     "bet_id": "841db8fc-d4fb-4405-bc00-66ca87ce1517",
@@ -386,13 +429,99 @@
     "status": "pending",
     "settled_at": null,
     "payout": null,
-    "leg_results": null,
+    "leg_results": [
+      {
+        "name": "Oliver Dempsey 15+ disposals",
+        "hit": null
+      },
+      {
+        "name": "Darcy Wilmot 20+ disposals",
+        "hit": null
+      },
+      {
+        "name": "Josh Dunkley 20+ disposals",
+        "hit": null
+      }
+    ],
     "close_captured_at": null,
     "close_ref_odds": null,
     "close_ref_source": null,
     "close_implied_prob": null,
     "clv_pct": null,
     "clv_available": false,
-    "close_legs": null
+    "close_legs": null,
+    "manual_result": null,
+    "ungradeable_legs": [
+      "Oliver Dempsey 15+ disposals",
+      "Darcy Wilmot 20+ disposals",
+      "Josh Dunkley 20+ disposals"
+    ]
+  },
+  {
+    "bet_id": "68c31aa2-d061-4bc5-8be9-bb5ce2c6ad0c",
+    "multi_id": "2026-r17-Sydney-Western_Bulldogs-sportsbet-2.10",
+    "year": 2026,
+    "round": 17,
+    "game": "Sydney vs Western Bulldogs",
+    "ladder": "sportsbet",
+    "legs": [
+      {
+        "player": "Angus Sheldrick",
+        "market": "disposals",
+        "line": 15,
+        "name": "Angus Sheldrick 15+ disposals",
+        "book_odds": null
+      },
+      {
+        "player": "Jake Lloyd",
+        "market": "disposals",
+        "line": 15,
+        "name": "Jake Lloyd 15+ disposals",
+        "book_odds": null
+      },
+      {
+        "player": "Arthur Jones",
+        "market": "goals",
+        "line": 1,
+        "name": "Arthur Jones 1+ goals",
+        "book_odds": null
+      }
+    ],
+    "stake": 18.5,
+    "open_odds": 2.25,
+    "taken_odds": 2.25,
+    "placed_at": "2026-07-03T23:27:53.402945+10:00",
+    "status": "pending",
+    "settled_at": null,
+    "payout": null,
+    "leg_results": [
+      {
+        "name": "Angus Sheldrick 15+ disposals",
+        "hit": null
+      },
+      {
+        "name": "Jake Lloyd 15+ disposals",
+        "hit": null
+      },
+      {
+        "name": "Arthur Jones 1+ goals",
+        "hit": null
+      }
+    ],
+    "source": "bot",
+    "manual_result": null,
+    "close_captured_at": null,
+    "close_ref_odds": null,
+    "close_ref_source": null,
+    "close_implied_prob": null,
+    "clv_pct": null,
+    "clv_available": false,
+    "close_legs": null,
+    "note": "reconstructed 2026-07-03 after ledger file corruption; original record lost mid-write",
+    "ungradeable_legs": [
+      "Angus Sheldrick 15+ disposals",
+      "Jake Lloyd 15+ disposals",
+      "Arthur Jones 1+ goals"
+    ]
   }
 ]

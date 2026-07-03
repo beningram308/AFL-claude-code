@@ -191,7 +191,8 @@ def fetch_lineup(year: int, round_no: int, *,
     if lineup:
         try:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps({t: list(p) for t, p in lineup.items()}))
+            from afl_bot.io_utils import atomic_write_text
+            atomic_write_text(cache_path, json.dumps({t: list(p) for t, p in lineup.items()}))
         except OSError:
             pass
     _warn_extended_squads(lineup)
@@ -369,7 +370,8 @@ def fetch_injury_list(year: int, round_no: int, *,
           f"{len(out_players)} team(s).", file=sys.stderr)
     try:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps({t: list(p) for t, p in out_players.items()}))
+        from afl_bot.io_utils import atomic_write_text
+        atomic_write_text(cache_path, json.dumps({t: list(p) for t, p in out_players.items()}))
     except OSError:
         pass
     return out_players

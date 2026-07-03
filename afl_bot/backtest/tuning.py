@@ -200,7 +200,8 @@ def fit_elo_params(games: pd.DataFrame, *, train_end_year: int, eval_start_year:
         "git_sha": _git_sha(),
     }
     cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / f"{ELO_PARAMS_ARTIFACT}.json").write_text(json.dumps(artifact, indent=2))
+    from afl_bot.io_utils import atomic_write_text
+    atomic_write_text(cache_dir / f"{ELO_PARAMS_ARTIFACT}.json", json.dumps(artifact, indent=2))
     return artifact
 
 

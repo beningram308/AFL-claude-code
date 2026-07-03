@@ -207,7 +207,8 @@ def fetch_tab_odds(
     if all_odds:
         try:
             cache_dir.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps(all_odds))
+            from afl_bot.io_utils import atomic_write_text
+            atomic_write_text(cache_path, json.dumps(all_odds))
         except OSError:
             pass
 

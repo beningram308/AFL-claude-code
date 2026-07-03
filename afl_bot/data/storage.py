@@ -45,7 +45,8 @@ def write_parquet(
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = _parquet_path(cache_dir, name)
     df.to_parquet(path, index=False)
-    _meta_path(cache_dir, name).write_text(json.dumps({
+    from afl_bot.io_utils import atomic_write_text
+    atomic_write_text(_meta_path(cache_dir, name), json.dumps({
         "schema_version": schema_version,
         "rows": len(df),
         "columns": list(df.columns),

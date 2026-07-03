@@ -23,6 +23,7 @@ Player props use real per-player box scores from DFS Australia
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import sys
@@ -31,6 +32,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from afl_bot.io_utils import atomic_write_text
 
 from afl_bot.backtest.ensemble import assemble_signals, fit_market_blend, squiggle_consensus
 from afl_bot.backtest.props import apply_prop_calibration, load_or_fit_prop_calibrators
@@ -1336,10 +1339,12 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     out_dir = ROOT_DIR / "reports"
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / f"{year}_r{round_no}_report.md"
-    out_path.write_text(md, encoding="utf-8")
+    atomic_write_text(out_path, md)
     # Machine-readable predictions sidecar so the round can be graded later (§10.5).
     pred_path = out_dir / f"{year}_r{round_no}_predictions.csv"
-    pd.DataFrame(predictions).to_csv(pred_path, index=False)
+    _csv_buf = io.StringIO()
+    pd.DataFrame(predictions).to_csv(_csv_buf, index=False)
+    atomic_write_text(pred_path, _csv_buf.getvalue())
     # Stage 2A: machine-readable multis JSON for the dashboard.
     multis_path = out_dir / f"{year}_r{round_no}_multis.json"
     multis_payload = {
@@ -1348,7 +1353,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         "round": round_no,
         "records": multis_records,
     }
-    multis_path.write_text(json.dumps(multis_payload, indent=2), encoding="utf-8")
+    atomic_write_text(multis_path, json.dumps(multis_payload, indent=2))
     # PointsBet Pull 'Em odds template: leg names -> null for each match that
     # has a Pull 'Em SGM, so it can be filled in and passed back via --pb-odds.
     pull_em_records = [r for r in multis_records if r.get("ladder") == "pull_em"]
@@ -1358,12 +1363,11 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             for name in rec.get("leg_names", []):
                 pb_template[name] = None
         pb_template_path = out_dir / f"{year}_r{round_no}_pointsbet_odds.json"
-        pb_template_path.write_text(json.dumps(pb_template, indent=2), encoding="utf-8")
+        atomic_write_text(pb_template_path, json.dumps(pb_template, indent=2))
     # Odds template (model-upgrade audit Phase 4 STEP 1.2): every priceable
     # leg's exact name -> null, copy-paste-able into a fresh --odds file.
     template_path = out_dir / f"{year}_r{round_no}_odds_template.json"
-    template_path.write_text(
-        json.dumps(build_odds_template(priceable_names), indent=2), encoding="utf-8")
+    atomic_write_text(template_path, json.dumps(build_odds_template(priceable_names), indent=2))
     # Snapshot the filled --odds file (model-upgrade audit Phase 4 STEP 2.4)
     # so the repo accumulates its own prop-odds history over time -- the
     # exact archive STEP 2.2 says doesn't exist yet, the cheapest path to
@@ -1371,7 +1375,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     odds_snapshot_path = None
     if manual:
         odds_snapshot_path = out_dir / f"{year}_r{round_no}_odds.json"
-        odds_snapshot_path.write_text(json.dumps(manual, indent=2), encoding="utf-8")
+        atomic_write_text(odds_snapshot_path, json.dumps(manual, indent=2))
     print(md)
     snapshot_note = f" | odds snapshot: {odds_snapshot_path}" if odds_snapshot_path else ""
     print(f"\n[saved to {out_path} | predictions: {pred_path} | "
@@ -1465,7 +1469,9 @@ def grade_round(year: int, round_no: int) -> None:
                              ignore_index=True)
     else:
         combined = graded_df
-    combined.to_csv(log_path, index=False)
+    _cal_buf = io.StringIO()
+    combined.to_csv(_cal_buf, index=False)
+    atomic_write_text(log_path, _cal_buf.getvalue())
 
     from afl_bot.backtest.walkforward import brier_score, log_loss
     probs = graded_df["prob"].to_numpy()
@@ -2090,7 +2096,7 @@ def prop_calibration_check(
 
     # Save output
     save_path = Path(out_path) if out_path else ROOT_DIR / "reports" / "prop_calibration_check_2024_2025.md"
-    save_path.write_text(report_text, encoding="utf-8")
+    atomic_write_text(save_path, report_text)
     print(report_text)
     print(f"\n[saved to {save_path}]", file=sys.stderr)
 

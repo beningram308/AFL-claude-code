@@ -226,7 +226,8 @@ def load_or_fit_prop_calibrators(log: pd.DataFrame, *, eval_start_year: int,
     calibrators = fit_prop_calibrators(preds)
     fitted_max_year = int(preds["year"].max()) if not preds.empty and "year" in preds.columns else None
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
+    from afl_bot.io_utils import atomic_write_text
+    atomic_write_text(path, json.dumps({
         "_version": CALIBRATOR_CACHE_VERSION,
         "_fitted_max_year": fitted_max_year,
         **{

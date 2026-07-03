@@ -694,5 +694,6 @@ def load_or_fit_multi_calibrator(
 
     cal = fit_multi_calibrator(preds)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(cal.to_dict()))
+    from afl_bot.io_utils import atomic_write_text
+    atomic_write_text(path, json.dumps(cal.to_dict()))
     return cal

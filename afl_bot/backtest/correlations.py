@@ -238,7 +238,8 @@ def fit_correlation_params(games: pd.DataFrame, player_log: pd.DataFrame, *,
         "git_sha": _git_sha(),
     }
     cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / f"{CORRELATION_PARAMS_ARTIFACT}.json").write_text(json.dumps(artifact, indent=2))
+    from afl_bot.io_utils import atomic_write_text
+    atomic_write_text(cache_dir / f"{CORRELATION_PARAMS_ARTIFACT}.json", json.dumps(artifact, indent=2))
     return artifact
 
 
