@@ -64,7 +64,6 @@ from afl_bot.build.staking import (
     stake_bets,
 )
 from afl_bot.config import (
-    ALLOW_TOTAL_POINTS_IN_MULTI,
     ANCHOR_MIN_PROB,
     BANKROLL,
     BOOKABLE_TOP_N_BY_STAT,
@@ -1284,13 +1283,12 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                          odds_book.get(away_win_name, fair_odds(header["p_away"])),
                          mask=(match["away_win"] > 0)),
         ]
-        # Totals only become a real SGM-eligible leg once priced (model-upgrade
-        # audit Phase 4 STEP 1.2) -- unlike h2h/props it has no model-derived
-        # fallback price here, so a no-odds run stays byte-for-byte unchanged.
-        if total_leg_name in odds_book:
-            total_leg = LegCandidate(total_leg_name, match_id, "total_points", "total",
-                                     header["p_total"], odds_book[total_leg_name], mask=total_mask)
-            match_legs.append(total_leg)
+        # Total-points leg: always in the pool. Uses the book's O/U price when
+        # available, fair_odds fallback for model-only runs (same as h2h legs).
+        match_legs.append(LegCandidate(total_leg_name, match_id, "total_points", "total",
+                                       header["p_total"],
+                                       odds_book.get(total_leg_name, fair_odds(header["p_total"])),
+                                       mask=total_mask))
 
         priced_legs: list[dict] = []   # this match's priced props, for the report table
         pace = draw_pace(n_sims, rng)
@@ -1394,11 +1392,9 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                                 "edge_pct": leg.edge_pct, "classification": leg.classification,
                             })
 
-        # FIX-TOTAL-POINTS-LEGS: strip total-points legs from the SGM pool
-        # (ALLOW_TOTAL_POINTS_IN_MULTI=True restores them). The match header,
-        # predictions CSV, and odds template are unaffected.
-        ladder_legs = (match_legs if ALLOW_TOTAL_POINTS_IN_MULTI
-                       else [l for l in match_legs if l.market != "total_points"])
+        # h2h "to win" legs excluded from the SGM pool: they're near-lock near-fair
+        # and dominate combos without adding value. Total-points O/U legs stay in.
+        ladder_legs = [l for l in match_legs if l.market != "h2h"]
         sgms = search_match_sgms(ladder_legs, odds_book=odds_book,
                                  corr_gain_haircut=corr_gain_haircut, multi_calibrator=multi_cal)
         # FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C: a second ladder selected

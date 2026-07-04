@@ -972,57 +972,64 @@ def test_fallback_to_marks_when_no_disposals_combo_reaches_target():
 
 
 # --------------------------------------------------------------------------- #
-# Total-points legs excluded from multis (FIX-TOTAL-POINTS-LEGS)
+# Total-points legs in multis, h2h legs excluded (FIX-REMOVE-H2H-ADD-TOTAL-POINTS)
 # --------------------------------------------------------------------------- #
 
-def _total_leg(name="Total points 160.5+", prob=0.55):
+def _total_leg(name="Total points 160.5+", prob=0.55, book_odds=None):
     return LegCandidate(name=name, match_id="m1", market="total_points",
-                        subject="total", fair_prob=prob, market_odds=1.0 / prob, mask=None)
+                        subject="total", fair_prob=prob,
+                        market_odds=book_odds if book_odds is not None else 1.0 / prob,
+                        mask=None)
 
 
-def test_allow_total_points_in_multi_defaults_to_false():
-    from afl_bot.config import ALLOW_TOTAL_POINTS_IN_MULTI
-    assert ALLOW_TOTAL_POINTS_IN_MULTI is False
-
-
-def test_total_points_excluded_when_flag_false():
-    # Simulate cli.py's filter: strip total_points legs before handing to ladder.
-    raw_pool = _ladder_legs() + [_total_leg()]
-    filtered = [l for l in raw_pool if l.market != "total_points"]
-    out = search_match_sgms(filtered, min_joint_prob=0.0)
-    assert out
+def test_h2h_legs_excluded_from_ladder():
+    """cli.py filters h2h out of ladder_legs; h2h legs must never appear on a rung."""
+    h2h = LegCandidate("Team A to win", "m1", "h2h", "Team A", 0.60, 1/0.60, mask=None)
+    disp_b = _leg("PB 20+ disp", 0.65, None, "PB")
+    disp_c = _leg("PC 20+ disp", 0.60, None, "PC")
+    # cli.py: ladder_legs = [l for l in match_legs if l.market != "h2h"]
+    pool = [l for l in [h2h, disp_b, disp_c] if l.market != "h2h"]
+    out = search_match_sgms(pool, min_joint_prob=0.0)
     for r in out:
-        assert not any("Total points" in name for name in r["legs"])
+        assert not any("to win" in name.lower() for name in r["legs"])
 
 
-def test_total_points_allowed_when_flag_true():
-    # With flag True the cli.py passes match_legs unchanged; the total_points
-    # leg is eligible to enter a combo if it forms a valid 3-leg combination.
-    # Use 2 disp legs + 1 total leg; joint ≈ 0.60*0.55*0.55 = 0.181, fair ≈ 5.52
-    # which lands in the $5.00 band window [5.00, 6.50] → prob window [0.154, 0.200].
+def test_total_points_included_in_ladder():
+    """Total-points leg enters the model ladder alongside player props."""
     disp_a = _leg("DA 20+ disp", 0.60, None, "DA")
     disp_b = _leg("DB 20+ disp", 0.55, None, "DB")
     total = _total_leg(prob=0.55)
-    # No filtering (ALLOW_TOTAL_POINTS_IN_MULTI=True path in cli.py).
-    pool = [disp_a, disp_b, total]
+    # cli.py only filters h2h; total_points is kept.
+    pool = [l for l in [disp_a, disp_b, total] if l.market != "h2h"]
     out = search_match_sgms(pool, target_odds=(5.0,), min_joint_prob=0.0)
     assert len(out) == 1
     assert not out[0].get("no_bet"), "combo at joint≈0.181 (fair≈$5.52) is in $5.00 band"
     assert any("Total points" in name for name in out[0]["legs"])
 
 
-def test_total_points_excluded_from_market_sgms_when_flag_false():
-    # search_market_sgms uses the same ladder_legs pool in cli.py.
+def test_total_points_in_market_sgms_when_priced():
+    """An O/U leg with a real book price can appear in the Sportsbet ladder."""
+    # Choose odds whose product lands in the $5.00 band [5.00, 6.50]:
+    # 2.20 * 1.65 * 1.65 ≈ 5.99 ✓
+    disp_a = _leg("DA 20+ disp", 0.60, None, "DA", odds=2.20)
+    disp_b = _leg("DB 20+ disp", 0.55, None, "DB", odds=1.65)
+    total = _total_leg(prob=0.55, book_odds=1.65)
+    pool = [l for l in [disp_a, disp_b, total] if l.market != "h2h"]
+    odds_book = {l.name: l.market_odds for l in pool}
+    out = search_market_sgms(pool, odds_book=odds_book, target_odds=(5.0,), min_joint_prob=0.0)
+    assert len(out) == 1
+    assert any("Total points" in name for name in out[0]["legs"])
+
+
+def test_total_points_excluded_from_market_sgms_when_unpriced():
+    """An O/U leg with no real book price (fair_odds fallback) stays out of Sportsbet ladder."""
+    disp_a = _leg("DA 20+ disp", 0.60, None, "DA", odds=1.55)
+    disp_b = _leg("DB 20+ disp", 0.55, None, "DB", odds=1.65)
+    # total has fair_odds fallback — not in odds_book
     total = _total_leg(prob=0.55)
-    total_with_odds = LegCandidate(
-        name=total.name, match_id=total.match_id, market=total.market,
-        subject=total.subject, fair_prob=total.fair_prob,
-        market_odds=total.market_odds, mask=None)
-    raw_pool = _ladder_legs(odds_mult=1.0) + [total_with_odds]
-    odds_book = {l.name: l.market_odds for l in raw_pool}
-    # CLI filter — remove total_points before passing to search_market_sgms.
-    filtered = [l for l in raw_pool if l.market != "total_points"]
-    out = search_market_sgms(filtered, odds_book=odds_book, min_joint_prob=0.0)
+    pool = [l for l in [disp_a, disp_b, total] if l.market != "h2h"]
+    odds_book = {l.name: l.market_odds for l in [disp_a, disp_b]}  # total NOT in book
+    out = search_market_sgms(pool, odds_book=odds_book, min_joint_prob=0.0)
     for r in out:
         assert not any("Total points" in name for name in r["legs"])
 

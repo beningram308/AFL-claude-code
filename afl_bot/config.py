@@ -360,11 +360,6 @@ BOOKABLE_TOP_N_BY_STAT = {"disposals": 8, "goals": 6, "marks": 6, "tackles": 6}
 BOOKABLE_MARKS_ROLES = {"forward", "midfielder", "ruck"}
 BOOKABLE_TACKLES_ROLES = {"midfielder", "forward"}
 
-# Total-points legs in multis — True restores them, False (default) keeps
-# match-total markets out of the SGM candidate pool entirely. The match header's
-# "Total NNN.5+ = X%" line is unaffected and always rendered.
-ALLOW_TOTAL_POINTS_IN_MULTI = False
-
 # Stat-selection preference — higher = preferred when the selector has a choice.
 # Applied as a SECONDARY sort key; the primary band-landing rule is unchanged.
 STAT_PREFERENCE = {"disposals": 1.0, "goals": 0.85, "tackles": 0.7, "marks": 0.35}
