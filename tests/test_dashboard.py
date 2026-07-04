@@ -311,7 +311,11 @@ def test_settle_missing_player_stays_pending(tmp_path):
     # No phantom win: bet must stay pending because one leg is ungradeable
     assert bets[0]["status"] == "pending"
     assert bets[0]["payout"] is None
-    assert "Injured Player 15+ disposals" in bets[0].get("ungradeable_legs", [])
+    ung = bets[0].get("ungradeable_legs", [])
+    ung_names = [u["name"] if isinstance(u, dict) else u for u in ung]
+    assert "Injured Player 15+ disposals" in ung_names
+    # reason must be present and non-empty
+    assert all(isinstance(u, dict) and u.get("reason") for u in ung)
 
 
 def test_settle_round_stats_not_published_stays_pending(tmp_path):
@@ -665,6 +669,99 @@ def test_settle_other_market_leg_keeps_bet_pending(tmp_path):
 
     bets = load_ledger(ledger_path)
     assert bets[0]["status"] == "pending"   # "other" leg blocks auto-settlement
+
+
+def test_settle_ungradeable_legs_store_reason(tmp_path):
+    """ungradeable_legs is a list of {name, reason} dicts, not plain strings."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [
+        {"player": "Missing Player", "market": "disposals", "line": 20,
+         "name": "Missing Player 20+ disposals", "book_odds": 1.40},
+        {"player": "Will Day", "market": "disposals", "line": 20,
+         "name": "Will Day 20+ disposals", "book_odds": 1.42},
+    ]
+    player_stat = {("Will Day", "disposals"): 22}   # Missing Player absent
+    bet = _make_bet("reason-test", 2026, 16, legs)
+    save_ledger(ledger_path, [bet])
+
+    with patch("afl_bot.dashboard.settle._load_actuals",
+               return_value=_mock_actuals(player=player_stat)):
+        settle_bets(ledger_path, year=2026, round_no=16)
+
+    bets = load_ledger(ledger_path)
+    ung = bets[0].get("ungradeable_legs", [])
+    assert len(ung) == 1
+    assert isinstance(ung[0], dict), "ungradeable_legs entries must be dicts"
+    assert ung[0]["name"] == "Missing Player 20+ disposals"
+    assert ung[0]["reason"]   # non-empty reason string
+
+
+def test_settle_1c_skips_manually_settled_bets(tmp_path):
+    """1C re-grade must NOT revert bets that have manual_result set."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    manually_voided = {
+        "bet_id": "mv1",
+        "multi_id": "multi-mv1",
+        "year": 2026, "round": 16,
+        "game": "Home vs Away",
+        "ladder": "sportsbet",
+        "legs": _LEGS_ALL_HIT,
+        "stake": 25.0,
+        "taken_odds": 3.0,
+        "placed_at": "2026-06-20T12:00:00+10:00",
+        "status": "void",
+        "settled_at": "2026-06-21T10:00:00+10:00",
+        "payout": 25.0,
+        "leg_results": [{"name": "Will Day 20+ disposals", "hit": None}],
+        "manual_result": "void",
+    }
+    save_ledger(ledger_path, [manually_voided])
+
+    with patch("afl_bot.dashboard.settle._load_actuals", return_value=_mock_actuals()):
+        settle_bets(ledger_path)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "void", "1C must not revert manually-settled bets"
+    assert bets[0]["payout"] == 25.0
+
+
+def test_settle_dfs_force_refresh_when_round_missing():
+    """_load_actuals force-refreshes DFS data when the requested round is absent from cache."""
+    from unittest.mock import MagicMock, patch as _patch
+    import pandas as pd
+
+    # Stale cache: rounds 1-3 only; round 16 absent → must trigger force_refresh=True
+    stale_dfs = pd.DataFrame({
+        "round": [1, 2, 3], "player": ["A", "B", "C"],
+        "kicks": [5, 5, 5], "handballs": [5, 5, 5],
+        "goals": [0, 0, 0], "marks": [0, 0, 0], "tackles": [0, 0, 0],
+        "team": ["X", "X", "X"],
+    })
+    empty_log = pd.DataFrame(columns=["round", "player", "disposals", "goals", "marks", "tackles"])
+    empty_fryzigg = pd.DataFrame(
+        columns=["match_date", "player_first_name", "player_last_name", "match_round"])
+
+    mock_sq = MagicMock()
+    mock_sq.get_completed_games.return_value = pd.DataFrame({
+        "round": [16], "hteam": ["Carlton"], "ateam": ["West Coast"],
+        "hscore": [90], "ascore": [70],
+    })
+
+    fetch_calls: list[bool] = []
+
+    def mock_fetch(force_refresh: bool = False):
+        fetch_calls.append(force_refresh)
+        return stale_dfs
+
+    from afl_bot.dashboard.settle import _load_actuals
+    with _patch("afl_bot.data.squiggle.SquiggleClient", return_value=mock_sq), \
+         _patch("afl_bot.data.fryzigg.fetch_fryzigg_player_stats",
+                return_value=empty_fryzigg), \
+         _patch("afl_bot.data.dfs_australia.fetch_player_stats", side_effect=mock_fetch), \
+         _patch("afl_bot.data.dfs_australia.to_player_log", return_value=empty_log):
+        _load_actuals(2026, 16)
+
+    assert True in fetch_calls, "force_refresh=True must be called when R16 absent from cache"
 
 
 # ── Part 4: generated_at and stale banner tests ───────────────────────────────

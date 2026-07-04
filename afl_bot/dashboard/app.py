@@ -743,7 +743,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
     </div>
     {% if ungradeable %}
     <div style="margin-top:5px;font-size:11px;color:var(--yellow)">
-      Ungradeable: {{ ungradeable | join(', ') }}
+      Ungradeable: {% for leg in ungradeable %}{% if leg is mapping %}{{ leg.name }} ({{ leg.reason }}){% else %}{{ leg }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
     </div>
     {% endif %}
     {% if b.leg_results %}

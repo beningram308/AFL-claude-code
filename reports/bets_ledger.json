@@ -33,9 +33,9 @@
     "open_odds": 2.31,
     "taken_odds": 2.31,
     "placed_at": "2026-06-27T12:45:52.500782+10:00",
-    "status": "pending",
-    "settled_at": null,
-    "payout": null,
+    "status": "void",
+    "settled_at": "2026-07-05T00:07:44.222766+10:00",
+    "payout": 5.0,
     "leg_results": [
       {
         "name": "Harley Reid 3+ tackles",
@@ -98,9 +98,9 @@
     "open_odds": 2.31,
     "taken_odds": 2.31,
     "placed_at": "2026-06-27T12:56:10.814745+10:00",
-    "status": "pending",
-    "settled_at": null,
-    "payout": null,
+    "status": "void",
+    "settled_at": "2026-07-05T00:07:44.222787+10:00",
+    "payout": 5.0,
     "leg_results": [
       {
         "name": "Harley Reid 3+ tackles",
@@ -426,21 +426,24 @@
     "open_odds": 2.19,
     "taken_odds": 2.19,
     "placed_at": "2026-07-02T17:59:41.015322+10:00",
-    "status": "pending",
-    "settled_at": null,
-    "payout": null,
+    "status": "lost",
+    "settled_at": "2026-07-05T00:22:33.718129+10:00",
+    "payout": 0.0,
     "leg_results": [
       {
         "name": "Oliver Dempsey 15+ disposals",
-        "hit": null
+        "hit": true,
+        "reason": null
       },
       {
         "name": "Darcy Wilmot 20+ disposals",
-        "hit": null
+        "hit": true,
+        "reason": null
       },
       {
         "name": "Josh Dunkley 20+ disposals",
-        "hit": null
+        "hit": false,
+        "reason": null
       }
     ],
     "close_captured_at": null,
@@ -491,21 +494,24 @@
     "open_odds": 2.25,
     "taken_odds": 2.25,
     "placed_at": "2026-07-03T23:27:53.402945+10:00",
-    "status": "pending",
-    "settled_at": null,
-    "payout": null,
+    "status": "won",
+    "settled_at": "2026-07-05T00:22:33.718171+10:00",
+    "payout": 41.62,
     "leg_results": [
       {
         "name": "Angus Sheldrick 15+ disposals",
-        "hit": null
+        "hit": true,
+        "reason": null
       },
       {
         "name": "Jake Lloyd 15+ disposals",
-        "hit": null
+        "hit": true,
+        "reason": null
       },
       {
         "name": "Arthur Jones 1+ goals",
-        "hit": null
+        "hit": true,
+        "reason": null
       }
     ],
     "source": "bot",
