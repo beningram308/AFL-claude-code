@@ -231,3 +231,128 @@ def test_model_only_rungs_excluded_from_monotonicity():
     assert rungs[1]["units"] == 0.5, (
         "Staked rung must not be dragged to 0 by MODEL-ONLY rung's 0 units"
     )
+
+
+# ── Part B: monotonicity tag update + round cap (FIX-PULLEM-MENU-AND-STAKE-COLUMNS) ──
+
+
+def test_monotonicity_updates_units_tag_when_reducing():
+    """When _enforce_ladder_monotonicity reduces units, units_tag leading number must sync."""
+    import re
+    from afl_bot.cli import _enforce_ladder_monotonicity
+
+    # Rung B has higher EV (gets set first), rung A has lower EV with higher units.
+    # Sorted descending by total_ev → B first (2u), then A (3u) → A must cap to 2u.
+    rungs = [
+        {"total_ev": 0.25, "units": 2.0, "units_tag": "2u KELLY",       "no_bet": False},
+        {"total_ev": 0.15, "units": 3.0, "units_tag": "3u PROMO KELLY", "no_bet": False},
+    ]
+    _enforce_ladder_monotonicity(rungs)
+
+    assert rungs[1]["units"] == 2.0, "lower-EV rung must be capped to 2u"
+    tag = rungs[1]["units_tag"]
+    m = re.match(r"^([\d.]+)u", tag)
+    assert m and float(m.group(1)) == 2.0, (
+        f"units_tag leading number must update to 2u, got: {tag!r}"
+    )
+    assert "PROMO KELLY" in tag, "flavor suffix must be preserved"
+
+
+def test_monotonicity_preserves_tag_when_no_reduction():
+    """units_tag must not change when no reduction is needed."""
+    from afl_bot.cli import _enforce_ladder_monotonicity
+
+    rungs = [
+        {"total_ev": 0.30, "units": 3.0, "units_tag": "3u KELLY",       "no_bet": False},
+        {"total_ev": 0.15, "units": 2.0, "units_tag": "2u PROMO KELLY", "no_bet": False},
+    ]
+    _enforce_ladder_monotonicity(rungs)
+
+    assert rungs[0]["units"] == 3.0
+    assert rungs[0]["units_tag"] == "3u KELLY"
+    assert rungs[1]["units"] == 2.0
+    assert rungs[1]["units_tag"] == "2u PROMO KELLY"
+
+
+def test_apply_round_cap_within_limit_no_change():
+    """When total units ≤ cap, _apply_round_cap must not alter any rung."""
+    from afl_bot.cli import _apply_round_cap
+
+    matches = [
+        {
+            "sgms": [
+                {"total_ev": 0.20, "units": 3.0, "units_tag": "3u KELLY",       "no_bet": False},
+                {"total_ev": 0.10, "units": 2.0, "units_tag": "2u PROMO KELLY", "no_bet": False},
+            ],
+            "market_sgms": [],
+            "pull_em": {"no_valid_combo": True},
+        }
+    ]
+    _apply_round_cap(matches)
+
+    assert matches[0]["sgms"][0]["units"] == 3.0
+    assert matches[0]["sgms"][1]["units"] == 2.0
+
+
+def test_apply_round_cap_drops_lowest_ev_first():
+    """When total > cap, the lowest-EV staked rungs must be zeroed first."""
+    from afl_bot.cli import _apply_round_cap
+    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
+
+    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE  # e.g. 15u
+
+    # Build rungs that sum to cap + 5u to force dropping.
+    # EV order: A (0.30) > B (0.20) > C (0.05) — C should be dropped first.
+    rung_a = {"total_ev": 0.30, "units": cap * 0.5,  "units_tag": f"{cap*0.5:g}u KELLY", "no_bet": False}
+    rung_b = {"total_ev": 0.20, "units": cap * 0.4,  "units_tag": f"{cap*0.4:g}u KELLY", "no_bet": False}
+    rung_c = {"total_ev": 0.05, "units": cap * 0.2,  "units_tag": f"{cap*0.2:g}u KELLY", "no_bet": False}
+    # Total = cap * 1.1 → 10% over cap
+
+    matches = [
+        {
+            "sgms": [rung_a, rung_b, rung_c],
+            "market_sgms": [],
+            "pull_em": {"no_valid_combo": True},
+        }
+    ]
+    _apply_round_cap(matches)
+
+    total_after = sum(
+        r["units"] for r in matches[0]["sgms"] if r["units"] > 0
+    )
+    assert total_after <= cap + 1e-9, f"Total {total_after:.2f}u exceeds cap {cap}u"
+    # C (lowest EV) should be the first casualty — either zeroed or heavily reduced
+    assert rung_c["units"] < rung_a["units"], (
+        "Lowest-EV rung must be reduced before highest-EV rung"
+    )
+
+
+def test_apply_round_cap_pull_em_counts_toward_total():
+    """Pull 'Em units must count toward the round cap."""
+    from afl_bot.cli import _apply_round_cap
+    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
+
+    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
+
+    # A single SGM rung at cap - 1u, plus a Pull 'Em at 2u → total over cap
+    rung = {"total_ev": 0.20, "units": cap - 1.0, "units_tag": f"{cap-1:g}u KELLY", "no_bet": False}
+    pull_em = {
+        "no_valid_combo": False,
+        "total_ev": 0.05,
+        "units": 2.0,
+        "units_tag": "2u KELLY",
+        "no_bet": False,
+    }
+    matches = [
+        {
+            "sgms": [rung],
+            "market_sgms": [],
+            "pull_em": pull_em,
+        }
+    ]
+    _apply_round_cap(matches)
+
+    total_after = rung["units"] + pull_em.get("units", 0)
+    assert total_after <= cap + 1e-9, (
+        f"Round total {total_after:.2f}u must be ≤ cap {cap}u even counting Pull 'Em"
+    )

@@ -71,6 +71,7 @@ from afl_bot.config import (
     CACHE_DIR,
     CORR_GAIN_HAIRCUT,
     DEFAULT_BANKROLL,
+    KELLY_PER_ROUND_CAP,
     LEG_PROB_MAX,
     LEG_PROB_MIN,
     MANUALLY_UNAVAILABLE,
@@ -735,8 +736,64 @@ def _enforce_ladder_monotonicity(rungs: list[dict]) -> None:
         u = r.get("units", 0.0)
         if u > min_units:
             rungs[i]["units"] = min_units
+            old_tag = rungs[i].get("units_tag", "")
+            if old_tag and old_tag not in ("NO BET", "MODEL-ONLY", "CHECK PRICING"):
+                rungs[i]["units_tag"] = re.sub(r"^[\d.]+u", f"{min_units:g}u", old_tag)
         else:
             min_units = u
+
+
+def _apply_round_cap(matches: list[dict]) -> None:
+    """Apply per-round Kelly cap across all staked rungs (all games, both ladders + Pull 'Em).
+
+    Strategy (profit-maximising allocation under the cap):
+      1. Collect all staked rungs sorted by total_ev ascending (lowest EV = first to drop).
+      2. Drop lowest-EV rungs to 0u / 'NO BET' until total <= cap.
+      3. If still over after all drops (edge case), scale proportionally with UNIT_STEP floor.
+    """
+    import math as _math
+    round_cap_units = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
+
+    staked: list[tuple[float, dict]] = []
+    for m in matches:
+        for r in m.get("sgms", []) + m.get("market_sgms", []):
+            if (r.get("units", 0.0) > 0
+                    and r.get("units_tag") not in ("NO BET", "MODEL-ONLY", "CHECK PRICING")):
+                ev = r.get("total_ev") if r.get("total_ev") is not None else (r.get("edge") or 0.0)
+                staked.append((ev, r))
+        pe = m.get("pull_em")
+        if pe and not pe.get("no_valid_combo") and pe.get("units", 0.0) > 0:
+            ev = (pe.get("option_ev") or 0.0) / 100.0
+            staked.append((ev, pe))
+
+    total = sum(r.get("units", 0.0) for _, r in staked)
+    if total <= round_cap_units + 1e-9:
+        return
+
+    # Drop lowest-EV rungs first.
+    staked.sort(key=lambda x: x[0])
+    for _, r in staked:
+        if total <= round_cap_units + 1e-9:
+            break
+        u = r.get("units", 0.0)
+        r["units"] = 0.0
+        r["units_tag"] = "NO BET"
+        total -= u
+
+    # Proportional scale if still over (shouldn't happen if any rung existed).
+    if total > round_cap_units + 1e-9:
+        active = [(ev, r) for ev, r in staked if r.get("units", 0.0) > 0]
+        if active and total > 0:
+            scale = round_cap_units / total
+            for _, r in active:
+                new_u = max(
+                    _math.floor(r["units"] * scale / UNIT_STEP) * UNIT_STEP,
+                    UNIT_STEP,
+                )
+                r["units"] = new_u
+                old_tag = r.get("units_tag", "")
+                if old_tag and old_tag not in ("NO BET", "MODEL-ONLY", "CHECK PRICING"):
+                    r["units_tag"] = re.sub(r"^[\d.]+u", f"{new_u:g}u", old_tag)
 
 
 def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
@@ -1135,6 +1192,25 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         except (OSError, json.JSONDecodeError) as e:
             print(f"WARNING: could not load greasiness overrides: {e}", file=sys.stderr)
 
+    # PointsBet Pull 'Em menu (FIX-PULLEM-MENU-AND-STAKE-COLUMNS).
+    # If the per-round JSON exists with real (non-null) prices, use those for
+    # Pull 'Em leg selection so we only emit lines PointsBet actually offers.
+    # pb_menu = None  -> file missing -> fall back to odds_book (Sportsbet)
+    # pb_menu = {}    -> file exists but all-null -> show UNAVAILABLE
+    # pb_menu = {...} -> real prices -> use them for eligibility + combo odds
+    _pb_menu_path = ROOT_DIR / "reports" / f"{year}_r{round_no}_pointsbet_odds.json"
+    if _pb_menu_path.exists():
+        try:
+            _pb_raw = json.loads(_pb_menu_path.read_text(encoding="utf-8"))
+            pb_menu: dict[str, float] | None = {
+                k: v for k, v in _pb_raw.items()
+                if isinstance(v, (int, float)) and v > 0
+            }
+        except (OSError, json.JSONDecodeError):
+            pb_menu = None
+    else:
+        pb_menu = None
+
     rng = make_rng()
     matches, predictions, multis_records = [], [], []
     n_tog_overrides = 0
@@ -1330,51 +1406,43 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         # pool -- [] when nothing in this match is priced.
         market_sgms = search_market_sgms(ladder_legs, odds_book=odds_book,
                                          corr_gain_haircut=corr_gain_haircut)
-        # Stage 2A: compute staking, enforce monotonicity, emit JSON + update rungs.
+        # Stage 2A: compute per-rung units, enforce within-ladder monotonicity.
+        # multis_records is built AFTER the loop, post round-cap (Part B fix).
         for r in sgms + market_sgms:
             r.update(_units_fields(r))
         _enforce_ladder_monotonicity(sgms)
         _enforce_ladder_monotonicity(market_sgms)
-        leg_by_name = {l.name: l for l in match_legs}
-        for ladder_label, rungs in (("model", sgms), ("sportsbet", market_sgms)):
-            for r in rungs:
-                multis_records.append(_rung_to_json(
-                    r, ladder_label, year, round_no,
-                    home_name, away_name, leg_by_name, odds_book,
-                    greasiness=greasiness))
-        pull_em = (build_pull_em_sgm(ladder_legs, odds_book=odds_book)
-                   if odds_book else None)
+        # Pull 'Em: use PointsBet menu if available, else fall back to odds_book.
+        # pb_menu=None -> no file -> use odds_book; pb_menu={} -> all-null -> UNAVAILABLE.
+        if pb_menu is not None:
+            pull_em = build_pull_em_sgm(
+                ladder_legs, odds_book=odds_book, pointsbet_menu=pb_menu
+            )
+        elif odds_book:
+            pull_em = build_pull_em_sgm(ladder_legs, odds_book=odds_book)
+        else:
+            pull_em = None
         if pull_em and not pull_em.get("no_valid_combo"):
-            h = home_name.replace(" ", "_")
-            a = away_name.replace(" ", "_")
             pe_units = _pull_em_units_fields(pull_em)
             pull_em.update(pe_units)
-            pull_em_record = {
-                "id": f"{year}-r{round_no}-{h}-{a}-pull_em",
-                "year": year,
-                "round": round_no,
-                "game": f"{home_name} vs {away_name}",
-                "ladder": "pull_em",
-                "book": "pointsbet",
-                "leg_names": pull_em["leg_names"],
-                "anchor_names": pull_em["anchor_names"],
-                "booster_name": pull_em["booster_name"],
-                "anchor_probs": pull_em["anchor_probs"],
-                "booster_prob": pull_em["booster_prob"],
-                "book_odds_per_leg": pull_em["book_odds_per_leg"],
-                "book_combo": pull_em["book_combo"],
-                "option_ev": pull_em["option_ev"],
-                "option_ev_breakdown": pull_em["option_ev_breakdown"],
-                "pull_decision_rule": pull_em["pull_decision_rule"],
-                "units": pull_em.get("units", 0.0),
-                "units_tag": pull_em.get("units_tag", "NO BET"),
-            }
-            multis_records.append(pull_em_record)
+        # Collect all pull_em-eligible leg names for the per-round template
+        # (includes all lines across all players, not just the selected 4).
+        from afl_bot.config import PULL_EM_ELIGIBLE_MARKETS as _PE_MKTS
+        _pe_eligible_names = [
+            l.name for l in ladder_legs
+            if l.market in _PE_MKTS or l.market == "disposals"
+        ]
         matches.append({
             "header": header, "projections": projections,
             "sgms": sgms, "market_sgms": market_sgms, "priced_legs": priced_legs,
             "n_legs": len(match_legs),     # so the report can explain an empty ladder
             "pull_em": pull_em,
+            # Context for post-loop multis_records building + template generation.
+            "_home_name": home_name,
+            "_away_name": away_name,
+            "_leg_by_name": {l.name: l for l in match_legs},
+            "_greasiness": greasiness,
+            "_pe_eligible_names": _pe_eligible_names,
         })
 
     # Warn on odds-file keys that never matched a priceable leg (a typo = a
@@ -1383,6 +1451,45 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     if unmatched:
         print(f"\nWARNING: {len(unmatched)} odds key(s) matched no priceable leg "
               f"(typo? player not in pool/lineup?): {', '.join(unmatched)}", file=sys.stderr)
+
+    # FIX-PULLEM-MENU-AND-STAKE-COLUMNS Part B: apply per-round cap across all
+    # staked rungs in all matches (lowest-EV first), then build multis_records from
+    # the final units. This ensures units, units_tag, Stake%, and $ always agree.
+    _apply_round_cap(matches)
+    for m in matches:
+        _home = m["_home_name"]
+        _away = m["_away_name"]
+        _leg_by_name = m["_leg_by_name"]
+        _grs = m["_greasiness"]
+        for _ladder_label, _rungs in (("model", m["sgms"]), ("sportsbet", m["market_sgms"])):
+            for r in _rungs:
+                multis_records.append(_rung_to_json(
+                    r, _ladder_label, year, round_no, _home, _away, _leg_by_name, odds_book,
+                    greasiness=_grs))
+        pe = m.get("pull_em")
+        if pe and not pe.get("no_valid_combo"):
+            h = _home.replace(" ", "_")
+            a = _away.replace(" ", "_")
+            multis_records.append({
+                "id": f"{year}-r{round_no}-{h}-{a}-pull_em",
+                "year": year,
+                "round": round_no,
+                "game": f"{_home} vs {_away}",
+                "ladder": "pull_em",
+                "book": "pointsbet",
+                "leg_names": pe["leg_names"],
+                "anchor_names": pe["anchor_names"],
+                "booster_name": pe["booster_name"],
+                "anchor_probs": pe["anchor_probs"],
+                "booster_prob": pe["booster_prob"],
+                "book_odds_per_leg": pe["book_odds_per_leg"],
+                "book_combo": pe["book_combo"],
+                "option_ev": pe["option_ev"],
+                "option_ev_breakdown": pe["option_ev_breakdown"],
+                "pull_decision_rule": pe["pull_decision_rule"],
+                "units": pe.get("units", 0.0),
+                "units_tag": pe.get("units_tag", "NO BET"),
+            })
 
     _lineup_note = (
         f" Lineup: {lineup_source} — {n_auto_excluded} player(s) excluded as not named to play."
@@ -1414,16 +1521,23 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         "records": multis_records,
     }
     atomic_write_text(multis_path, json.dumps(multis_payload, indent=2))
-    # PointsBet Pull 'Em odds template: leg names -> null for each match that
-    # has a Pull 'Em SGM, so it can be filled in and passed back via --pb-odds.
-    pull_em_records = [r for r in multis_records if r.get("ladder") == "pull_em"]
-    if pull_em_records:
-        pb_template = {}
-        for rec in pull_em_records:
-            for name in rec.get("leg_names", []):
+    # PointsBet Pull 'Em template: ALL eligible legs across all matches (not just
+    # the selected 4) so Ben can fill in any line PointsBet actually offers.
+    # Preserve prices already entered; only add new null entries for new legs.
+    pb_template: dict[str, float | None] = {}
+    try:
+        if _pb_menu_path.exists():
+            pb_template = json.loads(_pb_menu_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        pass
+    _any_pe_eligible = False
+    for m in matches:
+        for name in m.get("_pe_eligible_names", []):
+            _any_pe_eligible = True
+            if name not in pb_template:
                 pb_template[name] = None
-        pb_template_path = out_dir / f"{year}_r{round_no}_pointsbet_odds.json"
-        atomic_write_text(pb_template_path, json.dumps(pb_template, indent=2))
+    if _any_pe_eligible:
+        atomic_write_text(_pb_menu_path, json.dumps(pb_template, indent=2))
     # Odds template (model-upgrade audit Phase 4 STEP 1.2): every priceable
     # leg's exact name -> null, copy-paste-able into a fresh --odds file.
     template_path = out_dir / f"{year}_r{round_no}_odds_template.json"
@@ -1436,7 +1550,7 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     if manual:
         odds_snapshot_path = out_dir / f"{year}_r{round_no}_odds.json"
         atomic_write_text(odds_snapshot_path, json.dumps(manual, indent=2))
-    print(md)
+    sys.stdout.buffer.write(md.encode("utf-8", errors="replace") + b"\n")
     snapshot_note = f" | odds snapshot: {odds_snapshot_path}" if odds_snapshot_path else ""
     print(f"\n[saved to {out_path} | predictions: {pred_path} | "
           f"multis: {multis_path} | odds template: {template_path}{snapshot_note}]")

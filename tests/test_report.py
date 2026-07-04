@@ -1734,3 +1734,103 @@ def test_suspect_pricing_book_far_above_model_returns_check_pricing():
             # without the guard) but that book/model ratio is above the threshold.
             assert ratio > SUSPECT_BOOK_FAIR_RATIO
 
+
+# ── Part A: Pull 'Em PointsBet menu (FIX-PULLEM-MENU-AND-STAKE-COLUMNS) ────────
+
+
+def _marks_leg_pb(name, player, prob, odds=None):
+    mask = np.random.default_rng(abs(hash(name)) % 2**31).random(20_000) < prob
+    return LegCandidate(name=name, match_id="m1", market="player_marks",
+                        subject=player, fair_prob=prob,
+                        market_odds=odds if odds else round(1 / prob, 2), mask=mask)
+
+
+def test_pull_em_menu_only_uses_offered_lines():
+    """When pointsbet_menu has 4+/6+ marks but NOT 5+ marks, builder never outputs 5+."""
+    # Build legs: A (disposals), B (disposals), C (disposals) for anchors;
+    # D with 4+/6+ marks only (no 5+) for booster.
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _marks_leg_pb("D 4+ marks", "D", 0.55, odds=1.85),
+        _marks_leg_pb("D 5+ marks", "D", 0.35, odds=2.85),   # NOT in PB menu
+        _marks_leg_pb("D 6+ marks", "D", 0.20, odds=4.50),
+    ]
+    # PointsBet offers 4+ and 6+ marks but NOT 5+ marks for D
+    pb_menu = {
+        "A 25+ disposals": 1.35,
+        "B 20+ disposals": 1.40,
+        "C 30+ disposals": 1.43,
+        "D 4+ marks": 1.85,
+        "D 6+ marks": 4.50,
+        # "D 5+ marks" intentionally absent
+    }
+    # odds_book also has all lines (simulates Sportsbet offering 5+ marks)
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book, pointsbet_menu=pb_menu,
+                                min_combo_odds=1.0)
+    assert result is not None
+    assert not result.get("no_valid_combo")
+    assert "D 5+ marks" not in result["leg_names"], (
+        "5+ marks must not appear — PointsBet menu only has 4+ and 6+"
+    )
+
+
+def test_pull_em_menu_leg_odds_equal_menu_price():
+    """Leg book_odds_per_leg must equal the PointsBet menu price, not Sportsbet's."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _goal_leg("D 1+ goals", "D", 0.55),
+    ]
+    # PB menu has DIFFERENT prices than the model's market_odds
+    pb_menu = {
+        "A 25+ disposals": 1.38,   # different from 1/0.75 ≈ 1.33
+        "B 20+ disposals": 1.43,   # different from 1/0.72 ≈ 1.39
+        "C 30+ disposals": 1.44,   # different from 1/0.71 ≈ 1.41
+        "D 1+ goals": 1.90,        # different from 1/0.55 ≈ 1.82
+    }
+    odds_book = {l.name: l.market_odds for l in legs}
+    result = build_pull_em_sgm(legs, odds_book=odds_book, pointsbet_menu=pb_menu,
+                                min_combo_odds=1.0)
+    assert result is not None and not result.get("no_valid_combo")
+    for name, book_o in zip(result["leg_names"], result["book_odds_per_leg"]):
+        assert abs(book_o - pb_menu[name]) < 1e-9, (
+            f"{name}: book_odds {book_o} must equal menu price {pb_menu[name]}"
+        )
+
+
+def test_pull_em_all_null_menu_returns_unavailable():
+    """An all-null menu (file exists but Ben hasn't filled it in) → unavailable sentinel."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _goal_leg("D 1+ goals", "D", 0.55),
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    # pb_menu = {} means file exists but every value was null
+    result = build_pull_em_sgm(legs, odds_book=odds_book, pointsbet_menu={})
+    assert result is not None
+    assert result.get("no_valid_combo") is True
+    assert result.get("unavailable") is True, "Empty menu must return unavailable=True"
+
+
+def test_pull_em_none_menu_falls_back_to_odds_book():
+    """When pb_menu is None (no file yet), Pull 'Em falls back to odds_book."""
+    legs = [
+        _disp_leg("A 25+ disposals", "A", 0.75),
+        _disp_leg("B 20+ disposals", "B", 0.72),
+        _disp_leg("C 30+ disposals", "C", 0.71),
+        _goal_leg("D 1+ goals", "D", 0.55),
+    ]
+    odds_book = {l.name: l.market_odds for l in legs}
+    # None = no file at all → fall back to odds_book (existing behaviour)
+    result = build_pull_em_sgm(legs, odds_book=odds_book, pointsbet_menu=None,
+                                min_combo_odds=1.0)
+    assert result is not None and not result.get("no_valid_combo"), (
+        "pb_menu=None must fall back to odds_book and build normally"
+    )
+

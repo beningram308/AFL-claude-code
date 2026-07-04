@@ -894,7 +894,13 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
         pull_em = m.get("pull_em")
         if pull_em:
             out.append("### PointsBet Pull 'Em")
-            if pull_em.get("no_valid_combo"):
+            if pull_em.get("unavailable"):
+                out.append(
+                    "_PULL 'EM UNAVAILABLE — no PointsBet menu. "
+                    "Fill in real PB prices in the `_pointsbet_odds.json` template and re-run._"
+                )
+                out.append("")
+            elif pull_em.get("no_valid_combo"):
                 min_o = pull_em.get("min_combo_odds", PULL_EM_MIN_COMBO_ODDS)
                 out.append(f"_No Pull 'Em SGM meets the ${min_o:.2f} token minimum this game._")
                 out.append("")
@@ -944,6 +950,7 @@ def build_pull_em_sgm(
     legs: list[LegCandidate],
     *,
     odds_book: dict[str, float],
+    pointsbet_menu: dict[str, float] | None = None,
     pull_detection_prob: float = PULL_DETECTION_PROB,
     anchor_min_p: float = PULL_EM_ANCHOR_MIN_P,
     booster_min_p: float = PULL_EM_BOOSTER_MIN_P,
@@ -952,32 +959,34 @@ def build_pull_em_sgm(
 ) -> dict | None:
     """Build the best PointsBet Pull 'Em SGM for a match.
 
-    Selects 3 disposal anchor legs (model_prob >= anchor_min_p, one per
-    player, must be priced) and 1 booster leg (booster_min_p <= prob <=
-    booster_max_p, different player, <=1 tackle/marks cap). All legs must
-    be in PULL_EM_ELIGIBLE_MARKETS (h2h and total_points excluded).
-
-    Combined book odds must meet min_combo_odds ($5.00 PointsBet token
-    minimum). ALL disposal lines per player are included in the anchor
-    pool — higher-threshold lines (lower prob, higher odds) are preferred
-    when they help reach the minimum.
-
-    Anchor floor relaxes stepwise (0.70 -> 0.65 -> 0.60) if needed.
-    "anchor_relaxed_to" key is added to the result when relaxed.
+    ``pointsbet_menu``: when provided, legs must appear in THIS dict (with a
+    real > 0 price) to be eligible — enforces that only lines PointsBet
+    actually offers can be selected.  An empty dict means the menu file exists
+    but has no prices yet; returns ``{"no_valid_combo": True, "unavailable": True}``.
+    When None (file not found), falls back to ``odds_book`` for eligibility.
 
     Returns a dict with keys:
         legs, leg_names, anchor_probs, booster_prob,
         book_combo, option_ev, option_ev_breakdown,
         pull_decision_rule, [anchor_relaxed_to]
     or {"no_valid_combo": True, "min_combo_odds": min_combo_odds} if no
-    valid combo meets the minimum.
+    valid combo meets the minimum, or {"no_valid_combo": True, "unavailable": True}
+    when pointsbet_menu is empty (file exists but all-null).
 
     PULL_DETECTION_PROB is an ASSUMED PRIOR (not fitted).
     """
+    # PointsBet menu provided but empty -> show UNAVAILABLE rather than building
+    # combos from model lines that PointsBet may not offer.
+    if pointsbet_menu is not None and not pointsbet_menu:
+        return {"no_valid_combo": True, "unavailable": True}
+
+    # Price source: PB menu when provided, otherwise odds_book (Sportsbet/--odds).
+    price_source = pointsbet_menu if pointsbet_menu is not None else odds_book
+
     # Only eligible markets (PointsBet, July 2026); h2h / total_points excluded.
     priced_eligible = [
         l for l in legs
-        if l.name in odds_book and (
+        if l.name in price_source and (
             l.market in PULL_EM_ELIGIBLE_MARKETS
             or l.market == "disposals"  # legacy alias
         )
@@ -1022,7 +1031,7 @@ def build_pull_em_sgm(
                     continue
 
                 all_legs = [*anchor_combo, booster]
-                book_odds_vals = [odds_book[l.name] for l in all_legs]
+                book_odds_vals = [price_source[l.name] for l in all_legs]
                 book_combo = 1.0
                 for o in book_odds_vals:
                     book_combo *= o
