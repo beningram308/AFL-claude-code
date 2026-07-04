@@ -744,12 +744,13 @@ def _enforce_ladder_monotonicity(rungs: list[dict]) -> None:
 
 
 def _apply_round_cap(matches: list[dict]) -> None:
-    """Apply per-round Kelly cap across all staked rungs (all games, both ladders + Pull 'Em).
+    """Apply per-round Kelly cap as a budget allocator across all staked rungs.
 
-    Strategy (profit-maximising allocation under the cap):
-      1. Collect all staked rungs sorted by total_ev ascending (lowest EV = first to drop).
-      2. Drop lowest-EV rungs to 0u / 'NO BET' until total <= cap.
-      3. If still over after all drops (edge case), scale proportionally with UNIT_STEP floor.
+    Ranks all staked rungs by total_ev descending and gives each its FULL formula
+    units until the round budget (15u) is exhausted.  The last rung that partially
+    fits is trimmed to the remaining budget (floor to UNIT_STEP, min UNIT_STEP).
+    Rungs that don't fit are marked 'NO BET (round cap)'.  A kept rung's units are
+    never reduced below its formula output other than that final trim.
     """
     import math as _math
     round_cap_units = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
@@ -763,37 +764,36 @@ def _apply_round_cap(matches: list[dict]) -> None:
                 staked.append((ev, r))
         pe = m.get("pull_em")
         if pe and not pe.get("no_valid_combo") and pe.get("units", 0.0) > 0:
-            ev = (pe.get("option_ev") or 0.0) / 100.0
+            ev = (pe.get("total_ev") if pe.get("total_ev") is not None
+                  else (pe.get("option_ev") or 0.0) / 100.0)
             staked.append((ev, pe))
 
     total = sum(r.get("units", 0.0) for _, r in staked)
     if total <= round_cap_units + 1e-9:
         return
 
-    # Drop lowest-EV rungs first.
-    staked.sort(key=lambda x: x[0])
+    # Allocation: rank by EV desc — give each rung its FULL formula units until budget gone.
+    staked.sort(key=lambda x: x[0], reverse=True)
+    budget = round_cap_units
     for _, r in staked:
-        if total <= round_cap_units + 1e-9:
-            break
         u = r.get("units", 0.0)
-        r["units"] = 0.0
-        r["units_tag"] = "NO BET"
-        total -= u
-
-    # Proportional scale if still over (shouldn't happen if any rung existed).
-    if total > round_cap_units + 1e-9:
-        active = [(ev, r) for ev, r in staked if r.get("units", 0.0) > 0]
-        if active and total > 0:
-            scale = round_cap_units / total
-            for _, r in active:
-                new_u = max(
-                    _math.floor(r["units"] * scale / UNIT_STEP) * UNIT_STEP,
-                    UNIT_STEP,
-                )
-                r["units"] = new_u
+        if budget <= 1e-9:
+            r["units"] = 0.0
+            r["units_tag"] = "NO BET (round cap)"
+        elif u <= budget + 1e-9:
+            budget = max(0.0, budget - u)
+        else:
+            # Partial fit: trim to remaining budget, floored to UNIT_STEP.
+            trimmed = _math.floor(budget / UNIT_STEP) * UNIT_STEP
+            if trimmed >= UNIT_STEP:
+                r["units"] = trimmed
                 old_tag = r.get("units_tag", "")
                 if old_tag and old_tag not in ("NO BET", "MODEL-ONLY", "CHECK PRICING"):
-                    r["units_tag"] = re.sub(r"^[\d.]+u", f"{new_u:g}u", old_tag)
+                    r["units_tag"] = re.sub(r"^[\d.]+u", f"{trimmed:g}u", old_tag)
+            else:
+                r["units"] = 0.0
+                r["units_tag"] = "NO BET (round cap)"
+            budget = 0.0
 
 
 def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
@@ -1406,12 +1406,10 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         # pool -- [] when nothing in this match is priced.
         market_sgms = search_market_sgms(ladder_legs, odds_book=odds_book,
                                          corr_gain_haircut=corr_gain_haircut)
-        # Stage 2A: compute per-rung units, enforce within-ladder monotonicity.
-        # multis_records is built AFTER the loop, post round-cap (Part B fix).
+        # Stage 2A: compute per-rung units. multis_records built AFTER the loop,
+        # post round-cap so units/tag/$/Stake% always agree.
         for r in sgms + market_sgms:
             r.update(_units_fields(r))
-        _enforce_ladder_monotonicity(sgms)
-        _enforce_ladder_monotonicity(market_sgms)
         # Pull 'Em: use PointsBet menu if available, else fall back to odds_book.
         # pb_menu=None -> no file -> use odds_book; pb_menu={} -> all-null -> UNAVAILABLE.
         if pb_menu is not None:

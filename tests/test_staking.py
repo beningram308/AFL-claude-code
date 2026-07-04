@@ -294,37 +294,28 @@ def test_apply_round_cap_within_limit_no_change():
     assert matches[0]["sgms"][1]["units"] == 2.0
 
 
-def test_apply_round_cap_drops_lowest_ev_first():
-    """When total > cap, the lowest-EV staked rungs must be zeroed first."""
+def test_apply_round_cap_allocates_budget_top_ev_first():
+    """Budget allocator: top-EV rungs keep FULL formula units; overflow → NO BET (round cap)."""
     from afl_bot.cli import _apply_round_cap
     from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
 
-    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE  # e.g. 15u
+    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE  # 15u
 
-    # Build rungs that sum to cap + 5u to force dropping.
-    # EV order: A (0.30) > B (0.20) > C (0.05) — C should be dropped first.
-    rung_a = {"total_ev": 0.30, "units": cap * 0.5,  "units_tag": f"{cap*0.5:g}u KELLY", "no_bet": False}
-    rung_b = {"total_ev": 0.20, "units": cap * 0.4,  "units_tag": f"{cap*0.4:g}u KELLY", "no_bet": False}
-    rung_c = {"total_ev": 0.05, "units": cap * 0.2,  "units_tag": f"{cap*0.2:g}u KELLY", "no_bet": False}
-    # Total = cap * 1.1 → 10% over cap
+    # A(0.30, 8u) + B(0.20, 7u) + C(0.05, 4u) = 19u > 15u.
+    # Budget walk (desc EV): A=8u (budget→7u), B=7u (budget→0u), C→NO BET.
+    rung_a = {"total_ev": 0.30, "units": 8.0, "units_tag": "8u KELLY"}
+    rung_b = {"total_ev": 0.20, "units": 7.0, "units_tag": "7u KELLY"}
+    rung_c = {"total_ev": 0.05, "units": 4.0, "units_tag": "4u KELLY"}
 
-    matches = [
-        {
-            "sgms": [rung_a, rung_b, rung_c],
-            "market_sgms": [],
-            "pull_em": {"no_valid_combo": True},
-        }
-    ]
+    matches = [{"sgms": [rung_a, rung_b, rung_c], "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
     _apply_round_cap(matches)
 
-    total_after = sum(
-        r["units"] for r in matches[0]["sgms"] if r["units"] > 0
-    )
+    assert rung_a["units"] == 8.0, "Highest-EV rung must keep full formula units"
+    assert rung_b["units"] == 7.0, "Second-EV rung must keep full formula units"
+    assert rung_c["units"] == 0.0, "Overflow rung must be zeroed"
+    assert "round cap" in rung_c["units_tag"], "Overflow tag must mention round cap"
+    total_after = rung_a["units"] + rung_b["units"] + rung_c["units"]
     assert total_after <= cap + 1e-9, f"Total {total_after:.2f}u exceeds cap {cap}u"
-    # C (lowest EV) should be the first casualty — either zeroed or heavily reduced
-    assert rung_c["units"] < rung_a["units"], (
-        "Lowest-EV rung must be reduced before highest-EV rung"
-    )
 
 
 def test_apply_round_cap_pull_em_counts_toward_total():
@@ -356,3 +347,76 @@ def test_apply_round_cap_pull_em_counts_toward_total():
     assert total_after <= cap + 1e-9, (
         f"Round total {total_after:.2f}u must be ≤ cap {cap}u even counting Pull 'Em"
     )
+
+
+# ── FIX-RESTORE-PROMO-KELLY-UNITS: per-bet formula + budget allocator ─────────
+
+
+def test_promo_kelly_high_frac_gives_3u():
+    """Promo Kelly formula implying 3u+ raw → exactly 3u (UNIT_MAX), $45, correct tag."""
+    from afl_bot.build.staking import recommend_units
+    from afl_bot.config import BANKROLL, UNIT_SIZE
+
+    # book_odds=3.0 (< 5.0, UNIT_MAX=3u cap); negative direct edge (joint_prob=0.30 < 1/3).
+    # Promo branch (p_win=0.35, p_one_loss=0.35, p_dead=0.30) yields large frac → hits cap.
+    units, tag = recommend_units(
+        joint_prob=0.30,
+        book_odds=3.0,
+        promo_ev=0.30,
+        p_win=0.35,
+        p_one_loss=0.35,
+        p_dead=0.30,
+    )
+    assert units == 3.0, f"Expected 3u, got {units}u"
+    assert tag == "3u PROMO KELLY", f"Expected '3u PROMO KELLY', got {tag!r}"
+    assert units * UNIT_SIZE == 45.0, "3u × $15 must equal $45"
+    assert abs(units * UNIT_SIZE / BANKROLL - 0.03) < 1e-9, "stake% must be 45/1500 = 3%"
+
+
+def test_apply_round_cap_overflow_becomes_no_bet_round_cap():
+    """Rungs that don't fit in the budget get 'NO BET (round cap)', not scaled down."""
+    from afl_bot.cli import _apply_round_cap
+    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
+
+    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE  # 15u
+
+    # Six 3u promo Kelly rungs → 18u total, 3u over budget.
+    # Top 5 (15u) fit; 6th rung → NO BET (round cap).
+    rungs = [
+        {"total_ev": 0.35 - i * 0.02, "units": 3.0, "units_tag": "3u PROMO KELLY"}
+        for i in range(6)
+    ]
+    matches = [{"sgms": rungs, "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
+    _apply_round_cap(matches)
+
+    for i in range(5):
+        assert rungs[i]["units"] == 3.0, f"Rung {i} (EV={0.35-i*0.02:.2f}) must keep 3u"
+    assert rungs[5]["units"] == 0.0, "6th rung must be zeroed as overflow"
+    assert "round cap" in rungs[5]["units_tag"], "Overflow tag must mention round cap"
+    total = sum(r["units"] for r in rungs)
+    assert total <= cap + 1e-9
+
+
+def test_apply_round_cap_never_produces_uniform_0_25u():
+    """When formula gives 3u for top rungs, those rungs must survive the cap at 3u."""
+    from afl_bot.cli import _apply_round_cap
+    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
+
+    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
+
+    # Two high-EV 3u promo rungs + many 0.25u rungs — budget allocator preserves the 3u rungs.
+    rungs_high = [
+        {"total_ev": 0.35, "units": 3.0, "units_tag": "3u PROMO KELLY"},
+        {"total_ev": 0.30, "units": 3.0, "units_tag": "3u PROMO KELLY"},
+    ]
+    rungs_low = [
+        {"total_ev": 0.10 - i * 0.001, "units": 0.25, "units_tag": "0.25u PROMO KELLY"}
+        for i in range(40)
+    ]
+    matches = [{"sgms": rungs_high + rungs_low, "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
+    _apply_round_cap(matches)
+
+    assert rungs_high[0]["units"] == 3.0, "High-EV 3u rung must not be flattened to 0.25u"
+    assert rungs_high[1]["units"] == 3.0, "High-EV 3u rung must not be flattened to 0.25u"
+    total = sum(r["units"] for r in rungs_high + rungs_low)
+    assert total <= cap + 1e-9
