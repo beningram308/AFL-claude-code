@@ -208,3 +208,26 @@ def test_recommend_units_minimum_unit_step():
     units, tag = recommend_units(0.505, 2.0)
     assert units == UNIT_STEP
     assert tag == f"{UNIT_STEP}u"
+
+
+def test_model_only_rungs_excluded_from_monotonicity():
+    """MODEL-ONLY rungs (no book price → units=0) must NOT drag staked rungs
+    down to 0 via monotonicity enforcement.
+
+    Scenario: two rungs in a model ladder.
+      - Rung A: ev=0.30, units=0 (MODEL-ONLY, highest EV but unstakeable)
+      - Rung B: ev=0.15, units=0.5 (positive edge, staked)
+    Without the fix, A's 0 units would cap B to 0. With the fix, B keeps 0.5u.
+    """
+    from afl_bot.cli import _enforce_ladder_monotonicity
+
+    rungs = [
+        {"total_ev": 0.30, "units": 0.0, "units_tag": "MODEL-ONLY", "no_bet": False},
+        {"total_ev": 0.15, "units": 0.5, "units_tag": "0.5u PROMO KELLY", "no_bet": False},
+    ]
+    _enforce_ladder_monotonicity(rungs)
+
+    assert rungs[0]["units"] == 0.0, "MODEL-ONLY rung should stay at 0"
+    assert rungs[1]["units"] == 0.5, (
+        "Staked rung must not be dragged to 0 by MODEL-ONLY rung's 0 units"
+    )

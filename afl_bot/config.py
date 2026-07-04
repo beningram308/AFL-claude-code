@@ -289,6 +289,14 @@ LEG_PROB_MAX = 0.78
 # ladder pool is placeable-only -- see LEG_PROB_MAX above). Selection lands AT
 # OR LONGER than each target, never shorter (see search_match_sgms).
 MULTI_TARGET_ODDS = (2.10, 2.75, 3.50, 5.00, 8.00, 15.00)   # 6 rungs: safe -> longshot
+# Maximum multiplier above each band target for a rung's book/fair combo to be
+# considered "in window". band <= combo <= band * BAND_UPPER_FACTOR.  Combos
+# outside this window are never shown under that band label (FIX-RESTORE-BANDS).
+BAND_UPPER_FACTOR = 1.30
+# Sanity guard: if a rung's book_combo > SUSPECT_BOOK_FAIR_RATIO * model_fair
+# OR raw_edge > SUSPECT_MAX_RAW_EDGE, flag as "CHECK PRICING" and stake 0.
+SUSPECT_BOOK_FAIR_RATIO = 1.75
+SUSPECT_MAX_RAW_EDGE = 0.40
 
 # Seasons of SELECTED-rung walk-forward backtest (the population actually
 # bet, `walk_forward_multi_predictions`) to fit the Phase 3.6 selection-level

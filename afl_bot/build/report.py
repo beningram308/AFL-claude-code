@@ -20,11 +20,14 @@ from afl_bot.backtest.props import apply_prop_calibration
 from afl_bot.build.multi import LegCandidate, _no_conflicts, combined_odds, joint_prob_from_masks
 from afl_bot.build.staking import multi_outcome_kelly
 from afl_bot.config import (
+    BAND_UPPER_FACTOR,
+    BANKROLL,
     BOOKABLE_MARKS_ROLES,
     BOOKABLE_PROP_MENU,
     BOOKABLE_TACKLES_ROLES,
     BOOKABLE_TOP_N_BY_STAT,
     BONUS_BET_FACTOR,
+    CORR_GAIN_HAIRCUT,
     MAX_MARKS_LEGS_PER_MULTI,
     MAX_TACKLE_MARKS_LEGS,
     MULTI_MARKET_SHRINK,
@@ -37,6 +40,8 @@ from afl_bot.config import (
     PULL_EM_ELIGIBLE_MARKETS,
     PULL_EM_MIN_COMBO_ODDS,
     STAT_PREFERENCE,
+    SUSPECT_BOOK_FAIR_RATIO,
+    SUSPECT_MAX_RAW_EDGE,
     UNIT_SIZE,
 )
 from afl_bot.pricing.edge import fair_odds, market_anchored_prob, mc_standard_error
@@ -378,52 +383,57 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             return abs(_lcb_value(c) - 1.0 / target)
         return abs(c["_priced_fair_odds"] - target)
 
-    def _select_for_target(available: list[dict], target: float) -> dict:
-        # Prefer combos whose FINAL (priced) odds are AT OR LONGER than the
-        # target (i.e. priced joint <= 1/target -- never overshoot short);
-        # among those, the closest to the target is the one with the HIGHEST
-        # priced joint prob (shortest odds that still clear the target). Only
-        # fall back to the closest combo below the target if none reach it
-        # at all. Scoped to ``lcb_z<=0`` (round-report's own path, lcb_z
-        # always 0) -- ``lcb_z>0`` is an opt-in Phase 3.5 selection-haircut
-        # diagnostic whose whole point is to flip the pick via the
-        # lcb-adjusted distance, which this "land at/above" preference would
-        # short-circuit.
-        # DISPOSALS-FIRST: within the reachable pool, prefer combos with zero
-        # tackles/marks legs (tier 0) before any combo that includes a tackle
-        # or marks leg (tier 1). This makes the disposals preference dominate
-        # the selection, not just break ties. Only fall back to tier 1 when
-        # no tier-0 combo can reach the target at all. Within each tier the
-        # existing rule applies: highest priced joint (closest from above),
-        # then pref_score, then stable leg-key.
+    def _select_for_target(available: list[dict], target: float) -> dict | None:
+        # Band window: [target, target * BAND_UPPER_FACTOR].  In probability
+        # space: joint_prob in [1/(target*BAND_UPPER_FACTOR), 1/target].
+        # A combo whose FINAL fair odds lands above the band's upper ceiling
+        # belongs in a longer-odds band; never show it here.
+        # Scoped to ``lcb_z<=0`` (round-report's own path); lcb_z>0 is an
+        # opt-in diagnostic -- keep its original distance-ranking behaviour.
         if lcb_z <= 0.0:
-            reaches_target = [c for c in available if c["_priced_joint"] <= 1.0 / target]
+            lo_prob = 1.0 / (target * BAND_UPPER_FACTOR)
+            hi_prob = 1.0 / target
+            reaches_target = [
+                c for c in available
+                if lo_prob <= c["_priced_joint"] <= hi_prob
+            ]
             if reaches_target:
+                # DISPOSALS-FIRST within the in-window pool.
                 best_tm = min(c.get("_n_tackle_marks", 0) for c in reaches_target)
                 tier = [c for c in reaches_target if c.get("_n_tackle_marks", 0) == best_tm]
                 return max(tier, key=lambda c: (
                     c["_priced_joint"], c.get("_pref_score", 0.0),
                     -_distance(c, target), _leg_key(c)))
-            # Fallback: nothing reaches target — still prefer fewer tackle/marks.
-            best_tm = min(c.get("_n_tackle_marks", 0) for c in available)
-            tier = [c for c in available if c.get("_n_tackle_marks", 0) == best_tm]
-            return min(tier, key=lambda c: (
-                _distance(c, target), -c.get("_pref_score", 0.0),
-                -_lcb_value(c), _leg_key(c)))
+            # Nothing in window → NO BET for this band.
+            return None
         return min(available, key=lambda c: (
             _distance(c, target), -c.get("_pref_score", 0.0),
             -_lcb_value(c), _leg_key(c)))
 
     selected: list[dict] = []
     chosen: set[int] = set()
+
+    def _no_bet_sentinel(target: float) -> dict:
+        return {"legs": [], "target_odds": target, "no_bet": True,
+                "joint_prob": None, "fair_odds": None, "corr_gain": 0.0,
+                "naive_product": None, "n_sims": None,
+                "p_all_win": None, "p_one_loss": None, "p_two_plus_loss": None,
+                "promo_ev": None, "total_ev": None, "suggested_stake": None,
+                "value_pick": False}
+
     for i, target in enumerate(target_odds):
-        available = [c for c in combos if id(c) not in chosen] or list(combos)
+        # Only look at combos not yet claimed by an earlier band.  No fallback
+        # to already-chosen combos — each band must find its own in-window pick.
+        available = [c for c in combos if id(c) not in chosen]
         is_top = (i == len(target_odds) - 1)
         if is_top:
             # Sanity gate: base edge within plausible range; rank by total EV (promo-aware).
+            lo_prob = 1.0 / (target * BAND_UPPER_FACTOR)
+            hi_prob = 1.0 / target
             pool = [c for c in available
                     if c.get("_priced_edge") is not None
-                    and c["_priced_edge"] <= max_plausible_edge]
+                    and c["_priced_edge"] <= max_plausible_edge
+                    and lo_prob <= c["_priced_joint"] <= hi_prob]
             def _tv(c: dict) -> float:
                 tv = c.get("_total_ev")
                 return tv if tv is not None else 0.0
@@ -436,13 +446,16 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 pick = _select_for_target(available, target)
         else:
             pick = _select_for_target(available, target)
+        if pick is None:
+            selected.append(_no_bet_sentinel(target))
+            continue
         pick["target_odds"] = target
         chosen.add(id(pick))
         selected.append(pick)
 
     for pick in selected:
-        if "_priced_joint" not in pick:
-            continue  # reused combo (pool exhausted, filled from list(combos)) — already cleaned
+        if pick.get("no_bet") or "_priced_joint" not in pick:
+            continue  # NO BET sentinel or already-cleaned pick — skip
         pick["joint_prob"] = pick.pop("_priced_joint")
         pick["fair_odds"] = pick.pop("_priced_fair_odds")
         if "book_odds" in pick:
@@ -470,7 +483,10 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             pick["suggested_stake"] = None
 
     if price_shrink > 0.0:
-        for pick, target in zip(selected, target_odds):
+        for pick in selected:
+            if pick.get("no_bet"):
+                continue
+            target = pick["target_odds"]
             anchor_prob = 1.0 / target
             shrunk = pick["joint_prob"] - price_shrink * (pick["joint_prob"] - anchor_prob)
             pick["joint_prob"] = shrunk
@@ -481,14 +497,16 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 pick["edge"] = market_anchored_prob(shrunk, book, MULTI_MARKET_SHRINK) * book - 1.0
                 pick["odds"] = book
 
-    selected.sort(key=lambda c: c["fair_odds"])
+    # Sort: real rungs by fair_odds ascending; NO BET sentinels by their target
+    selected.sort(key=lambda c: c["fair_odds"] if not c.get("no_bet") else c["target_odds"])
     return selected
 
 
 def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: int = 3,
                        odds_book: dict, target_odds: tuple | None = None,
                        min_joint_prob: float = 0.05,
-                       max_plausible_edge: float = 0.15) -> list[dict]:
+                       max_plausible_edge: float = 0.15,
+                       corr_gain_haircut: float = CORR_GAIN_HAIRCUT) -> list[dict]:
     """A same-game multi ladder selected and priced on REAL BOOK odds, not the
     model's own joint probability (FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C):
     every leg in every returned rung has a real price in ``odds_book`` (from
@@ -502,16 +520,14 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     priced (``"book_odds" in c``) -- returns ``[]`` if none qualify (no
     Sportsbet/--odds prices this run, or none happen to cover a full combo).
 
-    Rung selection mirrors ``search_match_sgms``'s "land at-or-above the
-    target, never short" rule and its top-rung VALUE-by-edge promotion (see
-    its docstring), just keyed on ``book_odds`` (the naive product of each
-    leg's real price -- ``combined_odds``, NOT the book's own same-game-multi
-    special, which prices its own correlation and isn't scraped here) instead
-    of the model's ``fair_odds``. Real markets often price a near-lock combo
-    shorter than the model's 0.78-leg-capped floor (e.g. ~$1.50 vs the
-    model's ~$2.10) -- expected, not a bug; that gap IS the point of this
-    ladder. No haircut/calibrator transform is applied here: book odds are
-    already real prices, not a model estimate to correct.
+    Band window (FIX-RESTORE-BANDS): each rung's BOOK combo price must land in
+    [target, target * BAND_UPPER_FACTOR].  A combo priced far above its band
+    label (e.g. $11 under a $2.10 header) or below it is never shown there.
+    If no combo exists within a band's window, the band shows a NO BET sentinel.
+
+    ``corr_gain_haircut`` applies the same corr-gain reduction as the model
+    ladder (``search_match_sgms``) so the two ladders report the same model
+    joint probability and edge, and staking is computed on a consistent basis.
 
     Returned safest -> longest (by book odds)."""
     target_odds = tuple(sorted(target_odds)) if target_odds is not None else MULTI_TARGET_ODDS
@@ -528,33 +544,40 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     def _leg_key(c: dict) -> tuple:
         return tuple(sorted(c["legs"]))
 
-    def _select_for_target(available: list[dict], target: float) -> dict:
-        # Phase 3.5 (optimizer's curse guard): select by highest market-shrunk
-        # Total EV within the band, not by odds proximity to the target.
-        # Metric is _total_ev = shrunk_edge + p_one*BONUS_BET_FACTOR — NEVER
-        # raw model EV. The 15%-edge cap + MULTI_MARKET_SHRINK stay; picking
-        # by EV amplifies the optimizer's curse which the shrink bounds (see
-        # apply_multi_calibration docstring for Phase 3.5 context).
-        reaches = [c for c in available if c["book_odds"] >= target]
+    # Apply corr_gain_haircut: price model_fair off naive_product + haircut*corr_gain,
+    # same mechanic as search_match_sgms, so both ladders agree on model_fair/edge.
+    for c in priced:
+        if corr_gain_haircut != 1.0:
+            haircut_joint = min(max(c["naive_product"] + corr_gain_haircut * c["corr_gain"], 0.0), 1.0)
+        else:
+            haircut_joint = c["joint_prob"]
+        c["_haircut_joint"] = haircut_joint
+        c["_haircut_fair"] = fair_odds(haircut_joint)
+        book = c["book_odds"]
+        c["raw_edge"] = haircut_joint * book - 1.0
+        c["edge"] = market_anchored_prob(haircut_joint, book, MULTI_MARKET_SHRINK) * book - 1.0
+
+    def _select_for_target(available: list[dict], target: float) -> dict | None:
+        # Band window: target <= book_odds <= target * BAND_UPPER_FACTOR.
+        # A combo outside the window is never shown under that band label.
+        in_window = [c for c in available
+                     if target <= c["book_odds"] <= target * BAND_UPPER_FACTOR]
+        if not in_window:
+            return None
 
         def _ev(c: dict) -> float:
             v = c.get("_total_ev")
             return v if v is not None else c["edge"]
 
-        if reaches:
-            best_ev = max(_ev(c) for c in reaches)
-            if best_ev > 0:
-                # Pick highest Total EV (shrunk basis). Tie-break: highest joint_prob.
-                ev_pos = [c for c in reaches if _ev(c) > 0]
-                return max(ev_pos, key=lambda c: (_ev(c), c["joint_prob"], _leg_key(c)))
-            # All combos in band EV-negative: show safest — honest NO BET.
-            best_tm = min(c.get("_n_tackle_marks", 0) for c in reaches)
-            tier = [c for c in reaches if c.get("_n_tackle_marks", 0) == best_tm]
-            return min(tier, key=lambda c: (c["book_odds"], -c.get("_pref_score", 0.0), _leg_key(c)))
-        # Fallback: nothing reaches target → closest below (unchanged behaviour).
-        best_tm = min(c.get("_n_tackle_marks", 0) for c in available)
-        tier = [c for c in available if c.get("_n_tackle_marks", 0) == best_tm]
-        return max(tier, key=lambda c: (c["book_odds"], c.get("_pref_score", 0.0), _leg_key(c)))
+        # Disposals-first tier within window (preserve FIX-HIT-PCT-AND-PREFER-DISPOSALS).
+        best_tm = min(c.get("_n_tackle_marks", 0) for c in in_window)
+        tier = [c for c in in_window if c.get("_n_tackle_marks", 0) == best_tm]
+        # Prefer highest Total EV > 0; if none positive, show closest-to-target
+        # (lowest book_odds that still lands in window), no stake.
+        ev_pos = [c for c in tier if _ev(c) > 0]
+        if ev_pos:
+            return max(ev_pos, key=lambda c: (_ev(c), c["joint_prob"], _leg_key(c)))
+        return min(tier, key=lambda c: (c["book_odds"], -c.get("_pref_score", 0.0), _leg_key(c)))
 
     # PHASE 2 STEP 1: Compute promo branch probabilities from sim masks.
     for c in priced:
@@ -588,27 +611,47 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
             c["_promo_ev"] = None
             c["_total_ev"] = c["edge"]
 
+    def _no_bet_sentinel(target: float) -> dict:
+        return {"legs": [], "target_odds": target, "no_bet": True,
+                "joint_prob": None, "fair_odds": None, "book_combo": None,
+                "edge": None, "total_ev": None, "suggested_stake": None,
+                "p_all_win": None, "p_one_loss": None, "p_two_plus_loss": None,
+                "promo_ev": None, "value_pick": False}
+
     selected: list[dict] = []
     chosen: set[int] = set()
     for i, target in enumerate(target_odds):
-        available = [c for c in priced if id(c) not in chosen] or list(priced)
+        # No fallback to already-chosen combos — each band uses only unclaimed
+        # combos within its window.
+        available = [c for c in priced if id(c) not in chosen]
         is_top = (i == len(target_odds) - 1)
         if is_top:
-            valued = [c for c in available if 0.0 < c["edge"] <= max_plausible_edge]
+            # Top rung: value pick from combos in window with positive, plausible edge.
+            in_window = [c for c in available
+                         if target <= c["book_odds"] <= target * BAND_UPPER_FACTOR]
+            valued = [c for c in in_window if 0.0 < c["edge"] <= max_plausible_edge]
             if valued:
-                # Rank by total EV (promo-aware) rather than base edge alone.
                 pick = max(valued, key=lambda c: (c.get("_total_ev") or c["edge"], _leg_key(c)))
                 pick["value_pick"] = True
             else:
                 pick = _select_for_target(available, target)
         else:
             pick = _select_for_target(available, target)
+        if pick is None:
+            selected.append(_no_bet_sentinel(target))
+            continue
         pick["target_odds"] = target
         chosen.add(id(pick))
         selected.append(pick)
 
+    # Promote haircut joint as the reported joint_prob/fair_odds.
     # Rename promo stats (private -> public), strip masks, add suggested stakes.
     for pick in selected:
+        if pick.get("no_bet"):
+            continue
+        if "_haircut_joint" in pick:
+            pick["joint_prob"] = pick.pop("_haircut_joint")
+            pick["fair_odds"] = pick.pop("_haircut_fair")
         pick["p_all_win"] = pick.pop("_p_all_win", None)
         pick["p_one_loss"] = pick.pop("_p_one_loss", None)
         pick["p_two_plus_loss"] = pick.pop("_p_two_plus_loss", None)
@@ -627,7 +670,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
         else:
             pick["suggested_stake"] = None
 
-    selected.sort(key=lambda c: c["book_odds"])
+    # Sort: real rungs by book_odds ascending; NO BET sentinels by their target.
+    selected.sort(key=lambda c: c["book_odds"] if not c.get("no_bet") else c["target_odds"])
     return selected
 
 
@@ -749,6 +793,7 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                 out.append("")
 
         out.append("### Model ladder (model fair odds, no book)")
+        real_sgms = [s for s in m["sgms"] if not s.get("no_bet")]
         if not m["sgms"]:
             n_legs = m.get("n_legs")
             if n_legs is not None and n_legs < 3:
@@ -760,7 +805,7 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             header = "| Legs | Band | Joint prob | Fair odds | Corr gain |"
             sep = "|---|--:|--:|--:|--:|"
             if has_odds:
-                header += " Book | Edge | Total EV | Stake | Units | $ |"
+                header += " Book | Edge | Total EV | Stake% | Units | $ |"
                 sep += "--:|--:|--:|--:|--:|--:|"
             header += " Pick |"
             sep += "---|"
@@ -768,22 +813,32 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
             out.append(sep)
             for s in m["sgms"]:
                 band = f"${s['target_odds']:.2f}" if "target_odds" in s else "-"
+                if s.get("no_bet"):
+                    # Band has no valid combo in its window.
+                    no_cols = " - | - | - |" if has_odds else ""
+                    out.append(f"| _(no combo in band window)_ | {band} | — | — | — |{no_cols} NO BET |")
+                    continue
                 line = (f"| {' + '.join(s['legs'])} | {band} | {_fmt_pct(s['joint_prob'])} "
                         f"| {s['fair_odds']:.2f} | {s['corr_gain'] * 100:+.1f}pp |")
                 if has_odds:
                     if "book_odds" in s:
                         tev = s.get("total_ev")
                         tev_str = f"{tev * 100:+.1f}%" if tev is not None else "—"
-                        stk = s.get("suggested_stake")
-                        stk_str = f"{stk * 100:.1f}%" if stk is not None else "—"
-                        units_tag = s.get("units_tag", "—")
                         units_val = s.get("units", 0.0)
+                        units_tag = s.get("units_tag", "—")
+                        stk_pct = units_val * UNIT_SIZE / BANKROLL * 100 if units_val > 0 else 0.0
+                        stk_str = f"{stk_pct:.1f}%" if units_val > 0 else "—"
                         dollar_str = f"${units_val * UNIT_SIZE:.2f}" if units_val > 0 else "—"
-                        line += (f" {s['book_odds']:.2f} | {s['edge'] * 100:+.1f}%"
+                        edge_str = (f" | {s['edge'] * 100:+.1f}%"
+                                    if s.get("units_tag") != "CHECK PRICING"
+                                    else f" | {s['edge'] * 100:+.1f}% ⚠️")
+                        line += (f" {s['book_odds']:.2f}{edge_str}"
                                  f" | {tev_str} | {stk_str} | {units_tag} | {dollar_str} |")
                     else:
-                        line += " - | - | - | - | — | — |"
-                if s.get("value_pick"):
+                        line += " - | - | - | — | — | — |"
+                if s.get("units_tag") == "CHECK PRICING":
+                    line += " **CHECK PRICING** |"
+                elif s.get("value_pick"):
                     line += " **VALUE PICK** |"
                 elif "book_odds" not in s:
                     line += " _(model-only — verify market exists)_ |"
@@ -804,21 +859,34 @@ def render_markdown(year: int, round_no: int, matches: list[dict], *,
                        "(only individual legs are scraped, not the SGM special itself) — "
                        "use the per-leg book prices as the source of truth._")
             out.append("")
-            out.append("| Legs | Book odds (combo) | Model joint % | Model fair | Edge | Total EV | Stake | Units | $ | Pick |")
-            out.append("|---|--:|--:|--:|--:|--:|--:|--:|--:|---|")
+            out.append("| Legs | Band | Book combo | Model joint % | Model fair | Edge | Total EV | Stake% | Units | $ | Pick |")
+            out.append("|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|")
             for s in market_sgms:
+                band = f"${s['target_odds']:.2f}" if "target_odds" in s else "-"
+                if s.get("no_bet"):
+                    out.append(f"| _(no combo in band window)_ | {band} | — | — | — | — | — | — | — | — | NO BET |")
+                    continue
                 tev = s.get("total_ev")
                 tev_str = f"{tev * 100:+.1f}%" if tev is not None else "—"
-                stk = s.get("suggested_stake")
-                stk_str = f"{stk * 100:.1f}%" if stk is not None else "—"
-                units_tag = s.get("units_tag", "—")
                 units_val = s.get("units", 0.0)
+                units_tag = s.get("units_tag", "—")
+                stk_pct = units_val * UNIT_SIZE / BANKROLL * 100 if units_val > 0 else 0.0
+                stk_str = f"{stk_pct:.1f}%" if units_val > 0 else "—"
                 dollar_str = f"${units_val * UNIT_SIZE:.2f}" if units_val > 0 else "—"
-                line = (f"| {' + '.join(s['legs'])} | {s['book_odds']:.2f} "
+                edge_val = s.get("edge", 0.0) or 0.0
+                edge_str = f"{edge_val * 100:+.1f}%"
+                if s.get("units_tag") == "CHECK PRICING":
+                    edge_str += " ⚠️"
+                line = (f"| {' + '.join(s['legs'])} | {band} | {s['book_odds']:.2f} "
                         f"| {_fmt_pct(s['joint_prob'])} | {s['fair_odds']:.2f} "
-                        f"| {s['edge'] * 100:+.1f}% | {tev_str} | {stk_str} "
+                        f"| {edge_str} | {tev_str} | {stk_str} "
                         f"| {units_tag} | {dollar_str} |")
-                line += " **VALUE PICK** |" if s.get("value_pick") else "  |"
+                if s.get("units_tag") == "CHECK PRICING":
+                    line += " **CHECK PRICING** |"
+                elif s.get("value_pick"):
+                    line += " **VALUE PICK** |"
+                else:
+                    line += "  |"
                 out.append(line)
             out.append("")
 

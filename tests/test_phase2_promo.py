@@ -65,8 +65,10 @@ def test_promo_p_all_win_matches_joint_from_masks_for_perfect_corr():
 def test_promo_branch_probs_sum_to_one():
     legs, _ = _independent_legs()
     odds_book = {leg.name: leg.market_odds for leg in legs}
-    out = search_match_sgms(legs, odds_book=odds_book, target_odds=(1.5,), min_joint_prob=0.0)
+    # Independent legs joint≈0.341 → fair≈2.93; use $2.75 band [2.75,3.575] to avoid NO BET.
+    out = search_match_sgms(legs, odds_book=odds_book, target_odds=(2.75,), min_joint_prob=0.0)
     r = out[0]
+    assert not r.get("no_bet"), "combo must be in the $2.75 window"
     total = r["p_all_win"] + r["p_one_loss"] + r["p_two_plus_loss"]
     assert abs(total - 1.0) < 1e-9
 
@@ -87,9 +89,11 @@ def test_promo_p_one_loss_differs_from_independence_formula_for_correlated_legs(
 def test_promo_stats_on_market_sgms_rung():
     legs, _ = _independent_legs()
     odds_book = {leg.name: leg.market_odds for leg in legs}
-    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(1.5,), min_joint_prob=0.0)
+    # book_combo≈2.93; use $2.75 band [2.75,3.575] so combo lands in window (not NO BET).
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(2.75,), min_joint_prob=0.0)
     assert out
     r = out[0]
+    assert not r.get("no_bet"), "combo must be in the $2.75 window"
     assert r["p_all_win"] is not None
     assert r["p_one_loss"] is not None
     total = r["p_all_win"] + r["p_one_loss"] + r["p_two_plus_loss"]
@@ -281,7 +285,10 @@ def test_value_pick_present_on_top_band_with_odds():
         prob = float(mask.mean())
         legs.append(_leg(f"{name} 15+", prob, mask, name, odds=(1.0 / prob) * 1.05))
     odds_book = {leg.name: leg.market_odds for leg in legs}
-    out = search_match_sgms(legs, odds_book=odds_book)
+    # 6-leg pool: min joint D+E+F ≈ 0.157 → fair ≈ 6.37 (in $5 window [5.00, 6.50]).
+    # $8 and $15 bands are unreachable (NO BET). Cap at $5 so $5 is the top band.
+    out = search_match_sgms(legs, odds_book=odds_book,
+                            target_odds=(2.10, 2.75, 3.50, 5.00))
     picks = [r for r in out if r.get("value_pick")]
     assert len(picks) == 1
     vp = picks[0]
@@ -305,6 +312,8 @@ def test_promo_stats_present_on_all_rungs_in_full_ladder():
     odds_book = {leg.name: leg.market_odds for leg in legs}
     out = search_match_sgms(legs, odds_book=odds_book)
     for r in out:
+        if r.get("no_bet"):
+            continue  # NO BET sentinels have no promo stats — skip
         assert r["p_all_win"] is not None, f"promo stats missing for rung {r['legs']}"
         assert r["p_one_loss"] is not None
         assert r["total_ev"] is not None

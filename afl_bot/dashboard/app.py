@@ -535,12 +535,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
           {% else %}—{% endif %}
         </td>
         <td>
-          {% set stk = r.get('suggested_stake') %}
-          {% if stk %}
-          <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
-          {% else %}—{% endif %}
+          {% set uval = r.get('units', 0) %}
+          {% if uval > 0 %}<span class="value">{{ '%.1f'|format(uval * 15 / 1500 * 100) }}%</span>{% else %}—{% endif %}
         </td>
-        <td>{% set utag = r.get('units_tag') %}{% if utag and utag != 'MODEL-ONLY' and utag != 'NO BET' %}<span class="value">{{ utag }}</span>{% else %}<span style="color:var(--muted)">{{ utag or '—' }}</span>{% endif %}</td>
+        <td>{% set utag = r.get('units_tag') %}{% if utag == 'CHECK PRICING' %}<span style="color:var(--neg)">⚠ {{ utag }}</span>{% elif utag and utag != 'MODEL-ONLY' and utag != 'NO BET' %}<span class="value">{{ utag }}</span>{% else %}<span style="color:var(--muted)">{{ utag or '—' }}</span>{% endif %}</td>
         <td>{% set uval = r.get('units', 0) %}{% if uval > 0 %}<span class="value">${{ '%.2f'|format(uval * 15) }}</span>{% else %}—{% endif %}</td>
         <td>{% if r.value_pick %}<span class="value">★ VALUE</span>{% else %}—{% endif %}</td>
         <td>
@@ -555,18 +553,24 @@ _TEMPLATE = r"""<!DOCTYPE html>
     <div class="section-label" style="margin-top:12px">Sportsbet ladder (real prices)</div>
     <p style="font-size:11px;color:var(--muted);margin:4px 0 8px 0">
       Edge = raw model vs book price. <strong>Total EV</strong> includes the stake-back
-      refund — that's the number to bet on. Stake = suggested % of bankroll (capped Kelly).
+      refund — that's the number to bet on. Stake% / Units / $ are the same number three ways (market-shrunk Kelly, capped at 3u).
     </p>
     <table>
       <tr><th>Legs</th><th>Band</th><th>Book combo</th><th>Model joint%</th><th>Model fair</th>
-        <th>Edge</th><th>Total EV</th><th>Stake</th><th>Units</th><th>$</th><th>Pick</th><th></th></tr>
+        <th>Edge</th><th>Total EV</th><th>Stake%</th><th>Units</th><th>$</th><th>Pick</th><th></th></tr>
       {% for r in g.sportsbet %}
+      {% if r.get('no_bet') %}
+      <tr style="color:var(--muted);font-style:italic">
+        <td colspan="2">Band ${{ '%.2f'|format(r.band) }}</td>
+        <td colspan="10" style="color:var(--muted)">NO BET — no combo in band window</td>
+      </tr>
+      {% else %}
       <tr class="rung-row" data-ladder="sportsbet" data-value="{{ 'true' if r.value_pick else 'false' }}">
         <td>{% for leg in r.legs %}{{ leg.name }}{% if leg.hit_prob %} <span style="color:var(--muted);font-size:11px">({{ '%.0f'|format(leg.hit_prob * 100) }}%)</span>{% else %} <span style="color:var(--muted);font-size:11px">(—)</span>{% endif %}{% if not loop.last %} + {% endif %}{% endfor %}</td>
         <td>${{ '%.2f'|format(r.band) }}</td>
         <td>{% if r.book_combo %}${{ '%.2f'|format(r.book_combo) }}{% else %}—{% endif %}</td>
-        <td>{{ '%.0f'|format(r.model_joint * 100) }}%</td>
-        <td>${{ '%.2f'|format(r.model_fair) }}</td>
+        <td>{% if r.model_joint is not none %}{{ '%.0f'|format(r.model_joint * 100) }}%{% else %}—{% endif %}</td>
+        <td>{% if r.model_fair is not none %}${{ '%.2f'|format(r.model_fair) }}{% else %}—{% endif %}</td>
         <td>
           {% if r.edge is not none %}
           <span class="{{ 'value' if r.edge > 0 else 'neg' }}">{{ '%+.1f'|format(r.edge*100) }}%</span>
@@ -581,18 +585,20 @@ _TEMPLATE = r"""<!DOCTYPE html>
           {% else %}—{% endif %}
         </td>
         <td>
-          {% set stk = r.get('suggested_stake') %}
-          {% if stk %}
-          <span class="value">{{ '%.1f'|format(stk*100) }}%</span>
+          {% set uval = r.get('units', 0) %}
+          {% set utag = r.get('units_tag') %}
+          {% if utag == 'CHECK PRICING' %}<span style="color:var(--neg)">⚠ CHECK</span>
+          {% elif uval > 0 %}<span class="value">{{ '%.1f'|format(uval * 15 / 1500 * 100) }}%</span>
           {% else %}—{% endif %}
         </td>
-        <td>{% set utag = r.get('units_tag') %}{% if utag and utag != 'MODEL-ONLY' and utag != 'NO BET' %}<span class="value">{{ utag }}</span>{% else %}<span style="color:var(--muted)">{{ utag or '—' }}</span>{% endif %}</td>
+        <td>{% set utag = r.get('units_tag') %}{% if utag == 'CHECK PRICING' %}<span style="color:var(--neg)">⚠ {{ utag }}</span>{% elif utag and utag != 'NO BET' %}<span class="value">{{ utag }}</span>{% else %}<span style="color:var(--muted)">{{ utag or '—' }}</span>{% endif %}</td>
         <td>{% set uval = r.get('units', 0) %}{% if uval > 0 %}<span class="value">${{ '%.2f'|format(uval * 15) }}</span>{% else %}—{% endif %}</td>
         <td>{% if r.value_pick %}<span class="value">★ VALUE</span>{% else %}—{% endif %}</td>
         <td>
           <button class="btn btn-sm btn-primary" onclick="openPlace('{{ r.id }}','{{ r.game }}',{{ r.book_combo or r.model_fair }},{{ r.get('units', 0) * 15 }})">Place</button>
         </td>
       </tr>
+      {% endif %}
       {% endfor %}
     </table>
     {% endif %}

@@ -89,6 +89,8 @@ from afl_bot.config import (
     ROOT_DIR,
     SHARE_CONCENTRATION,
     SIM_ITERATIONS,
+    SUSPECT_BOOK_FAIR_RATIO,
+    SUSPECT_MAX_RAW_EDGE,
     TEAM_STAT_DISPERSION,
     TOG_RETURN_DEFAULT,
     UNIT_MAX,
@@ -713,6 +715,30 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
     print("Gambling Help Online: gamblinghelponline.org.au | 1800 858 858")
 
 
+def _enforce_ladder_monotonicity(rungs: list[dict]) -> None:
+    """Within a ladder, higher shrunk Total EV must not get fewer units than lower EV.
+    Operates in-place on rung dicts that already have 'units'/'units_tag' set."""
+    def _ev(r: dict) -> float:
+        v = r.get("total_ev")
+        if v is None:
+            v = r.get("edge", 0.0)
+        return v or 0.0
+
+    # Exclude MODEL-ONLY (no book price → 0 units, not a real stake decision) so that
+    # unstakeable rungs don't drag every lower-EV staked rung down to 0.
+    staked = [(i, r) for i, r in enumerate(rungs)
+              if not r.get("no_bet")
+              and r.get("units_tag") not in ("NO BET", "CHECK PRICING", "MODEL-ONLY")]
+    staked_by_ev = sorted(staked, key=lambda x: _ev(x[1]), reverse=True)
+    min_units = float("inf")
+    for i, r in staked_by_ev:
+        u = r.get("units", 0.0)
+        if u > min_units:
+            rungs[i]["units"] = min_units
+        else:
+            min_units = u
+
+
 def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
                   home: str, away: str,
                   leg_by_name: dict, odds_book: dict,
@@ -743,7 +769,13 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
             "hit_prob": round(leg.fair_prob, 4),
         })
 
-    return {
+    # Use pre-computed staking (set by _units_fields + monotonicity enforcement
+    # at the call site) if present; fall back to fresh computation.
+    if "units" in rung and "units_tag" in rung:
+        uf = {"units": rung["units"], "units_tag": rung["units_tag"]}
+    else:
+        uf = _units_fields(rung)
+    rec = {
         "id": multi_id,
         "year": year,
         "round": round_no,
@@ -751,8 +783,8 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
         "ladder": ladder,
         "band": band,
         "legs": legs_json,
-        "model_joint": rung["joint_prob"],
-        "model_fair": rung["fair_odds"],
+        "model_joint": rung.get("joint_prob"),
+        "model_fair": rung.get("fair_odds"),
         "book_combo": rung.get("book_odds"),
         "edge": rung.get("edge"),
         "p_all_win": rung.get("p_all_win"),
@@ -762,12 +794,38 @@ def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
         "suggested_stake": rung.get("suggested_stake"),
         "value_pick": bool(rung.get("value_pick", False)),
         "greasiness": round(greasiness, 3),
-        **_units_fields(rung),
+        "no_bet": bool(rung.get("no_bet", False)),
+        **uf,
     }
+    # Add leg-by-leg detail when flagged suspect (CHECK PRICING).
+    if uf.get("units_tag") == "CHECK PRICING":
+        rec["suspect_legs"] = [
+            {"name": lg.get("name"), "book_odds": lg.get("book_odds"),
+             "model_prob": lg.get("hit_prob"),
+             "model_fair": round(1.0 / lg["hit_prob"], 2) if lg.get("hit_prob") else None}
+            for lg in legs_json
+        ]
+    return rec
 
 
 def _units_fields(rung: dict) -> dict:
-    """Compute units/tag for a rung and return as a dict to merge into the record."""
+    """Compute units/tag for a rung and return as a dict to merge into the record.
+
+    Part C sanity guard: if book_combo > SUSPECT_BOOK_FAIR_RATIO * model_fair
+    OR raw_edge > SUSPECT_MAX_RAW_EDGE, flag the rung as CHECK PRICING with
+    zero stake.  This catches leg-pricing/mapping bugs that produce implausibly
+    large edges (e.g. a wrong market mapped to the wrong player) without being
+    tripped by legitimate modest edges after the corr_gain haircut is applied.
+    """
+    if rung.get("no_bet"):
+        return {"units": 0.0, "units_tag": "NO BET"}
+    book_combo = rung.get("book_odds") or rung.get("book_combo")
+    model_fair = rung.get("fair_odds")
+    raw_edge = rung.get("raw_edge")
+    if (book_combo is not None and model_fair is not None and model_fair > 0
+            and (book_combo > SUSPECT_BOOK_FAIR_RATIO * model_fair
+                 or (raw_edge is not None and raw_edge > SUSPECT_MAX_RAW_EDGE))):
+        return {"units": 0.0, "units_tag": "CHECK PRICING"}
     units, tag = recommend_units(
         rung.get("joint_prob"),
         rung.get("book_odds"),
@@ -1270,9 +1328,13 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         # FIX-REAL-SPORTSBET-ODDS-AND-LINEUP PART C: a second ladder selected
         # and priced on REAL book odds (Sportsbet/--odds) from the same leg
         # pool -- [] when nothing in this match is priced.
-        market_sgms = search_market_sgms(ladder_legs, odds_book=odds_book)
-        # Stage 2A: emit machine-readable multis JSON alongside the .md so the
-        # dashboard can render these rungs without re-parsing markdown.
+        market_sgms = search_market_sgms(ladder_legs, odds_book=odds_book,
+                                         corr_gain_haircut=corr_gain_haircut)
+        # Stage 2A: compute staking, enforce monotonicity, emit JSON + update rungs.
+        for r in sgms + market_sgms:
+            r.update(_units_fields(r))
+        _enforce_ladder_monotonicity(sgms)
+        _enforce_ladder_monotonicity(market_sgms)
         leg_by_name = {l.name: l for l in match_legs}
         for ladder_label, rungs in (("model", sgms), ("sportsbet", market_sgms)):
             for r in rungs:
@@ -1280,8 +1342,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                     r, ladder_label, year, round_no,
                     home_name, away_name, leg_by_name, odds_book,
                     greasiness=greasiness))
-        for r in sgms + market_sgms:
-            r.update(_units_fields(r))
         pull_em = (build_pull_em_sgm(ladder_legs, odds_book=odds_book)
                    if odds_book else None)
         if pull_em and not pull_em.get("no_valid_combo"):

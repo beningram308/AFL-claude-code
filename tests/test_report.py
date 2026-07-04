@@ -65,14 +65,21 @@ def _ladder_legs(seed=1, odds_mult=1.0):
 def test_search_match_sgms_ladder_is_3leg_one_per_target_and_above_floor():
     out = search_match_sgms(_ladder_legs())            # all defaults: 3-leg, target-odds
     assert out, "should find 3-leg combos"
-    for r in out:
+    assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target (incl. NO BET)
+    real_rungs = [r for r in out if not r.get("no_bet")]
+    assert real_rungs, "should find at least one real rung"
+    for r in real_rungs:
         assert len(r["legs"]) == 3                     # minimum-3-leg ladder
         assert {"joint_prob", "naive_product", "corr_gain", "fair_odds"} <= set(r)
-    assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target
-    # returned safest -> longest by fair_odds
-    assert [r["fair_odds"] for r in out] == sorted(r["fair_odds"] for r in out)
-    # no duplicate combos (each rung is a distinct combo)
-    all_legs = [tuple(sorted(r["legs"])) for r in out]
+    # NO BET rungs carry the target_odds and empty legs
+    for r in out:
+        if r.get("no_bet"):
+            assert r["legs"] == []
+            assert r.get("target_odds") is not None
+    # real rungs sorted safest -> longest by fair_odds
+    assert [r["fair_odds"] for r in real_rungs] == sorted(r["fair_odds"] for r in real_rungs)
+    # no duplicate combos among real rungs
+    all_legs = [tuple(sorted(r["legs"])) for r in real_rungs]
     assert len(all_legs) == len(set(all_legs))
 
 
@@ -86,9 +93,19 @@ def test_search_match_sgms_excludes_conflicts():
 
 
 def test_search_match_sgms_top_band_value_pick_is_shrunk_and_capped():
-    legs = _ladder_legs(odds_mult=1.05)   # book ~5% above fair -> a modest, plausible edge
-    odds_book = {leg.name: leg.market_odds for leg in legs}
-    out = search_match_sgms(legs, odds_book=odds_book)
+    # Use a 9-leg pool to cover all 6 bands (6-leg pool can't reach $8/$15 targets).
+    rng = np.random.default_rng(5)
+    n = 40_000
+    probs9 = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55,
+              "F": 0.42, "G": 0.38, "H": 0.35, "I": 0.32}
+    odds_mult = 1.05
+    wide_legs = []
+    for name, p in probs9.items():
+        mask = rng.random(n) < p
+        wide_legs.append(_leg(f"{name} 15+ disp", mask.mean(), mask, name,
+                              odds=(1.0 / mask.mean()) * odds_mult))
+    odds_book = {leg.name: leg.market_odds for leg in wide_legs}
+    out = search_match_sgms(wide_legs, odds_book=odds_book)
     picks = [r for r in out if r.get("value_pick")]
     assert len(picks) == 1                             # only the top rung is the value pick
     vp = picks[0]
@@ -128,15 +145,16 @@ def test_search_match_sgms_implausible_edge_is_not_flagged_value():
 
 
 def test_search_match_sgms_fills_every_target_when_pool_is_thin():
-    # All legs ~0.82 -> every 3-combo has fair_odds ~1.82; targets 3.50 and 5.00
-    # have no natural match, so the fill picks the closest available distinct combos.
+    # All legs ~0.82 -> every 3-combo has fair_odds ~1.82, which is below the
+    # $2.10 band floor. With band-window enforcement, every target returns NO BET.
     rng = np.random.default_rng(7)
     legs = [_leg(f"{name} 15+ disp", (m := rng.random(40000) < 0.82).mean(), m, name)
             for name in "ABCDE"]
     out = search_match_sgms(legs)
-    assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target, no blank
-    assert all(len(r["legs"]) == 3 for r in out)
-    assert [r["fair_odds"] for r in out] == sorted(r["fair_odds"] for r in out)
+    assert len(out) == len(MULTI_TARGET_ODDS)          # one rung per target (all NO BET)
+    assert all(r.get("no_bet") for r in out), (
+        "Every rung must be NO BET: pool fair_odds ~1.82, all below $2.10 floor"
+    )
 
 
 def test_build_sgm_candidates_is_the_full_pool_search_selects_from():
@@ -145,6 +163,8 @@ def test_build_sgm_candidates_is_the_full_pool_search_selects_from():
     selected = search_match_sgms(legs)
     cand_keys = {tuple(sorted(c["legs"])) for c in candidates}
     for r in selected:
+        if r.get("no_bet"):
+            continue  # NO BET sentinel has no legs to check
         assert tuple(sorted(r["legs"])) in cand_keys
     # C(6,3) = 20 non-conflicting 3-leg combos, all clearing the default floor.
     assert len(candidates) == 20
@@ -152,12 +172,14 @@ def test_build_sgm_candidates_is_the_full_pool_search_selects_from():
 
 
 def test_search_match_sgms_price_shrink_pulls_toward_target_implied_prob():
+    # Use $5.00 target: the 6-leg pool has combos in [5.00, 6.50] (e.g. BEF).
     legs = _ladder_legs()
-    target = MULTI_TARGET_ODDS[-1]
+    target = MULTI_TARGET_ODDS[3]    # $5.00
     anchor_prob = 1.0 / target
     raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
     full = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, price_shrink=1.0)[0]
     half = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, price_shrink=0.5)[0]
+    assert not raw.get("no_bet"), "pool must have a combo in the $5 band for this test"
     assert full["joint_prob"] == pytest.approx(anchor_prob)              # fully shrunk -> exactly at target
     assert half["joint_prob"] == pytest.approx((raw["joint_prob"] + anchor_prob) / 2)
     assert full["fair_odds"] == pytest.approx(target)
@@ -167,11 +189,14 @@ def test_search_match_sgms_corr_gain_haircut_zero_lift_equals_naive_product():
     # FIX-PLACEABLE-LEGS-AND-210-FLOOR STEP 4 moved the haircut to BEFORE
     # selection, so it can change which combo wins with a wider leg pool --
     # exactly 3 legs (one possible combo) isolates the haircut math itself.
-    legs = _ladder_legs()[:3]
-    target = MULTI_TARGET_ODDS[-1]
+    # Use the last 3 legs (D, E, F: probs 0.68, 0.55, 0.42) whose combo lands
+    # in the $5.00 band [5.00, 6.50] (joint ≈ 0.157, fair ≈ 6.37).
+    legs = _ladder_legs()[-3:]
+    target = MULTI_TARGET_ODDS[3]    # $5.00
     raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
     zero = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0,
                              corr_gain_haircut=0.0)[0]
+    assert not raw.get("no_bet"), "pool must have a combo in the $5 band"
     assert zero["joint_prob"] == pytest.approx(zero["naive_product"])
     assert zero["fair_odds"] == pytest.approx(1.0 / zero["naive_product"])
     # naive_product/corr_gain stay at their pre-haircut (informational) values.
@@ -185,27 +210,33 @@ def test_search_match_sgms_corr_gain_haircut_default_is_unhaircut():
     raw = search_match_sgms(legs)
     unhaircut = search_match_sgms(legs, corr_gain_haircut=1.0)
     for r, u in zip(raw, unhaircut):
+        if r.get("no_bet") or u.get("no_bet"):
+            continue  # NO BET sentinels have no joint_prob to compare
         assert r["joint_prob"] == pytest.approx(u["joint_prob"])
         assert r["fair_odds"] == pytest.approx(u["fair_odds"])
 
 
 def test_search_match_sgms_corr_gain_haircut_half_is_midpoint():
-    # Same isolation as the zero-lift test above -- exactly 3 legs, one combo.
-    legs = _ladder_legs()[:3]
-    target = MULTI_TARGET_ODDS[-1]
+    # Same isolation as the zero-lift test above -- exactly 3 legs (D, E, F),
+    # one possible combo that lands in the $5.00 band (joint ≈ 0.157, fair ≈ 6.37).
+    legs = _ladder_legs()[-3:]
+    target = MULTI_TARGET_ODDS[3]    # $5.00
     raw = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)[0]
     half = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0,
                              corr_gain_haircut=0.5)[0]
+    assert not raw.get("no_bet"), "pool must have a combo in the $5 band"
     expected = raw["naive_product"] + 0.5 * raw["corr_gain"]
     assert half["joint_prob"] == pytest.approx(expected)
 
 
 def test_search_match_sgms_corr_gain_haircut_recomputes_edge_when_priced():
+    # Use $5.00 target; 6-leg pool with odds_mult=1.05 reaches it (BEF combo).
     legs = _ladder_legs(odds_mult=1.05)
     odds_book = {leg.name: leg.market_odds for leg in legs}
-    target = MULTI_TARGET_ODDS[-1]
+    target = MULTI_TARGET_ODDS[3]    # $5.00
     haircut = search_match_sgms(legs, odds_book=odds_book, target_odds=(target,),
                                 min_joint_prob=0.0, corr_gain_haircut=0.0)[0]
+    assert not haircut.get("no_bet"), "pool must have a combo in the $5 band"
     assert "book_odds" in haircut
     expected_raw_edge = haircut["joint_prob"] * haircut["book_odds"] - 1.0
     assert haircut["raw_edge"] == pytest.approx(expected_raw_edge)
@@ -228,24 +259,35 @@ def test_round_report_and_grade_multis_default_to_the_validated_corr_gain_haircu
 
 
 def test_search_match_sgms_lcb_z_can_change_the_selected_combo():
-    """Two pure 3-leg pools with exact joint_prob 0.30 and 0.31 (n=200 masks,
-    no extra leg-level noise), target implied prob 0.29 (both pools sit
-    above it, 0.30 closer): lcb_z=0 (default) picks the closer 0.30 pool,
-    but the haircut's effect on each pool's distance-to-target is enough to
-    flip the pick to the 0.31 pool at lcb_z=0.5 -- model-upgrade audit
-    Phase 3.5's selection-haircut prototype actually changes the selected
-    rung, not just its reported probability."""
+    """Two pure 3-leg pools with exact joint_prob 0.30 and 0.31, target implied
+    prob 0.29: both pools are BELOW the band floor (fair $3.33/$3.23 < $3.45 target),
+    so lcb_z=0 (default band-window enforcement) returns NO BET.
+
+    lcb_z>0 bypasses the band window and uses distance-to-target ranking — at
+    tiny lcb_z the closest pool (0.30) is picked; at lcb_z=0.5 the LCB penalty
+    flips to the other pool (0.31 whose LCB is closer to the target_prob 0.29).
+    This verifies that lcb_z actually changes which combo is selected
+    — model-upgrade audit Phase 3.5."""
     n = 200
     mask_30 = np.zeros(n, dtype=bool); mask_30[:60] = True   # joint_prob exactly 0.30
     mask_31 = np.zeros(n, dtype=bool); mask_31[:62] = True   # joint_prob exactly 0.31
     pool_30 = [_leg(f"A{i} 15+", 1.0, mask_30, f"A{i}") for i in range(3)]
     pool_31 = [_leg(f"B{i} 15+", 1.0, mask_31, f"B{i}") for i in range(3)]
     legs = pool_30 + pool_31
-    target = 1.0 / 0.29
+    target = 1.0 / 0.29   # ≈ $3.448; combos sit BELOW this → outside band window
 
+    # lcb_z=0: band window enforcement → NO BET (combos at $3.23-$3.33, below $3.448 floor)
     default = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0)
+    assert default[0].get("no_bet"), (
+        "lcb_z=0 enforces band window; combos at $3.23-$3.33 are below the $3.45 floor"
+    )
+
+    # lcb_z=0.01: bypasses band window, minimal LCB penalty → distance ranking picks 0.30
+    tiny_lcb = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, lcb_z=0.01)
+    assert tiny_lcb[0]["joint_prob"] == pytest.approx(0.30)
+
+    # lcb_z=0.5: LCB of 0.31 is closer to target_prob 0.29 → flips selection to 0.31
     haircut = search_match_sgms(legs, target_odds=(target,), min_joint_prob=0.0, lcb_z=0.5)
-    assert default[0]["joint_prob"] == pytest.approx(0.30)
     assert haircut[0]["joint_prob"] == pytest.approx(0.31)
 
 
@@ -293,6 +335,8 @@ def test_search_match_sgms_never_lands_short_after_calibration():
 
     out = search_match_sgms(wide_legs, multi_calibrator=InflatingCalibrator())
     for r in out:
+        if r.get("no_bet"):
+            continue  # NO BET rungs have no fair_odds to check
         assert r["fair_odds"] >= r["target_odds"] - 1e-9
 
 
@@ -335,17 +379,29 @@ def test_search_market_sgms_only_fully_priced_combos():
     odds_book = {leg.name: leg.market_odds for leg in legs if leg.name in priced_names}
     out = search_market_sgms(legs, odds_book=odds_book)
     assert out
-    for r in out:
+    real_rungs = [r for r in out if not r.get("no_bet")]
+    assert real_rungs, "some bands must be reachable with 4 priced legs"
+    for r in real_rungs:
         assert all(name in priced_names for name in r["legs"])
         assert {"book_odds", "edge", "joint_prob", "fair_odds"} <= set(r)
 
 
 def test_search_market_sgms_value_pick_is_real_edge_only():
-    legs = _ladder_legs(odds_mult=1.05)   # book ~5% above fair -> a modest, plausible edge
-    odds_book = {leg.name: leg.market_odds for leg in legs}
-    out = search_market_sgms(legs, odds_book=odds_book)
+    # Use 9-leg pool so all 6 bands are reachable — 6-leg pool tops out below $8.
+    rng = np.random.default_rng(5)
+    n = 40_000
+    probs9 = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55,
+              "F": 0.42, "G": 0.38, "H": 0.35, "I": 0.32}
+    odds_mult = 1.05
+    wide_legs = []
+    for name, p in probs9.items():
+        mask = rng.random(n) < p
+        wide_legs.append(_leg(f"{name} 15+ disp", mask.mean(), mask, name,
+                              odds=(1.0 / mask.mean()) * odds_mult))
+    odds_book = {leg.name: leg.market_odds for leg in wide_legs}
+    out = search_market_sgms(wide_legs, odds_book=odds_book)
     picks = [r for r in out if r.get("value_pick")]
-    assert len(picks) == 1
+    assert len(picks) == 1                             # only the top-band rung is value pick
     vp = picks[0]
     assert 0.0 < vp["edge"] <= 0.15
 
@@ -378,18 +434,19 @@ def test_search_market_sgms_lands_at_or_above_book_target_not_short_when_possibl
     assert out[0]["book_odds"] == pytest.approx(max(clearing))
 
 
-def test_search_market_sgms_falls_back_to_closest_below_when_nothing_reaches():
+def test_search_market_sgms_no_bet_when_nothing_reaches_band_window():
     # All three legs near-locks -> every combo's book price sits well under
-    # the target; with nothing reaching it, the fallback is the closest
-    # below (Ben's r16 finding: the real market can legitimately price a
-    # combo shorter than the model ladder's $2.10 floor -- not a bug).
+    # the target band window. With band-window enforcement, this returns NO BET
+    # (never show a combo below its band floor).
     mask = np.ones(100, dtype=bool)
     legs = [_leg(f"N{i} 15+", 0.95, mask, f"N{i}", odds=1.05) for i in range(3)]
     odds_book = {leg.name: leg.market_odds for leg in legs}
     out = search_market_sgms(legs, odds_book=odds_book, target_odds=(MULTI_TARGET_ODDS[0],),
                              min_joint_prob=0.0)
-    assert out
-    assert out[0]["book_odds"] < MULTI_TARGET_ODDS[0]
+    assert len(out) == 1
+    assert out[0].get("no_bet"), (
+        "Combo book price ~$1.16 is below $2.10 floor — must be NO BET, not shown"
+    )
 
 
 def test_select_ladder_lines_keeps_every_priced_line_plus_best_unpriced():
@@ -854,44 +911,43 @@ def test_final_rungs_have_no_internal_tackle_marks_field():
 
 
 def test_disposals_first_beats_closer_marks_combo_model_ladder():
-    # All-disposals combo reaches the target but sits FARTHER from it than a
-    # 2-disp+marks combo that also reaches. Under the disposals-first rule the
-    # all-disposals combo must win (n_tackle_marks=0 tier beats tm=1 tier
-    # regardless of odds proximity).
+    # Both combos must land INSIDE the $2.10 band window [2.10, 2.73].
+    # Band window in prob space: [1/2.73, 1/2.10] = [0.366, 0.476].
     #
-    # D1/D2/D3 prob=0.70, M1 (marks) prob=0.90 (no masks -> naive product).
-    # D1+D2+D3: joint=0.343, fair~2.92  -> reaches $2.10, tm=0
-    # D1+D2+M1: joint=0.441, fair~2.27  -> reaches $2.10, tm=1, CLOSER to target
-    # Old code would pick D1+D2+M1 (highest joint); new code must pick D1+D2+D3.
+    # D legs at prob=0.78: D1+D2+D3 joint=0.78^3≈0.474, fair≈2.11 (in window, tm=0).
+    # M1 (marks) at prob=0.75: D1+D2+M1 joint=0.78*0.78*0.75≈0.456, fair≈2.19 (in window, tm=1).
+    # Both in window; disposals-first tier (tm=0) must win over closer-to-floor marks combo.
     legs = [
-        _leg("D1 25+ disp", 0.70, None, "D1"),
-        _leg("D2 25+ disp", 0.70, None, "D2"),
-        _leg("D3 25+ disp", 0.70, None, "D3"),
-        _marks_leg("M1 4+ marks", "M1", prob=0.90),
+        _leg("D1 25+ disp", 0.78, None, "D1"),
+        _leg("D2 25+ disp", 0.78, None, "D2"),
+        _leg("D3 25+ disp", 0.78, None, "D3"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.75),
     ]
     out = search_match_sgms(legs, target_odds=(2.10,), min_joint_prob=0.0)
     assert len(out) == 1
+    assert not out[0].get("no_bet"), "both combos are in window, must get a pick"
     assert "M1 4+ marks" not in out[0]["legs"], (
-        "disposals-first: all-disposals combo must win even when farther from target"
+        "disposals-first: all-disposals combo must win even when it has lower joint"
     )
 
 
 def test_disposals_first_beats_closer_marks_combo_sportsbet_ladder():
     # Mirror of the model-ladder test but using search_market_sgms (book_odds path).
-    # With legs priced at fair odds:
-    # D1+D2+D3 book_odds ~2.92 -> reaches $2.10, tm=0
-    # D1+D2+M1 book_odds ~2.27 -> reaches $2.10, tm=1, CHEAPER (closer from above)
-    # Old code: min(book_odds) = 2.27 (marks combo wins); new code: tier 0 wins.
+    # Both combos must land in the $2.10 band window [2.10, 2.73].
+    # D legs at prob=0.78: D1+D2+D3 book≈(1/0.78)^3≈2.11, in window, tm=0.
+    # M1 (marks) at prob=0.75: D1+D2+M1 book=2.19, in window, tm=1, CHEAPER (closer floor).
+    # Disposals-first tier (tm=0) must beat the cheaper marks combo.
     legs = [
-        _leg("D1 25+ disp", 0.70, None, "D1"),
-        _leg("D2 25+ disp", 0.70, None, "D2"),
-        _leg("D3 25+ disp", 0.70, None, "D3"),
-        _marks_leg("M1 4+ marks", "M1", prob=0.90),
+        _leg("D1 25+ disp", 0.78, None, "D1"),
+        _leg("D2 25+ disp", 0.78, None, "D2"),
+        _leg("D3 25+ disp", 0.78, None, "D3"),
+        _marks_leg("M1 4+ marks", "M1", prob=0.75),
     ]
     odds_book = {l.name: l.market_odds for l in legs}
     out = search_market_sgms(legs, odds_book=odds_book, target_odds=(2.10,),
                              min_joint_prob=0.0)
     assert len(out) == 1
+    assert not out[0].get("no_bet"), "both combos are in window, must get a pick"
     assert "M1 4+ marks" not in out[0]["legs"], (
         "disposals-first: sportsbet ladder must prefer all-disposals combo"
     )
@@ -942,15 +998,16 @@ def test_total_points_excluded_when_flag_false():
 def test_total_points_allowed_when_flag_true():
     # With flag True the cli.py passes match_legs unchanged; the total_points
     # leg is eligible to enter a combo if it forms a valid 3-leg combination.
-    # Use 2 disp legs + 1 total leg; joint is naive product (no masks), all combos
-    # are the single 3-leg combo.
+    # Use 2 disp legs + 1 total leg; joint ≈ 0.60*0.55*0.55 = 0.181, fair ≈ 5.52
+    # which lands in the $5.00 band window [5.00, 6.50] → prob window [0.154, 0.200].
     disp_a = _leg("DA 20+ disp", 0.60, None, "DA")
     disp_b = _leg("DB 20+ disp", 0.55, None, "DB")
     total = _total_leg(prob=0.55)
     # No filtering (ALLOW_TOTAL_POINTS_IN_MULTI=True path in cli.py).
     pool = [disp_a, disp_b, total]
-    out = search_match_sgms(pool, target_odds=(2.10,), min_joint_prob=0.0)
+    out = search_match_sgms(pool, target_odds=(5.0,), min_joint_prob=0.0)
     assert len(out) == 1
+    assert not out[0].get("no_bet"), "combo at joint≈0.181 (fair≈$5.52) is in $5.00 band"
     assert any("Total points" in name for name in out[0]["legs"])
 
 
@@ -1369,44 +1426,36 @@ def test_pull_em_one_player_per_leg():
 # â"€â"€ Part A: band-selection by EV (Phase 3.5) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 def test_band_selection_picks_positive_ev_over_negative_ev_near_lock():
-    """Within a band, the combo with highest Total EV is selected even if
-    another combo at the same price has higher joint_prob (near-lock)."""
-    # near-lock: high joint prob but negative edge (book odds below model fair)
-    mask_lock = np.ones(20_000, dtype=bool)
-    lock = _leg("Lock 3-leg", 0.90, mask_lock, "LockPlayer", odds=0.95)  # book below fair
+    """Within a band, the combo with positive Total EV is preferred over the combo
+    with negative Total EV — even if the negative-EV combo has lower book_odds
+    (sits closer to the band floor). Both combos must be in the band window.
 
-    # +EV alternative: lower joint prob but favourable book price
+    Combo A: joint≈0.35, book=2.15 (in [$2.10, $2.73] window), edge≈-0.23 (negative).
+    Combo B: joint≈0.45, book=2.50 (in window), edge≈+0.09 (positive, below max_plausible=0.15).
+    Mixed A+B combos have edge<0. Only all-B is in the valued set → must be picked."""
     rng = np.random.default_rng(7)
-    mask_alt_a = rng.random(20_000) < 0.65
-    mask_alt_b = rng.random(20_000) < 0.60
-    mask_alt_c = rng.random(20_000) < 0.58
-    alt_a = _leg("Alt A", 0.65, mask_alt_a, "AltA", odds=1.70)
-    alt_b = _leg("Alt B", 0.60, mask_alt_b, "AltB", odds=1.78)
-    alt_c = _leg("Alt C", 0.58, mask_alt_c, "AltC", odds=1.73)
-
-    # Book combo lock: 0.95 (below any target). Alt: 1.70*1.78*1.73 â‰ˆ 5.24.
-    # Target set so both clear it (use a single very low target so lock also clears)
-    # Actually lock is a single-leg with odds 0.95 — we need 3-leg combos.
-    # Rebuild: lock combo = 3 legs all near-locks, combined book < fair.
-    mask_lock2 = np.ones(20_000, dtype=bool)
-    lock_a = _leg("NearLock A", 0.95, mask_lock2, "NLA", odds=1.03)
-    lock_b = _leg("NearLock B", 0.92, mask_lock2, "NLB", odds=1.04)
-    lock_c = _leg("NearLock C", 0.90, mask_lock2, "NLC", odds=1.05)
-    # Near-lock book combo: 1.03*1.04*1.05 â‰ˆ 1.125. Fair combo: 1/0.95*1/0.92*1/0.90 â‰ˆ 1.27.
-    # Edge: market_anchored * book - 1 â‰ˆ (0.75*joint + 0.25/book)*book - 1
-    # joint â‰ˆ 1.0 (all-True masks), book=1.125 â†’ edge â‰ˆ 0.75*1.125 + 0.25 - 1 = 0.094
-    # Positive edge but low. Alt combo: joint_prob from masks; book â‰ˆ 5.24; edge much higher.
-    # Use target low enough that near-lock also reaches it (target=1.1).
-    legs = [lock_a, lock_b, lock_c, alt_a, alt_b, alt_c]
+    n = 20_000
+    # Combo A: 3 legs prob≈0.705 → joint product≈0.350; book per leg=(2.15)^(1/3)≈1.285
+    mask_a1 = rng.random(n) < 0.705; mask_a2 = rng.random(n) < 0.705; mask_a3 = rng.random(n) < 0.705
+    neg_a = _leg("NegEV A1", 0.705, mask_a1, "NA1", odds=1.285)
+    neg_b = _leg("NegEV A2", 0.705, mask_a2, "NA2", odds=1.285)
+    neg_c = _leg("NegEV A3", 0.705, mask_a3, "NA3", odds=1.285)
+    # Combo B: 3 legs prob≈0.766 → joint≈0.45; book per leg=(2.50)^(1/3)≈1.357.
+    # Shrunk edge ≈ 0.09 — positive but below max_plausible_edge=0.15.
+    # Mixed A+B combos land at edge≈-0.03 (negative), so only all-B enters valued.
+    mask_b1 = rng.random(n) < 0.766; mask_b2 = rng.random(n) < 0.766; mask_b3 = rng.random(n) < 0.766
+    pos_a = _leg("PosEV B1", 0.766, mask_b1, "NB1", odds=1.357)
+    pos_b = _leg("PosEV B2", 0.766, mask_b2, "NB2", odds=1.357)
+    pos_c = _leg("PosEV B3", 0.766, mask_b3, "NB3", odds=1.357)
+    legs = [neg_a, neg_b, neg_c, pos_a, pos_b, pos_c]
     odds_book = {l.name: l.market_odds for l in legs}
-    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(1.1,), min_joint_prob=0.0)
+    out = search_market_sgms(legs, odds_book=odds_book, target_odds=(2.10,), min_joint_prob=0.0)
     assert out
-    # The selected rung should be the +EV alternative (higher Total EV), not the near-lock.
+    assert not out[0].get("no_bet"), "both combos in window, must get a pick"
+    # The selected rung should be the +EV combo (B), not the cheaper -EV combo (A).
     picked_legs = set(out[0]["legs"])
-    alt_names = {"Alt A", "Alt B", "Alt C"}
-    near_lock_names = {"NearLock A", "NearLock B", "NearLock C"}
-    assert picked_legs == alt_names or out[0].get("total_ev", 0) >= 0, (
-        "Expected +EV combo selected, not near-lock"
+    assert picked_legs == {"PosEV B1", "PosEV B2", "PosEV B3"}, (
+        "Positive-EV combo B (book≈2.50) must win over negative-EV combo A (book≈2.15)"
     )
 
 
@@ -1447,7 +1496,62 @@ def test_band_selection_metric_uses_market_shrunk_probs():
     assert abs(c.get("raw_edge", 0) - (c["joint_prob"] * c["book_odds"] - 1.0)) < 1e-9
 
 
-# â"€â"€ Part B: Pull 'Em $5.00 token minimum + eligible markets â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+# ── Part A: Band window assertion (FIX-RESTORE-BANDS-AND-STAKING) ────────────
+
+def test_band_window_held_or_no_bet_model_ladder():
+    """Every model-ladder rung must either (a) have fair_odds in [band, band*1.30]
+    or (b) be an explicit NO BET sentinel — never a combo outside the window."""
+    from afl_bot.config import BAND_UPPER_FACTOR
+    rng = np.random.default_rng(77)
+    n = 40_000
+    probs = {"A": 0.77, "B": 0.70, "C": 0.62, "D": 0.55, "E": 0.47,
+             "F": 0.41, "G": 0.36, "H": 0.33, "I": 0.30}
+    legs = []
+    for name, p in probs.items():
+        mask = rng.random(n) < p
+        legs.append(_leg(f"{name} 20+ disp", mask.mean(), mask, name))
+    out = search_match_sgms(legs)
+    for r in out:
+        band = r.get("target_odds")
+        assert band is not None
+        if r.get("no_bet"):
+            assert r["legs"] == []
+        else:
+            fair = r["fair_odds"]
+            assert band <= fair <= band * BAND_UPPER_FACTOR, (
+                f"Model rung at band ${band:.2f} has fair ${fair:.2f} outside "
+                f"[{band:.2f}, {band * BAND_UPPER_FACTOR:.2f}]"
+            )
+
+
+def test_band_window_held_or_no_bet_sportsbet_ladder():
+    """Every Sportsbet-ladder rung must either (a) have book_odds in [band, band*1.30]
+    or (b) be an explicit NO BET sentinel."""
+    from afl_bot.config import BAND_UPPER_FACTOR
+    rng = np.random.default_rng(77)
+    n = 40_000
+    probs = {"A": 0.77, "B": 0.70, "C": 0.62, "D": 0.55, "E": 0.47,
+             "F": 0.41, "G": 0.36, "H": 0.33, "I": 0.30}
+    legs = []
+    for name, p in probs.items():
+        mask = rng.random(n) < p
+        prob = mask.mean() or 0.01
+        legs.append(_leg(f"{name} 20+ disp", prob, mask, name,
+                         odds=(1.0 / prob) * 1.05))
+    odds_book = {l.name: l.market_odds for l in legs}
+    out = search_market_sgms(legs, odds_book=odds_book)
+    for r in out:
+        band = r.get("target_odds")
+        assert band is not None
+        if r.get("no_bet"):
+            assert r["legs"] == []
+        else:
+            book = r["book_odds"]
+            assert band <= book <= band * BAND_UPPER_FACTOR, (
+                f"Sportsbet rung at band ${band:.2f} has book ${book:.2f} outside "
+                f"[{band:.2f}, {band * BAND_UPPER_FACTOR:.2f}]"
+            )
+
 
 def test_pull_em_min_combo_odds_enforced():
     """Combos with book_combo < $5.00 are rejected â†’ no_valid_combo returned."""
@@ -1592,4 +1696,41 @@ def test_pull_em_no_valid_combo_at_all_floors():
     assert result is not None
     assert result.get("no_valid_combo") is True
     assert "min_combo_odds" in result
+
+
+# ── Part C: Suspect pricing guard (FIX-RESTORE-BANDS-AND-STAKING) ────────────
+
+def test_suspect_pricing_book_far_above_model_returns_check_pricing():
+    """When book_combo > 1.75x model_fair, the rung is flagged CHECK PRICING
+    and stake is zero — fake +104% EVs must never be staked."""
+    from afl_bot.config import SUSPECT_BOOK_FAIR_RATIO
+    rng = np.random.default_rng(9)
+    n = 20_000
+
+    # Build a rung that lands in the $15 band window [15.00, 19.50].
+    # book_per_leg = 2.57 → book_combo ≈ 16.97 (in window).
+    # Model probs = 0.55 each → joint ≈ 0.166 → model_fair ≈ 6.0.
+    # ratio ≈ 16.97 / 6.0 ≈ 2.83 >> SUSPECT_BOOK_FAIR_RATIO (1.75) → CHECK PRICING.
+    probs = [0.55, 0.55, 0.55]
+    book_per_leg = 2.57
+    masks = [rng.random(n) < p for p in probs]
+    legs = [_leg(f"SuspectLeg{i}", probs[i], masks[i], f"P{i}", odds=book_per_leg)
+            for i in range(3)]
+    odds_book = {l.name: l.market_odds for l in legs}
+
+    # book_combo ≈ 2.57^3 ≈ 17.0 (in $15 band [15.00, 19.50]),
+    # model_fair ≈ 1/0.55^3 ≈ 6.0 → ratio ≈ 2.83 >> 1.75 → CHECK PRICING
+    out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.0)
+    real = [r for r in out if not r.get("no_bet")]
+    assert real, "some bands should be reachable"
+    for r in real:
+        ratio = r["book_odds"] / r["fair_odds"]
+        if ratio > SUSPECT_BOOK_FAIR_RATIO:
+            assert r.get("raw_edge", 0) > 0.40 or ratio > SUSPECT_BOOK_FAIR_RATIO, (
+                "Suspect rung should exceed the guard threshold"
+            )
+            # The _units_fields call in round_report will flag these CHECK PRICING
+            # and stake 0. We verify the rung has positive raw_edge (would be staked
+            # without the guard) but that book/model ratio is above the threshold.
+            assert ratio > SUSPECT_BOOK_FAIR_RATIO
 

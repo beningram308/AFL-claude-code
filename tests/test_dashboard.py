@@ -454,7 +454,9 @@ def test_dashboard_total_ev_and_stake_render(tmp_path):
     """Total EV and Stake columns render formatted values when fields are present."""
     from afl_bot.dashboard.app import app, REPORTS_DIR
 
+    # units=5.0 → 5.0*15/1500*100 = 5.0% Stake (template uses units, not suggested_stake)
     rec = {**_make_multi_record(), "total_ev": 0.475, "suggested_stake": 0.05,
+           "units": 5.0, "units_tag": "5.0u",
            "p_one_loss": 0.18, "promo_ev": 0.08}
     (tmp_path / "2026_r16_multis.json").write_text(
         json.dumps([rec]), encoding="utf-8")
