@@ -52,21 +52,18 @@ def stake_bets(bets: list[tuple[str, float, float]], bankroll: float, *,
                fraction: float = KELLY_FRACTION, per_bet_cap: float = KELLY_PER_BET_CAP,
                per_round_cap: float = KELLY_PER_ROUND_CAP,
                mults: list[float] | None = None) -> list[StakedBet]:
-    """Size a round's bets by capped fractional Kelly.
+    """Size bets by per-bet capped fractional Kelly.
 
-    ``bets`` is ``[(name, prob, odds), ...]``. Each gets a per-bet-capped
-    fractional-Kelly fraction; if the round total exceeds ``per_round_cap`` the
-    whole book is scaled down proportionally so total exposure stays bounded.
+    ``bets`` is ``[(name, prob, odds), ...]``. Each bet is sized independently
+    by its own shrunk-Kelly formula; the round-level cap (KELLY_PER_ROUND_CAP)
+    is enforced upstream by ``_apply_round_cap`` as a ceiling (lowest-EV rungs
+    dropped to NO BET), never by proportional scaling here.
     ``mults`` (aligned to ``bets``) scales individual bets' Kelly fraction —
-    e.g. 0.5 for noisier prop legs (round-2 §2.5). Zero-edge bets get zero stake.
+    e.g. 0.5 for noisier prop legs. Zero-edge bets get zero stake.
     """
     mults = mults if mults is not None else [1.0] * len(bets)
     fracs = [fractional_kelly_fraction(p, o, fraction, per_bet_cap) * m
              for (_, p, o), m in zip(bets, mults)]
-    total = sum(fracs)
-    if total > per_round_cap and total > 0:
-        scale = per_round_cap / total
-        fracs = [f * scale for f in fracs]
     return [
         StakedBet(name=name, prob=p, odds=o, fraction=f, stake=f * bankroll)
         for (name, p, o), f in zip(bets, fracs)
@@ -211,8 +208,9 @@ def recommend_units(
       bonus-back cap); prints "(capped by promo refund limit)" when the cap bites.
     - No edge, no promo → ``(0.0, "NO BET")``.
 
-    The per-round governor (KELLY_PER_ROUND_CAP) is applied by the caller across the
-    full round's Kelly bets via ``stake_bets``; this function sizes individual bets.
+    The per-round governor (KELLY_PER_ROUND_CAP) is a ceiling enforced upstream by
+    ``_apply_round_cap`` (lowest-EV rungs marked NO BET); this function sizes each
+    rung independently with no cross-rung influence.
     ``refund_factor`` (default BONUS_BET_FACTOR=0.75) is the value of the returned stake
     as a fraction; pass a higher R for Pull 'Em where the recovery payout can exceed the
     original stake.

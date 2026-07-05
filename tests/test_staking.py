@@ -28,11 +28,19 @@ def test_fractional_kelly_applies_fraction_and_cap():
     assert fractional_kelly_fraction(0.95, 5.0) == KELLY_PER_BET_CAP
 
 
-def test_stake_bets_respects_per_round_cap():
-    bets = [(f"b{i}", 0.6, 2.0) for i in range(10)]  # each capped at 5% -> 50% raw
+def test_stake_bets_sizes_each_bet_independently():
+    # stake_bets must NOT enforce any round-level cap — each bet gets its own Kelly.
+    # 10 identical bets each at per-bet cap (5%) → total = 50%, well over KELLY_PER_ROUND_CAP.
+    # The round cap is enforced upstream by _apply_round_cap, not here.
+    bets = [(f"b{i}", 0.6, 2.0) for i in range(10)]  # each capped at 5%
     staked = stake_bets(bets, 1000.0)
+    assert all(abs(s.fraction - KELLY_PER_BET_CAP) < 1e-9 for s in staked), (
+        "Each bet must get its independent per-bet-capped Kelly fraction"
+    )
     total_frac = sum(s.fraction for s in staked)
-    assert total_frac <= KELLY_PER_ROUND_CAP + 1e-9
+    assert total_frac > KELLY_PER_ROUND_CAP, (
+        "stake_bets must NOT scale down to the round cap — that's _apply_round_cap's job"
+    )
     assert all(s.stake == s.fraction * 1000.0 for s in staked)
 
 
@@ -420,3 +428,36 @@ def test_apply_round_cap_never_produces_uniform_0_25u():
     assert rungs_high[1]["units"] == 3.0, "High-EV 3u rung must not be flattened to 0.25u"
     total = sum(r["units"] for r in rungs_high + rungs_low)
     assert total <= cap + 1e-9
+
+
+# ── FIX-BUDGET-IS-CEILING-NOT-TARGET ──────────────────────────────────────────
+
+
+def test_same_rung_gets_identical_units_regardless_of_round_size():
+    """A rung with fixed probs/price must produce the same units in a 1-game round
+    and a 6-game round. The number of rungs in the round must have zero influence."""
+    # A well-edged rung: joint_prob=0.55, odds=2.10
+    units_solo, _ = recommend_units(0.55, 2.10)
+    assert units_solo > 0.0, "Reference rung must have positive edge"
+
+    # Simulate _units_fields for a 6-game round via recommend_units — each call
+    # is independent, so each must return the same value as the solo call.
+    for _ in range(6):
+        units, _ = recommend_units(0.55, 2.10)
+        assert units == units_solo, (
+            f"Same rung must give {units_solo}u regardless of round size, got {units}u"
+        )
+
+
+def test_round_under_budget_units_unchanged():
+    """When the round total is under the cap, _apply_round_cap must not alter any units."""
+    from afl_bot.cli import _apply_round_cap
+
+    # Build a round that's comfortably under cap: two 1u rungs → 2u << 15u cap.
+    rung_a = {"total_ev": 0.15, "units": 1.0, "units_tag": "1u KELLY", "no_bet": False}
+    rung_b = {"total_ev": 0.10, "units": 1.0, "units_tag": "1u KELLY", "no_bet": False}
+    matches = [{"sgms": [rung_a, rung_b], "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
+    _apply_round_cap(matches)
+
+    assert rung_a["units"] == 1.0, "Under-budget round must not change rung A's units"
+    assert rung_b["units"] == 1.0, "Under-budget round must not change rung B's units"

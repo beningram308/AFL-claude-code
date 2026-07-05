@@ -1,119 +1,9 @@
 match_id,market,subject,line,prob
-2026_r17_Essendon_v_St Kilda,h2h,Essendon,,0.33774
-2026_r17_Essendon_v_St Kilda,h2h,St Kilda,,0.65382
-2026_r17_Essendon_v_St Kilda,total_points,total,175.5,0.48502
-2026_r17_Essendon_v_St Kilda,player_disposals,Archie Roberts,25,0.6145251396648045
-2026_r17_Essendon_v_St Kilda,player_disposals,Archie Roberts,30,0.3072289156626506
-2026_r17_Essendon_v_St Kilda,player_marks,Archie Roberts,5,0.6632016632016633
-2026_r17_Essendon_v_St Kilda,player_marks,Archie Roberts,6,0.4735872235872236
-2026_r17_Essendon_v_St Kilda,player_marks,Archie Roberts,7,0.32154696132596683
-2026_r17_Essendon_v_St Kilda,player_disposals,Zach Merrett,25,0.6177777777777779
-2026_r17_Essendon_v_St Kilda,player_disposals,Zach Merrett,30,0.38752052545155996
-2026_r17_Essendon_v_St Kilda,player_goals,Zach Merrett,1,0.3625866050808314
-2026_r17_Essendon_v_St Kilda,player_marks,Zach Merrett,5,0.6319018404907977
-2026_r17_Essendon_v_St Kilda,player_marks,Zach Merrett,6,0.4735872235872236
-2026_r17_Essendon_v_St Kilda,player_tackles,Zach Merrett,4,0.5969289827255279
-2026_r17_Essendon_v_St Kilda,player_disposals,Darcy Parish,25,0.6177777777777779
-2026_r17_Essendon_v_St Kilda,player_disposals,Darcy Parish,30,0.3206997084548106
-2026_r17_Essendon_v_St Kilda,player_marks,Darcy Parish,4,0.7166979362101313
-2026_r17_Essendon_v_St Kilda,player_marks,Darcy Parish,5,0.46870574907958085
-2026_r17_Essendon_v_St Kilda,player_marks,Darcy Parish,6,0.33080513418903135
-2026_r17_Essendon_v_St Kilda,player_tackles,Darcy Parish,3,0.4107142857142857
-2026_r17_Essendon_v_St Kilda,player_disposals,Will Setterfield,25,0.4847328244274809
-2026_r17_Essendon_v_St Kilda,player_marks,Will Setterfield,4,0.760797342192691
-2026_r17_Essendon_v_St Kilda,player_marks,Will Setterfield,5,0.5767857142857142
-2026_r17_Essendon_v_St Kilda,player_marks,Will Setterfield,6,0.3542600896860987
-2026_r17_Essendon_v_St Kilda,player_tackles,Will Setterfield,5,0.5
-2026_r17_Essendon_v_St Kilda,player_disposals,Elijah Tsatas,20,0.650853889943074
-2026_r17_Essendon_v_St Kilda,player_disposals,Elijah Tsatas,25,0.3170731707317074
-2026_r17_Essendon_v_St Kilda,player_marks,Elijah Tsatas,4,0.6282148260211804
-2026_r17_Essendon_v_St Kilda,player_marks,Elijah Tsatas,5,0.4186991869918699
-2026_r17_Essendon_v_St Kilda,player_disposals,Sam Durham,15,0.7045454545454546
-2026_r17_Essendon_v_St Kilda,player_disposals,Sam Durham,20,0.37858032378580314
-2026_r17_Essendon_v_St Kilda,player_goals,Sam Durham,1,0.34986225895316786
-2026_r17_Essendon_v_St Kilda,player_marks,Sam Durham,4,0.3887459807073954
-2026_r17_Essendon_v_St Kilda,player_tackles,Sam Durham,3,0.682590233545648
-2026_r17_Essendon_v_St Kilda,player_tackles,Sam Durham,4,0.3497453310696095
-2026_r17_Essendon_v_St Kilda,player_disposals,Mason Redman,20,0.650853889943074
-2026_r17_Essendon_v_St Kilda,player_disposals,Mason Redman,25,0.36996336996337
-2026_r17_Essendon_v_St Kilda,player_marks,Mason Redman,6,0.6666666666666666
-2026_r17_Essendon_v_St Kilda,player_marks,Mason Redman,7,0.48571428571428565
-2026_r17_Essendon_v_St Kilda,player_marks,Mason Redman,8,0.3559096945551129
-2026_r17_Essendon_v_St Kilda,player_disposals,Andrew McGrath,15,0.7053571428571428
-2026_r17_Essendon_v_St Kilda,player_disposals,Andrew McGrath,20,0.38390092879256976
-2026_r17_Essendon_v_St Kilda,player_marks,Andrew McGrath,4,0.635076923076923
-2026_r17_Essendon_v_St Kilda,player_marks,Andrew McGrath,5,0.4323770491803279
-2026_r17_Essendon_v_St Kilda,player_disposals,Jacob Farrow,15,0.7705677867902665
-2026_r17_Essendon_v_St Kilda,player_disposals,Jacob Farrow,20,0.46419098143236076
-2026_r17_Essendon_v_St Kilda,player_marks,Jacob Farrow,6,0.6311336717428088
-2026_r17_Essendon_v_St Kilda,player_marks,Jacob Farrow,7,0.48571428571428565
-2026_r17_Essendon_v_St Kilda,player_marks,Jacob Farrow,8,0.32432432432432434
-2026_r17_Essendon_v_St Kilda,player_disposals,Zak Johnson,15,0.7053571428571428
-2026_r17_Essendon_v_St Kilda,player_disposals,Zak Johnson,20,0.38390092879256976
-2026_r17_Essendon_v_St Kilda,player_marks,Zak Johnson,5,0.690978886756238
-2026_r17_Essendon_v_St Kilda,player_marks,Zak Johnson,6,0.5026525198938995
-2026_r17_Essendon_v_St Kilda,player_marks,Zak Johnson,7,0.3688212927756654
-2026_r17_Essendon_v_St Kilda,player_disposals,Nasiah Wanganeen-Milera,25,0.7673611111111112
-2026_r17_Essendon_v_St Kilda,player_disposals,Nasiah Wanganeen-Milera,30,0.47478991596638653
-2026_r17_Essendon_v_St Kilda,player_goals,Nasiah Wanganeen-Milera,1,0.5978552278820375
-2026_r17_Essendon_v_St Kilda,player_marks,Nasiah Wanganeen-Milera,4,0.6282148260211804
-2026_r17_Essendon_v_St Kilda,player_marks,Nasiah Wanganeen-Milera,5,0.41972187104930475
-2026_r17_Essendon_v_St Kilda,player_disposals,Jack Sinclair,20,0.650853889943074
-2026_r17_Essendon_v_St Kilda,player_disposals,Jack Sinclair,25,0.36996336996337
-2026_r17_Essendon_v_St Kilda,player_marks,Jack Sinclair,5,0.6632016632016633
-2026_r17_Essendon_v_St Kilda,player_marks,Jack Sinclair,6,0.4735872235872236
-2026_r17_Essendon_v_St Kilda,player_marks,Jack Sinclair,7,0.32154696132596683
-2026_r17_Essendon_v_St Kilda,player_disposals,Callum Wilkie,20,0.7258297258297259
-2026_r17_Essendon_v_St Kilda,player_disposals,Callum Wilkie,25,0.39349112426035504
-2026_r17_Essendon_v_St Kilda,player_marks,Callum Wilkie,6,0.7678571428571429
-2026_r17_Essendon_v_St Kilda,player_marks,Callum Wilkie,7,0.5862068965517241
-2026_r17_Essendon_v_St Kilda,player_marks,Callum Wilkie,8,0.5
-2026_r17_Essendon_v_St Kilda,player_disposals,Bradley Hill,20,0.7729166666666667
-2026_r17_Essendon_v_St Kilda,player_disposals,Bradley Hill,25,0.4827586206896552
-2026_r17_Essendon_v_St Kilda,player_goals,Bradley Hill,1,0.34986225895316786
-2026_r17_Essendon_v_St Kilda,player_marks,Bradley Hill,6,0.6311336717428088
-2026_r17_Essendon_v_St Kilda,player_marks,Bradley Hill,7,0.48571428571428565
-2026_r17_Essendon_v_St Kilda,player_marks,Bradley Hill,8,0.32432432432432434
-2026_r17_Essendon_v_St Kilda,player_disposals,Sam Flanders,20,0.5008
-2026_r17_Essendon_v_St Kilda,player_marks,Sam Flanders,5,0.6163215590742992
-2026_r17_Essendon_v_St Kilda,player_marks,Sam Flanders,6,0.4735872235872236
-2026_r17_Essendon_v_St Kilda,player_tackles,Sam Flanders,3,0.4179566563467492
-2026_r17_Essendon_v_St Kilda,player_disposals,Marcus Windhager,20,0.7729166666666667
-2026_r17_Essendon_v_St Kilda,player_disposals,Marcus Windhager,25,0.4827586206896552
-2026_r17_Essendon_v_St Kilda,player_marks,Marcus Windhager,4,0.635076923076923
-2026_r17_Essendon_v_St Kilda,player_marks,Marcus Windhager,5,0.46870574907958085
-2026_r17_Essendon_v_St Kilda,player_tackles,Marcus Windhager,3,0.5763707571801568
-2026_r17_Essendon_v_St Kilda,player_disposals,Hugo Garcia,20,0.7429577464788732
-2026_r17_Essendon_v_St Kilda,player_disposals,Hugo Garcia,25,0.4827586206896552
-2026_r17_Essendon_v_St Kilda,player_goals,Hugo Garcia,1,0.4270557029177719
-2026_r17_Essendon_v_St Kilda,player_marks,Hugo Garcia,4,0.4190432382704692
-2026_r17_Essendon_v_St Kilda,player_tackles,Hugo Garcia,4,0.6521739130434783
-2026_r17_Essendon_v_St Kilda,player_tackles,Hugo Garcia,5,0.41358024691358025
-2026_r17_Essendon_v_St Kilda,player_disposals,Darcy Wilson,20,0.6100478468899522
-2026_r17_Essendon_v_St Kilda,player_disposals,Darcy Wilson,25,0.3170731707317074
-2026_r17_Essendon_v_St Kilda,player_goals,Darcy Wilson,1,0.7335375191424196
-2026_r17_Essendon_v_St Kilda,player_goals,Darcy Wilson,2,0.39723661485319517
-2026_r17_Essendon_v_St Kilda,player_marks,Darcy Wilson,5,0.6632016632016633
-2026_r17_Essendon_v_St Kilda,player_marks,Darcy Wilson,6,0.4735872235872236
-2026_r17_Essendon_v_St Kilda,player_marks,Darcy Wilson,7,0.32154696132596683
-2026_r17_Essendon_v_St Kilda,player_disposals,Jack Macrae,20,0.7258297258297259
-2026_r17_Essendon_v_St Kilda,player_disposals,Jack Macrae,25,0.44370860927152317
-2026_r17_Essendon_v_St Kilda,player_marks,Jack Macrae,4,0.554013875123885
-2026_r17_Essendon_v_St Kilda,player_marks,Jack Macrae,5,0.33902077151335314
-2026_r17_Essendon_v_St Kilda,player_tackles,Jack Macrae,3,0.7589285714285714
-2026_r17_Essendon_v_St Kilda,player_tackles,Jack Macrae,4,0.4166666666666667
-2026_r17_Essendon_v_St Kilda,player_disposals,Max Hall,20,0.7258297258297259
-2026_r17_Essendon_v_St Kilda,player_disposals,Max Hall,25,0.39349112426035504
-2026_r17_Essendon_v_St Kilda,player_goals,Max Hall,1,0.6306892067620286
-2026_r17_Essendon_v_St Kilda,player_marks,Max Hall,4,0.7290836653386454
-2026_r17_Essendon_v_St Kilda,player_marks,Max Hall,5,0.5427083333333331
-2026_r17_Essendon_v_St Kilda,player_marks,Max Hall,6,0.3364705882352941
-2026_r17_Essendon_v_St Kilda,player_tackles,Max Hall,3,0.5198237885462558
-2026_r17_Port Adelaide_v_North Melbourne,h2h,Port Adelaide,,0.73178
-2026_r17_Port Adelaide_v_North Melbourne,h2h,North Melbourne,,0.26
-2026_r17_Port Adelaide_v_North Melbourne,total_points,total,165.5,0.4502
+2026_r17_Port Adelaide_v_North Melbourne,h2h,Port Adelaide,,0.73414
+2026_r17_Port Adelaide_v_North Melbourne,h2h,North Melbourne,,0.25744
+2026_r17_Port Adelaide_v_North Melbourne,total_points,total,165.5,0.45016
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Zak Butters,25,0.5988023952095807
-2026_r17_Port Adelaide_v_North Melbourne,player_goals,Zak Butters,1,0.34986225895316786
+2026_r17_Port Adelaide_v_North Melbourne,player_goals,Zak Butters,1,0.35802469135802467
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Zak Butters,4,0.3887459807073954
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Zak Butters,4,0.5725190839694655
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Jason Horne-Francis,20,0.6413043478260869
@@ -122,20 +12,20 @@ match_id,market,subject,line,prob
 2026_r17_Port Adelaide_v_North Melbourne,player_goals,Jason Horne-Francis,2,0.4507575757575759
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Jason Horne-Francis,4,0.7128953771289538
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Jason Horne-Francis,5,0.46870574907958085
-2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Jason Horne-Francis,3,0.6915887850467288
-2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Jason Horne-Francis,4,0.38450502152080346
+2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Jason Horne-Francis,3,0.746606334841629
+2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Jason Horne-Francis,4,0.3726708074534162
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Connor Rozee,20,0.5473411154345006
 2026_r17_Port Adelaide_v_North Melbourne,player_goals,Connor Rozee,1,0.3859191655801826
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Connor Rozee,4,0.6282148260211804
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Connor Rozee,5,0.3744922826969943
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Connor Rozee,3,0.6450939457202505
+2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Connor Rozee,4,0.3081632653061223
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Jase Burgoyne,15,0.7538461538461538
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Jase Burgoyne,20,0.38390092879256976
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Jase Burgoyne,4,0.6282148260211804
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Jase Burgoyne,5,0.3445732349841939
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Jase Burgoyne,3,0.6450939457202505
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Kane Farrell,15,0.6633254716981132
-2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Kane Farrell,20,0.3182751540041067
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Kane Farrell,5,0.6048780487804876
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Kane Farrell,6,0.40623091020158825
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Ollie Wines,15,0.6633254716981132
@@ -144,23 +34,23 @@ match_id,market,subject,line,prob
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Ollie Wines,3,0.682590233545648
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Ollie Wines,4,0.3497453310696095
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Darcy Byrne-Jones,15,0.7045454545454546
-2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Darcy Byrne-Jones,20,0.3754385964912281
-2026_r17_Port Adelaide_v_North Melbourne,player_marks,Darcy Byrne-Jones,4,0.6363636363636364
-2026_r17_Port Adelaide_v_North Melbourne,player_marks,Darcy Byrne-Jones,5,0.4323770491803279
+2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Darcy Byrne-Jones,20,0.37858032378580314
+2026_r17_Port Adelaide_v_North Melbourne,player_marks,Darcy Byrne-Jones,4,0.6708860759493672
+2026_r17_Port Adelaide_v_North Melbourne,player_marks,Darcy Byrne-Jones,5,0.46870574907958085
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Willem Drew,15,0.6940133037694013
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Willem Drew,20,0.34463276836158196
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Willem Drew,4,0.307215332581736
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Willem Drew,5,0.7217391304347827
-2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Willem Drew,6,0.4519878846137607
+2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Willem Drew,6,0.46280991735537197
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Will Brodie,15,0.6633254716981132
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Will Brodie,20,0.34251968503937
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Will Brodie,4,0.5220994475138122
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Logan Evans,15,0.5461346633416461
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Logan Evans,4,0.7437908496732026
-2026_r17_Port Adelaide_v_North Melbourne,player_marks,Logan Evans,5,0.5000000000000001
+2026_r17_Port Adelaide_v_North Melbourne,player_marks,Logan Evans,5,0.5342465753424658
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Logan Evans,6,0.33080513418903135
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Harry Sheezel,25,0.7232620320855615
-2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Harry Sheezel,30,0.4482758620689655
+2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Harry Sheezel,30,0.43243243243243246
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Harry Sheezel,5,0.690978886756238
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Harry Sheezel,6,0.5026525198938995
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Harry Sheezel,7,0.32154696132596683
@@ -179,9 +69,9 @@ match_id,market,subject,line,prob
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Luke Davies-Uniacke,20,0.6961325966850828
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Luke Davies-Uniacke,25,0.38791423001949316
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Luke Davies-Uniacke,4,0.4509310518369401
-2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Luke Davies-Uniacke,5,0.6030294813490221
+2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Luke Davies-Uniacke,5,0.5874673629242819
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Luke Davies-Uniacke,6,0.35891089108910884
-2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Colby McKercher,20,0.5473411154345006
+2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Colby McKercher,20,0.5897435897435898
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Colby McKercher,4,0.307215332581736
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Colby McKercher,3,0.401197604790419
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Jy Simpkin,20,0.5008
@@ -191,13 +81,13 @@ match_id,market,subject,line,prob
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Dylan Stephens,20,0.46419098143236076
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Dylan Stephens,4,0.7128953771289538
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Dylan Stephens,5,0.46870574907958085
-2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Finn O'Sullivan,15,0.6633254716981132
+2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Finn O'Sullivan,15,0.6940133037694013
 2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Finn O'Sullivan,20,0.3754385964912281
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Finn O'Sullivan,4,0.635076923076923
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Finn O'Sullivan,5,0.41972187104930475
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Finn O'Sullivan,3,0.5198237885462558
-2026_r17_Port Adelaide_v_North Melbourne,player_goals,Cooper Harvey,1,0.3969298245614035
+2026_r17_Port Adelaide_v_North Melbourne,player_goals,Cooper Harvey,1,0.4270557029177719
 2026_r17_Port Adelaide_v_North Melbourne,player_marks,Cooper Harvey,4,0.3887459807073954
-2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Tristan Xerri,15,0.42105263157894735
+2026_r17_Port Adelaide_v_North Melbourne,player_disposals,Tristan Xerri,15,0.45161290322580633
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Tristan Xerri,5,0.6198347107438016
 2026_r17_Port Adelaide_v_North Melbourne,player_tackles,Tristan Xerri,6,0.35891089108910884
