@@ -1171,3 +1171,32 @@ def test_selection_is_deterministic_under_equal_scoring(tmp_path):
     for r1, r2 in zip(result1, result2):
         assert r1["legs"] == r2["legs"]
         assert r1["joint_prob"] == pytest.approx(r2["joint_prob"])
+
+
+def test_dashboard_smoke_real_data():
+    """Dashboard index renders 200 with the live reports/ data on disk.
+
+    A stale server running old code against new-format data was the cause of a
+    production 500 (ungradeable_legs format change, no-double-ups rung shape).
+    This test catches any such mismatch before deploy by rendering the real
+    multis.json and bets_ledger.json through the live template.
+    """
+    from afl_bot.dashboard.app import app, REPORTS_DIR, LEDGER_PATH
+
+    # Skip if there's no real data to render (CI with no reports/).
+    if not REPORTS_DIR.exists() or not any(REPORTS_DIR.glob("*_multis.json")):
+        import pytest as _pytest
+        _pytest.skip("no real reports/ data on disk")
+
+    app.config["TESTING"] = True
+    resp = app.test_client().get("/")
+    assert resp.status_code == 200, (
+        f"Dashboard returned {resp.status_code} with real data — "
+        f"check template against current multis.json / bets_ledger.json format"
+    )
+    body = resp.data.decode("utf-8", errors="replace")
+    # Page must contain at least one game and the bet-tracker section.
+    assert "vs" in body, "No game found in rendered page"
+    assert "tracker" in body.lower() or "bets" in body.lower(), (
+        "Bet tracker section missing from rendered page"
+    )
