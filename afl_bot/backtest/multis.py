@@ -348,6 +348,8 @@ def walk_forward_multi_predictions(
             leg_info = leg_info_by_match[match_id]
             for rung in search_match_sgms(match_legs, lcb_z=lcb_z, price_shrink=price_shrink,
                                           corr_gain_haircut=corr_gain_haircut):
+                if rung.get("no_bet"):
+                    continue
                 hits = []
                 for leg_name in rung["legs"]:
                     hit = _leg_actual_hit(leg_info[leg_name], h2h_actual, player_stat)

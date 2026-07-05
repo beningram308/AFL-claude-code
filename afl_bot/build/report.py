@@ -308,6 +308,9 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
     # Drop combos where combined tackles+marks legs exceed the combined cap.
     combos = [c for c in combos if c.get("_n_tackle_marks", 0) <= MAX_TACKLE_MARKS_LEGS]
 
+    # Lookup for cross-rung player diversity (FIX-NO-PLAYER-DOUBLE-UPS).
+    leg_subject = {leg.name: leg.subject for leg in legs}
+
     # Stable tie-break key: sorted leg names guarantee the same combo always
     # wins when two candidates score identically on the primary sort key.
     def _leg_key(c: dict) -> tuple:
@@ -412,6 +415,7 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
 
     selected: list[dict] = []
     chosen: set[int] = set()
+    used_players: set[str] = set()
 
     def _no_bet_sentinel(target: float) -> dict:
         return {"legs": [], "target_odds": target, "no_bet": True,
@@ -422,9 +426,16 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
                 "value_pick": False}
 
     for i, target in enumerate(target_odds):
-        # Only look at combos not yet claimed by an earlier band.  No fallback
-        # to already-chosen combos — each band must find its own in-window pick.
-        available = [c for c in combos if id(c) not in chosen]
+        # Only look at combos not yet claimed by an earlier band, and exclude
+        # combos containing any player already used in a prior rung
+        # (FIX-NO-PLAYER-DOUBLE-UPS): "total" subjects are not players.
+        available = [
+            c for c in combos if id(c) not in chosen
+            and not any(
+                leg_subject.get(n) not in (None, "total") and leg_subject[n] in used_players
+                for n in c["legs"]
+            )
+        ]
         is_top = (i == len(target_odds) - 1)
         if is_top:
             # Sanity gate: base edge within plausible range; rank by total EV (promo-aware).
@@ -451,6 +462,10 @@ def search_match_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs: 
             continue
         pick["target_odds"] = target
         chosen.add(id(pick))
+        used_players.update(
+            leg_subject[n] for n in pick["legs"]
+            if leg_subject.get(n) not in (None, "total")
+        )
         selected.append(pick)
 
     for pick in selected:
@@ -541,6 +556,9 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
     if not priced:
         return []
 
+    # Lookup for cross-rung player diversity (FIX-NO-PLAYER-DOUBLE-UPS).
+    leg_subject = {leg.name: leg.subject for leg in legs}
+
     def _leg_key(c: dict) -> tuple:
         return tuple(sorted(c["legs"]))
 
@@ -620,10 +638,18 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
 
     selected: list[dict] = []
     chosen: set[int] = set()
+    used_players: set[str] = set()
     for i, target in enumerate(target_odds):
         # No fallback to already-chosen combos — each band uses only unclaimed
-        # combos within its window.
-        available = [c for c in priced if id(c) not in chosen]
+        # combos within its window, and combos containing any player already
+        # used in a prior rung (FIX-NO-PLAYER-DOUBLE-UPS).
+        available = [
+            c for c in priced if id(c) not in chosen
+            and not any(
+                leg_subject.get(n) not in (None, "total") and leg_subject[n] in used_players
+                for n in c["legs"]
+            )
+        ]
         is_top = (i == len(target_odds) - 1)
         if is_top:
             # Top rung: value pick from combos in window with positive, plausible edge.
@@ -642,6 +668,10 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
             continue
         pick["target_odds"] = target
         chosen.add(id(pick))
+        used_players.update(
+            leg_subject[n] for n in pick["legs"]
+            if leg_subject.get(n) not in (None, "total")
+        )
         selected.append(pick)
 
     # Promote haircut joint as the reported joint_prob/fair_odds.

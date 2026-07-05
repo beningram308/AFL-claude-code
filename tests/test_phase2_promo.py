@@ -278,15 +278,18 @@ def test_value_pick_present_on_top_band_with_odds():
     """With book odds and positive edge, the top band should be tagged VALUE PICK."""
     rng = np.random.default_rng(1)
     n = 40_000
-    probs = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55, "F": 0.42}
+    # 9 distinct players: diversity uses 3 per rung, leaving fresh players for
+    # the top band ($5.00). Band 1 ($2.10) takes B,C,D; top band ($5.00) picks
+    # from the remaining A,E,G (joint ≈ 0.188, in $5 window [0.154, 0.200]).
+    probs = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55,
+             "F": 0.42, "G": 0.38, "H": 0.35, "I": 0.32}
     legs = []
     for name, p in probs.items():
         mask = rng.random(n) < p
         prob = float(mask.mean())
         legs.append(_leg(f"{name} 15+", prob, mask, name, odds=(1.0 / prob) * 1.05))
     odds_book = {leg.name: leg.market_odds for leg in legs}
-    # 6-leg pool: min joint D+E+F ≈ 0.157 → fair ≈ 6.37 (in $5 window [5.00, 6.50]).
-    # $8 and $15 bands are unreachable (NO BET). Cap at $5 so $5 is the top band.
+    # Cap at $5 so $5 is the top band (bands $8/$15 are out of window).
     out = search_match_sgms(legs, odds_book=odds_book,
                             target_odds=(2.10, 2.75, 3.50, 5.00))
     picks = [r for r in out if r.get("value_pick")]

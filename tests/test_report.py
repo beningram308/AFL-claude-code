@@ -93,7 +93,9 @@ def test_search_match_sgms_excludes_conflicts():
 
 
 def test_search_match_sgms_top_band_value_pick_is_shrunk_and_capped():
-    # Use a 9-leg pool to cover all 6 bands (6-leg pool can't reach $8/$15 targets).
+    # 9 distinct players → diversity constraint allows 3 real rungs (3 players each).
+    # Use target_odds=(2.10, 3.50, 5.00) so the top band ($5.00) can be filled
+    # without reusing the players from band 1 (B,C,D) or band 2 (empty/NO BET).
     rng = np.random.default_rng(5)
     n = 40_000
     probs9 = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55,
@@ -105,7 +107,8 @@ def test_search_match_sgms_top_band_value_pick_is_shrunk_and_capped():
         wide_legs.append(_leg(f"{name} 15+ disp", mask.mean(), mask, name,
                               odds=(1.0 / mask.mean()) * odds_mult))
     odds_book = {leg.name: leg.market_odds for leg in wide_legs}
-    out = search_match_sgms(wide_legs, odds_book=odds_book)
+    out = search_match_sgms(wide_legs, odds_book=odds_book,
+                            target_odds=(2.10, 3.50, 5.00))
     picks = [r for r in out if r.get("value_pick")]
     assert len(picks) == 1                             # only the top rung is the value pick
     vp = picks[0]
@@ -387,7 +390,9 @@ def test_search_market_sgms_only_fully_priced_combos():
 
 
 def test_search_market_sgms_value_pick_is_real_edge_only():
-    # Use 9-leg pool so all 6 bands are reachable — 6-leg pool tops out below $8.
+    # 9 distinct players → diversity constraint allows 3 real rungs (3 players each).
+    # Use target_odds=(2.10, 3.50, 5.00) so the top band ($5.00) can be filled
+    # without reusing the players from band 1 (B,C,D) or band 2 (empty/NO BET).
     rng = np.random.default_rng(5)
     n = 40_000
     probs9 = {"A": 0.90, "B": 0.85, "C": 0.78, "D": 0.68, "E": 0.55,
@@ -399,7 +404,8 @@ def test_search_market_sgms_value_pick_is_real_edge_only():
         wide_legs.append(_leg(f"{name} 15+ disp", mask.mean(), mask, name,
                               odds=(1.0 / mask.mean()) * odds_mult))
     odds_book = {leg.name: leg.market_odds for leg in wide_legs}
-    out = search_market_sgms(wide_legs, odds_book=odds_book)
+    out = search_market_sgms(wide_legs, odds_book=odds_book,
+                             target_odds=(2.10, 3.50, 5.00))
     picks = [r for r in out if r.get("value_pick")]
     assert len(picks) == 1                             # only the top-band rung is value pick
     vp = picks[0]
@@ -713,7 +719,10 @@ def test_search_match_sgms_deep_pool_yields_up_to_6_distinct_rungs():
 
     out = search_match_sgms(legs)
     assert len(out) == len(MULTI_TARGET_ODDS)   # one rung per target (6 bands)
-    all_leg_tuples = [tuple(sorted(r["legs"])) for r in out]
+    # Only real (non-NO BET) rungs must use distinct combos; multiple NO BET
+    # sentinels are fine — they share legs=[] but aren't real bets.
+    real_out = [r for r in out if not r.get("no_bet")]
+    all_leg_tuples = [tuple(sorted(r["legs"])) for r in real_out]
     assert len(all_leg_tuples) == len(set(all_leg_tuples)), "Duplicate combos in ladder"
     for r in out:
         subjects = [n.split()[0] for n in r["legs"]]   # first word of each leg name = subject
@@ -1032,6 +1041,67 @@ def test_total_points_excluded_from_market_sgms_when_unpriced():
     out = search_market_sgms(pool, odds_book=odds_book, min_joint_prob=0.0)
     for r in out:
         assert not any("Total points" in name for name in r["legs"])
+
+
+def test_no_player_double_ups_in_model_ladder():
+    """FIX-NO-PLAYER-DOUBLE-UPS: a player used in rung 1 must not appear in rung 2+."""
+    rng = np.random.default_rng(42)
+    n = 40000
+    # Player "X" has two legs covering different bands.  If double-ups were
+    # allowed, X could win rung 1 ($2.10) and rung 2 ($3.00) simultaneously.
+    # Create enough other players so each band CAN be filled without X.
+    probs = {"X": 0.90, "A": 0.85, "B": 0.78, "C": 0.68, "D": 0.55, "E": 0.42}
+    legs = []
+    for subj, p in probs.items():
+        mask = rng.random(n) < p
+        legs.append(_leg(f"{subj} 15+ disp", float(mask.mean()), mask, subj))
+    # Also add a second leg for "X" (different line, different LegCandidate but same subject).
+    x_mask2 = rng.random(n) < 0.82
+    legs.append(_leg("X 20+ disp", float(x_mask2.mean()), x_mask2, "X"))
+
+    out = search_match_sgms(legs, min_joint_prob=0.01)
+    real_rungs = [r for r in out if not r.get("no_bet")]
+    # Collect all player subjects across all rungs.
+    all_players: list[str] = []
+    leg_subj = {leg.name: leg.subject for leg in legs}
+    for r in real_rungs:
+        for lname in r["legs"]:
+            s = leg_subj.get(lname, "total")
+            if s != "total":
+                all_players.append(s)
+    # No player should appear more than once across all rungs.
+    assert len(all_players) == len(set(all_players)), \
+        f"Player double-up detected: {all_players}"
+
+
+def test_no_player_double_ups_in_market_ladder():
+    """FIX-NO-PLAYER-DOUBLE-UPS: same constraint for the Sportsbet (market) ladder."""
+    rng = np.random.default_rng(7)
+    n = 40000
+    # Player "X" has two legs; each is priced. Force X into the lowest band
+    # to confirm X is then excluded from higher bands.
+    probs = {"X": 0.90, "A": 0.85, "B": 0.78, "C": 0.68, "D": 0.55, "E": 0.42}
+    legs = []
+    for subj, p in probs.items():
+        mask = rng.random(n) < p
+        odds = round(1.0 / p, 2)
+        legs.append(_leg(f"{subj} 15+ disp", float(mask.mean()), mask, subj, odds=odds))
+    x_mask2 = rng.random(n) < 0.82
+    x2_odds = round(1.0 / 0.82, 2)
+    legs.append(_leg("X 20+ disp", float(x_mask2.mean()), x_mask2, "X", odds=x2_odds))
+
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.01)
+    real_rungs = [r for r in out if not r.get("no_bet")]
+    all_players: list[str] = []
+    leg_subj = {leg.name: leg.subject for leg in legs}
+    for r in real_rungs:
+        for lname in r["legs"]:
+            s = leg_subj.get(lname, "total")
+            if s != "total":
+                all_players.append(s)
+    assert len(all_players) == len(set(all_players)), \
+        f"Player double-up detected in market ladder: {all_players}"
 
 
 # --------------------------------------------------------------------------- #
