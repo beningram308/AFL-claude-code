@@ -1,0 +1,143 @@
+========================================================================
+DO — STAKE-CAP BACKTEST: WHICH UNIT_MAX GREW THE BANKROLL?
+For: Claude Code   |  Written: 2026-07-10
+DIAGNOSTIC ONLY. No model/config/staking change in this run.
+Build a new read-only tool + report, commit it. Touch NOTHING the live
+bot uses to price or stake.
+========================================================================
+
+WHY
+Ben's staking is quarter-Kelly with a hard per-bet cap UNIT_MAX = 3u. On the
+strongest promo multis, quarter-Kelly wants MORE than 3u, so they clip to 3u and
+all look identical. Question: is 3u the right ceiling, or would 1.5u / 2u / 4u
+have grown the bankroll more (and at what drawdown)? Answer it with the record,
+two ways — a realized replay and a probabilistic sim — instead of opinion.
+
+This is a WHAT-IF sweep. It must not change how the live bot prices, sizes, or
+settles anything. It only re-reads past rounds and re-scores them at different
+cap settings.
+
+------------------------------------------------------------------------
+HARD RULES (read twice)
+------------------------------------------------------------------------
+- NO edits to config.py, staking.py, or any staking/pricing/model path.
+- size_multi_units() ALREADY takes unit_max / unit_max_longshot / promo_refund_cap
+  / bankroll / unit_size as parameters. Call it with OVERRIDDEN values from the
+  backtest. Do not modify its body. If a needed knob isn't already a parameter,
+  pass a local copy — never edit the live function.
+- Reuse the EXISTING leg-grading and promo-settlement logic (the same code
+  grade-round / settle-bets uses) by importing it. Do NOT reimplement settlement
+  or refund maths — consistency matters and we don't want two versions drifting.
+- Everything read-only: reports/*_multis.json, reports/*_predictions.csv,
+  reports/bets_ledger.json, reports/calibration_log.csv, and the parquet stat
+  caches. Write ONE new report file. Do not rewrite any existing report.
+- New standalone subcommand (e.g. `stake-cap-backtest`) or a script under a
+  backtest/ module. New tests. Commit as new files only.
+
+------------------------------------------------------------------------
+DATA / SCOPE
+------------------------------------------------------------------------
+- Use only rounds that have REAL Sportsbet book prices (so stake sizing is real,
+  not model-fair). That's roughly 2026 R14–R18 — whatever reports/<yr>_r<N>_multis.json
+  files exist with book_combo populated. State the exact rounds used in the report.
+- For each such round, pull every rung from BOTH ladders (model "sgms" and
+  sportsbet "market_sgms") plus pull_em that carried a real book price and was
+  staked by the live formula (units > 0 OR would be staked at some cap). Each rung
+  already carries the fields we need: book_combo/book_odds, joint_prob, total_ev,
+  and the promo branch probs p_all_win / p_one_loss (=> p_dead = 1 - the two),
+  promo_ev, plus the leg list.
+- Point-in-time is automatic: these multis.json were generated live each week, so
+  the probabilities and prices are exactly what was known then. Do NOT re-run the
+  model or refit anything — no leakage.
+
+------------------------------------------------------------------------
+VERSION A — REALIZED REPLAY  (what LITERALLY would have happened)
+------------------------------------------------------------------------
+For each candidate cap in the sweep:
+1. Re-size every rung by calling size_multi_units() with unit_max = candidate
+   (everything else identical: KELLY_FRACTION, promo_refund_cap, unit_step,
+   longshot cap, PROMO_EV_MIN eligibility floor). Keep the round-cap OFF to match
+   the current live setting, but expose it as a parameter (see sweep).
+2. Settle each rung against ACTUAL results by grading its legs from the box-score
+   stats (reuse existing grader). Apply the real promo/stake-back settlement:
+     - all legs hit            -> profit = stake * (book_odds - 1)
+     - exactly one leg misses  -> stake-back refund; net = -(1 - refund_factor)*stake
+                                  (refund_factor = BONUS_BET_FACTOR, ~0.75)
+     - two or more miss        -> net = -stake
+   Straight (non-promo) rungs settle plain win/lose, no refund. Use the tag/branch
+   data already on the rung to decide which settlement applies — same as the live
+   ledger.
+3. Chain rounds in date order into one bankroll curve (start = live BANKROLL 1500).
+4. Report per cap: n bets, total staked, total returned, net profit, ROI %,
+   ending bankroll, and max drawdown (peak-to-trough on the curve).
+
+Honesty note to print in the report: this is ~5 rounds, so it's a SMALL, luck-heavy
+sample — one or two multis dominate. Treat Version A as "what happened," not "what's
+optimal."
+
+------------------------------------------------------------------------
+VERSION B — PROBABILISTIC BANKROLL SIM  (is the EDGE real, luck aside)
+------------------------------------------------------------------------
+For each candidate cap:
+1. Take the same set of recommended rungs, sized at that cap.
+2. Monte Carlo N = 10,000 bankroll paths. Each path replays the bets in date
+   order; for each bet draw its outcome from its OWN modelled branch probs:
+     win  with p_all_win        -> +stake*(book_odds-1)
+     refund with p_one_loss     -> -(1 - refund_factor)*stake
+     dead with p_dead           -> -stake
+   (straight bets: win with joint_prob, else lose.)
+3. Two staking modes, report both:
+     (a) FIXED unit ($15) off the live 1500 bankroll — matches current behaviour.
+     (b) COMPOUNDING — recompute stake off the running bankroll each bet (truer
+         Kelly growth read).
+4. Aggregate across the 10k paths per cap: median ending bankroll, mean, 5th &
+   95th percentile, median max drawdown, P(ending below start), P(drawdown > 20%).
+
+This leans on the model's probabilities rather than which bets happened to land,
+so it reflects the underlying edge — PROVIDED the model is calibrated.
+
+------------------------------------------------------------------------
+CROSS-CHECK  (don't trust the sim blindly)
+------------------------------------------------------------------------
+Print modelled hit-rate (sum of p_all_win over the bets) vs the ACTUAL realized
+hit-rate from Version A. Also pull the prop/multi calibration numbers from
+reports/calibration_log.csv. If modelled and actual win-rates diverge a lot, say
+so plainly — it means Version B is optimistic/pessimistic and Version A (or a
+recalibration) should be trusted more. If they agree, the sim's cap ranking is
+credible.
+
+------------------------------------------------------------------------
+PARAMETERS TO SWEEP
+------------------------------------------------------------------------
+- UNIT_MAX in {1.5, 2.0, 3.0, 4.0}  (primary question)
+- Optional secondary: KELLY_FRACTION in {0.20, 0.25, 0.33} to show how the cap
+  interacts with Kelly aggressiveness.
+- Optional: round-cap ON (15u) vs OFF, since that was just removed — show what the
+  cap removal costs/earns.
+All passed as CLI flags / function args. None of them written back to config.
+
+------------------------------------------------------------------------
+OUTPUT
+------------------------------------------------------------------------
+- Save reports/stake_cap_backtest.md with:
+    * the exact rounds + number of bets used
+    * VERSION A table: cap | n | staked | returned | net | ROI% | end bankroll | maxDD
+    * VERSION B table: cap | median end | mean | p5 | p95 | median maxDD | P(down) | P(DD>20%)
+      (fixed-unit and compounding, side by side)
+    * the A-vs-B hit-rate cross-check
+    * a plain-English verdict: which cap grew the bankroll most, whether the extra
+      growth from a bigger cap justifies the extra drawdown, and whether the
+      realized sample agrees with the modelled edge. Explicitly note the small
+      sample. PROPOSE a cap if the data supports one, but DO NOT change UNIT_MAX
+      in this run.
+- Print the summary to console.
+- New tests green (settlement branches: all-win / one-miss-refund / 2+ miss; and
+  that a bigger cap never reduces a single rung's stake below a smaller cap's).
+- Full suite green. Commit the new tool + report. Push.
+
+------------------------------------------------------------------------
+REMEMBER
+------------------------------------------------------------------------
+Diagnostic only. The live bot's config, staking, pricing, and model are untouched.
+The deliverable is a read-only what-if report that tells Ben which cap the record
+supports — the decision stays his.

@@ -2597,6 +2597,18 @@ def main(argv: list[str] | None = None) -> None:
     evdiag_p.add_argument("--year", type=int, required=True)
     evdiag_p.add_argument("--round", type=int, required=True, dest="round_no")
 
+    scap_p = sub.add_parser("stake-cap-backtest",
+                             help="DIAGNOSTIC ONLY: which UNIT_MAX would have grown the bankroll "
+                                  "most, replayed two ways (realized + probabilistic sim) over "
+                                  "past rounds with real Sportsbet book prices. Does not change "
+                                  "UNIT_MAX or any other live config.")
+    scap_p.add_argument("--caps", type=str, default="1.5,2.0,3.0,4.0",
+                        help="Comma-separated UNIT_MAX candidates to sweep (default: 1.5,2.0,3.0,4.0).")
+    scap_p.add_argument("--n-sims", type=int, default=10_000, dest="n_sims",
+                        help="Monte Carlo paths per cap for the probabilistic sim (default: 10000).")
+    scap_p.add_argument("--out", type=str, default=None, dest="out_path",
+                        help="Output markdown path (default: reports/stake_cap_backtest.md).")
+
     args = parser.parse_args(argv)
     if args.command == "run-round":
         run_round(args.year, args.round_no, args.odds, args.n_sims,
@@ -2666,6 +2678,11 @@ def main(argv: list[str] | None = None) -> None:
                                multis_round=args.multis_round)
     elif args.command == "ev-diagnostic":
         ev_diagnostic(args.year, args.round_no)
+    elif args.command == "stake-cap-backtest":
+        from afl_bot.backtest.stake_cap import stake_cap_backtest_command
+        caps = tuple(float(c) for c in args.caps.split(","))
+        stake_cap_backtest_command(unit_max_candidates=caps, n_sims=args.n_sims,
+                                   out_path=args.out_path)
 
 
 if __name__ == "__main__":
