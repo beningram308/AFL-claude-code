@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from afl_bot.config import BONUS_BET_FACTOR, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP, UNIT_SIZE, UNIT_STEP
+from afl_bot.config import BONUS_BET_FACTOR, KELLY_PER_BET_CAP, UNIT_SIZE, UNIT_STEP
 from afl_bot.build.staking import (
     bankroll_report,
     fractional_kelly_fraction,
@@ -29,17 +29,16 @@ def test_fractional_kelly_applies_fraction_and_cap():
 
 
 def test_stake_bets_sizes_each_bet_independently():
-    # stake_bets must NOT enforce any round-level cap — each bet gets its own Kelly.
-    # 10 identical bets each at per-bet cap (5%) → total = 50%, well over KELLY_PER_ROUND_CAP.
-    # The round cap is enforced upstream by _apply_round_cap, not here.
+    # stake_bets must NOT enforce any round-level cap — each bet gets its own Kelly,
+    # with no cross-rung influence anywhere in the pipeline (round cap removed 2026-07-10).
     bets = [(f"b{i}", 0.6, 2.0) for i in range(10)]  # each capped at 5%
     staked = stake_bets(bets, 1000.0)
     assert all(abs(s.fraction - KELLY_PER_BET_CAP) < 1e-9 for s in staked), (
         "Each bet must get its independent per-bet-capped Kelly fraction"
     )
     total_frac = sum(s.fraction for s in staked)
-    assert total_frac > KELLY_PER_ROUND_CAP, (
-        "stake_bets must NOT scale down to the round cap — that's _apply_round_cap's job"
+    assert total_frac > 0.15, (
+        "stake_bets must NOT scale down to any round-level total — no round cap exists"
     )
     assert all(s.stake == s.fraction * 1000.0 for s in staked)
 
@@ -132,16 +131,54 @@ def test_recommend_units_no_edge_returns_no_bet():
 
 
 def test_recommend_units_promo_kelly_positive():
-    # No base edge (joint=0.20 × odds=3.5 = 0.70 < 1), but promo gives positive Kelly.
+    # No base edge (joint=0.20 × odds=3.5 = 0.70 < 1), but promo gives positive Kelly
+    # and promo_ev clears PROMO_EV_MIN (0.10).
     # p_win=0.25, p_one_loss=0.40, p_dead=0.35, odds=3.5, R=0.75
     # g'(0) = 0.25*2.5 + 0.40*(-0.25) - 0.35 = 0.625 - 0.10 - 0.35 = 0.175 > 0
     units, tag = recommend_units(
-        0.20, 3.5, promo_ev=0.10,
+        0.20, 3.5, promo_ev=0.15,
         p_win=0.25, p_one_loss=0.40, p_dead=0.35,
     )
     assert units > 0.0
     assert "PROMO KELLY" in tag
     assert abs(units % UNIT_STEP) < 1e-9 or abs(units % UNIT_STEP - UNIT_STEP) < 1e-9
+
+
+def test_recommend_units_promo_kelly_below_ev_floor_no_bet():
+    # No total_ev supplied -> gate falls back to promo_ev, which sits below
+    # PROMO_EV_MIN (0.10) -> must NOT stake even though multi_outcome_kelly
+    # itself would say f*>0.
+    units, tag = recommend_units(
+        0.20, 3.5, promo_ev=0.05,
+        p_win=0.25, p_one_loss=0.40, p_dead=0.35,
+    )
+    assert units == 0.0
+    assert tag == "NO BET"
+
+
+def test_recommend_units_promo_kelly_gates_on_total_ev_not_promo_ev_alone():
+    # The 2026-07-09 real-world case: promo_ev alone (0.234) is large -- it would
+    # pass even the >0.10 floor on its own -- but total_ev = edge + promo_ev nets
+    # out to only +0.056 because the raw edge underneath is deeply negative. The
+    # gate must use total_ev (the number actually shown to the user as
+    # "Total EV -- that's the number to bet on"), not the isolated promo_ev, so
+    # this must be NO BET.
+    units, tag = recommend_units(
+        0.20, 3.5, promo_ev=0.234, total_ev=0.056,
+        p_win=0.25, p_one_loss=0.40, p_dead=0.35,
+    )
+    assert units == 0.0
+    assert tag == "NO BET"
+
+
+def test_recommend_units_promo_kelly_total_ev_above_floor_stakes():
+    # Same large promo_ev, but this time total_ev clears the floor -> stakeable.
+    units, tag = recommend_units(
+        0.20, 3.5, promo_ev=0.234, total_ev=0.15,
+        p_win=0.25, p_one_loss=0.40, p_dead=0.35,
+    )
+    assert units > 0.0
+    assert "PROMO KELLY" in tag
 
 
 def test_recommend_units_promo_kelly_neg_ev_no_bet():
@@ -282,82 +319,7 @@ def test_monotonicity_preserves_tag_when_no_reduction():
     assert rungs[1]["units_tag"] == "2u PROMO KELLY"
 
 
-def test_apply_round_cap_within_limit_no_change():
-    """When total units ≤ cap, _apply_round_cap must not alter any rung."""
-    from afl_bot.cli import _apply_round_cap
-
-    matches = [
-        {
-            "sgms": [
-                {"total_ev": 0.20, "units": 3.0, "units_tag": "3u KELLY",       "no_bet": False},
-                {"total_ev": 0.10, "units": 2.0, "units_tag": "2u PROMO KELLY", "no_bet": False},
-            ],
-            "market_sgms": [],
-            "pull_em": {"no_valid_combo": True},
-        }
-    ]
-    _apply_round_cap(matches)
-
-    assert matches[0]["sgms"][0]["units"] == 3.0
-    assert matches[0]["sgms"][1]["units"] == 2.0
-
-
-def test_apply_round_cap_allocates_budget_top_ev_first():
-    """Budget allocator: top-EV rungs keep FULL formula units; overflow → NO BET (round cap)."""
-    from afl_bot.cli import _apply_round_cap
-    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
-
-    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE  # 15u
-
-    # A(0.30, 8u) + B(0.20, 7u) + C(0.05, 4u) = 19u > 15u.
-    # Budget walk (desc EV): A=8u (budget→7u), B=7u (budget→0u), C→NO BET.
-    rung_a = {"total_ev": 0.30, "units": 8.0, "units_tag": "8u KELLY"}
-    rung_b = {"total_ev": 0.20, "units": 7.0, "units_tag": "7u KELLY"}
-    rung_c = {"total_ev": 0.05, "units": 4.0, "units_tag": "4u KELLY"}
-
-    matches = [{"sgms": [rung_a, rung_b, rung_c], "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
-    _apply_round_cap(matches)
-
-    assert rung_a["units"] == 8.0, "Highest-EV rung must keep full formula units"
-    assert rung_b["units"] == 7.0, "Second-EV rung must keep full formula units"
-    assert rung_c["units"] == 0.0, "Overflow rung must be zeroed"
-    assert "round cap" in rung_c["units_tag"], "Overflow tag must mention round cap"
-    total_after = rung_a["units"] + rung_b["units"] + rung_c["units"]
-    assert total_after <= cap + 1e-9, f"Total {total_after:.2f}u exceeds cap {cap}u"
-
-
-def test_apply_round_cap_pull_em_counts_toward_total():
-    """Pull 'Em units must count toward the round cap."""
-    from afl_bot.cli import _apply_round_cap
-    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
-
-    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
-
-    # A single SGM rung at cap - 1u, plus a Pull 'Em at 2u → total over cap
-    rung = {"total_ev": 0.20, "units": cap - 1.0, "units_tag": f"{cap-1:g}u KELLY", "no_bet": False}
-    pull_em = {
-        "no_valid_combo": False,
-        "total_ev": 0.05,
-        "units": 2.0,
-        "units_tag": "2u KELLY",
-        "no_bet": False,
-    }
-    matches = [
-        {
-            "sgms": [rung],
-            "market_sgms": [],
-            "pull_em": pull_em,
-        }
-    ]
-    _apply_round_cap(matches)
-
-    total_after = rung["units"] + pull_em.get("units", 0)
-    assert total_after <= cap + 1e-9, (
-        f"Round total {total_after:.2f}u must be ≤ cap {cap}u even counting Pull 'Em"
-    )
-
-
-# ── FIX-RESTORE-PROMO-KELLY-UNITS: per-bet formula + budget allocator ─────────
+# ── FIX-RESTORE-PROMO-KELLY-UNITS: per-bet formula, no round-level cap ────────
 
 
 def test_promo_kelly_high_frac_gives_3u():
@@ -381,53 +343,21 @@ def test_promo_kelly_high_frac_gives_3u():
     assert abs(units * UNIT_SIZE / BANKROLL - 0.03) < 1e-9, "stake% must be 45/1500 = 3%"
 
 
-def test_apply_round_cap_overflow_becomes_no_bet_round_cap():
-    """Rungs that don't fit in the budget get 'NO BET (round cap)', not scaled down."""
-    from afl_bot.cli import _apply_round_cap
-    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
-
-    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE  # 15u
-
-    # Six 3u promo Kelly rungs → 18u total, 3u over budget.
-    # Top 5 (15u) fit; 6th rung → NO BET (round cap).
-    rungs = [
-        {"total_ev": 0.35 - i * 0.02, "units": 3.0, "units_tag": "3u PROMO KELLY"}
-        for i in range(6)
-    ]
-    matches = [{"sgms": rungs, "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
-    _apply_round_cap(matches)
-
-    for i in range(5):
-        assert rungs[i]["units"] == 3.0, f"Rung {i} (EV={0.35-i*0.02:.2f}) must keep 3u"
-    assert rungs[5]["units"] == 0.0, "6th rung must be zeroed as overflow"
-    assert "round cap" in rungs[5]["units_tag"], "Overflow tag must mention round cap"
-    total = sum(r["units"] for r in rungs)
-    assert total <= cap + 1e-9
-
-
-def test_apply_round_cap_never_produces_uniform_0_25u():
-    """When formula gives 3u for top rungs, those rungs must survive the cap at 3u."""
-    from afl_bot.cli import _apply_round_cap
-    from afl_bot.config import KELLY_PER_ROUND_CAP, BANKROLL, UNIT_SIZE
-
-    cap = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
-
-    # Two high-EV 3u promo rungs + many 0.25u rungs — budget allocator preserves the 3u rungs.
-    rungs_high = [
-        {"total_ev": 0.35, "units": 3.0, "units_tag": "3u PROMO KELLY"},
-        {"total_ev": 0.30, "units": 3.0, "units_tag": "3u PROMO KELLY"},
-    ]
-    rungs_low = [
-        {"total_ev": 0.10 - i * 0.001, "units": 0.25, "units_tag": "0.25u PROMO KELLY"}
-        for i in range(40)
-    ]
-    matches = [{"sgms": rungs_high + rungs_low, "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
-    _apply_round_cap(matches)
-
-    assert rungs_high[0]["units"] == 3.0, "High-EV 3u rung must not be flattened to 0.25u"
-    assert rungs_high[1]["units"] == 3.0, "High-EV 3u rung must not be flattened to 0.25u"
-    total = sum(r["units"] for r in rungs_high + rungs_low)
-    assert total <= cap + 1e-9
+def test_apply_round_cap_fully_removed():
+    # Grep-style test: the round-level budget allocator must not exist anywhere
+    # (2026-07-10: removed per Ben's request -- every rung that clears
+    # PROMO_EV_MIN now shows its own per-bet Kelly units, nothing gets
+    # crowded out into "NO BET (round cap)" by a round-wide 15u ceiling).
+    import subprocess, sys
+    result = subprocess.run(
+        [sys.executable, "-c",
+         "import afl_bot.cli as c\n"
+         "assert not hasattr(c, '_apply_round_cap'), '_apply_round_cap still in cli.py'\n"
+         "import afl_bot.config as cfg\n"
+         "assert not hasattr(cfg, 'KELLY_PER_ROUND_CAP'), 'KELLY_PER_ROUND_CAP still in config'\n"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 # ── FIX-BUDGET-IS-CEILING-NOT-TARGET ──────────────────────────────────────────
@@ -435,7 +365,8 @@ def test_apply_round_cap_never_produces_uniform_0_25u():
 
 def test_same_rung_gets_identical_units_regardless_of_round_size():
     """A rung with fixed probs/price must produce the same units in a 1-game round
-    and a 6-game round. The number of rungs in the round must have zero influence."""
+    and a 6-game round. The number of rungs in the round must have zero influence
+    (no round-level cap exists to make one rung's units depend on any other's)."""
     # A well-edged rung: joint_prob=0.55, odds=2.10
     units_solo, _ = recommend_units(0.55, 2.10)
     assert units_solo > 0.0, "Reference rung must have positive edge"
@@ -447,17 +378,3 @@ def test_same_rung_gets_identical_units_regardless_of_round_size():
         assert units == units_solo, (
             f"Same rung must give {units_solo}u regardless of round size, got {units}u"
         )
-
-
-def test_round_under_budget_units_unchanged():
-    """When the round total is under the cap, _apply_round_cap must not alter any units."""
-    from afl_bot.cli import _apply_round_cap
-
-    # Build a round that's comfortably under cap: two 1u rungs → 2u << 15u cap.
-    rung_a = {"total_ev": 0.15, "units": 1.0, "units_tag": "1u KELLY", "no_bet": False}
-    rung_b = {"total_ev": 0.10, "units": 1.0, "units_tag": "1u KELLY", "no_bet": False}
-    matches = [{"sgms": [rung_a, rung_b], "market_sgms": [], "pull_em": {"no_valid_combo": True}}]
-    _apply_round_cap(matches)
-
-    assert rung_a["units"] == 1.0, "Under-budget round must not change rung A's units"
-    assert rung_b["units"] == 1.0, "Under-budget round must not change rung B's units"

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template_string, request, url_for
 
-from afl_bot.config import BANKROLL, KELLY_PER_ROUND_CAP, ROOT_DIR, UNIT_SIZE
+from afl_bot.config import ROOT_DIR, UNIT_SIZE
 from afl_bot.dashboard.ledger import (
     add_bet,
     add_manual_bet,
@@ -132,7 +132,6 @@ def index():
     n_clv_unavail = sum(1 for b in bets if b.get("close_captured_at")
                         and not b.get("clv_available"))
     round_total_units = sum(r.get("units", 0.0) for r in records if r.get("units", 0.0) > 0)
-    round_cap_units = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
     round_total_dollars = round_total_units * UNIT_SIZE
     return render_template_string(
         _TEMPLATE,
@@ -143,7 +142,6 @@ def index():
         n_clv_pending=n_clv_pending, n_clv_unavail=n_clv_unavail,
         round_total_units=round_total_units,
         round_total_dollars=round_total_dollars,
-        round_cap_units=round_cap_units,
         generated_at=generated_at,
         stale_warning=stale_warning,
         ledger_corruption=ledger_corruption,
@@ -486,8 +484,8 @@ _TEMPLATE = r"""<!DOCTYPE html>
   <div id="no-data">No multis data for this round. Run <code>round-report --sportsbet</code> first.</div>
   {% else %}
   <div style="margin:8px 0 12px 0;font-size:12px;color:var(--muted)">
-    Round total: <strong style="color:{% if round_total_units > round_cap_units %}var(--red){% else %}var(--green){% endif %}">{{ '%.2f'|format(round_total_units) }}u / ${{ '%.2f'|format(round_total_dollars) }}</strong>
-    of {{ '%.0f'|format(round_cap_units) }}u cap
+    Round total: <strong>{{ '%.2f'|format(round_total_units) }}u / ${{ '%.2f'|format(round_total_dollars) }}</strong>
+    (no round cap — every rung stakes its own per-bet-capped Kelly)
   </div>
   {% endif %}
 
@@ -515,6 +513,12 @@ _TEMPLATE = r"""<!DOCTYPE html>
       <tr><th>Legs</th><th>Band</th><th>Joint%</th><th>Fair</th>
         <th>Book combo</th><th>Edge</th><th>Total EV</th><th>Stake</th><th>Units</th><th>$</th><th>Pick</th><th></th></tr>
       {% for r in g.model %}
+      {% if r.get('no_bet') %}
+      <tr style="color:var(--muted);font-style:italic">
+        <td colspan="2">Band ${{ '%.2f'|format(r.band) }}</td>
+        <td colspan="10" style="color:var(--muted)">NO BET — no combo in band window</td>
+      </tr>
+      {% else %}
       <tr class="rung-row" data-ladder="model" data-value="{{ 'true' if r.value_pick else 'false' }}">
         <td>{% for leg in r.legs %}{{ leg.name }}{% if leg.hit_prob %} <span style="color:var(--muted);font-size:11px">({{ '%.0f'|format(leg.hit_prob * 100) }}%)</span>{% else %} <span style="color:var(--muted);font-size:11px">(—)</span>{% endif %}{% if not loop.last %} + {% endif %}{% endfor %}</td>
         <td>${{ '%.2f'|format(r.band) }}</td>
@@ -545,6 +549,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
           <button class="btn btn-sm btn-primary" onclick="openPlace('{{ r.id }}','{{ r.game }}',{{ r.book_combo or r.model_fair }},{{ r.get('units', 0) * 15 }})">Place</button>
         </td>
       </tr>
+      {% endif %}
       {% endfor %}
     </table>
     {% endif %}

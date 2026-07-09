@@ -18,8 +18,8 @@ import numpy as np
 import math
 
 from afl_bot.config import (
-    BANKROLL, BONUS_BET_FACTOR, KELLY_FRACTION, KELLY_PER_BET_CAP, KELLY_PER_ROUND_CAP,
-    PROMO_REFUND_CAP, UNIT_MAX, UNIT_MAX_LONGSHOT, UNIT_SIZE, UNIT_STEP,
+    BANKROLL, BONUS_BET_FACTOR, KELLY_FRACTION, KELLY_PER_BET_CAP,
+    PROMO_EV_MIN, PROMO_REFUND_CAP, UNIT_MAX, UNIT_MAX_LONGSHOT, UNIT_SIZE, UNIT_STEP,
 )
 
 
@@ -50,14 +50,11 @@ class StakedBet:
 
 def stake_bets(bets: list[tuple[str, float, float]], bankroll: float, *,
                fraction: float = KELLY_FRACTION, per_bet_cap: float = KELLY_PER_BET_CAP,
-               per_round_cap: float = KELLY_PER_ROUND_CAP,
                mults: list[float] | None = None) -> list[StakedBet]:
     """Size bets by per-bet capped fractional Kelly.
 
     ``bets`` is ``[(name, prob, odds), ...]``. Each bet is sized independently
-    by its own shrunk-Kelly formula; the round-level cap (KELLY_PER_ROUND_CAP)
-    is enforced upstream by ``_apply_round_cap`` as a ceiling (lowest-EV rungs
-    dropped to NO BET), never by proportional scaling here.
+    by its own shrunk-Kelly formula, with no round-level cap or scaling.
     ``mults`` (aligned to ``bets``) scales individual bets' Kelly fraction —
     e.g. 0.5 for noisier prop legs. Zero-edge bets get zero stake.
     """
@@ -184,6 +181,7 @@ def recommend_units(
     book_odds: float | None,
     promo_ev: float | None = None,
     *,
+    total_ev: float | None = None,
     p_win: float | None = None,
     p_one_loss: float | None = None,
     p_dead: float | None = None,
@@ -194,6 +192,7 @@ def recommend_units(
     unit_max: float = UNIT_MAX,
     unit_max_longshot: float = UNIT_MAX_LONGSHOT,
     promo_refund_cap: float = PROMO_REFUND_CAP,
+    promo_ev_min: float = PROMO_EV_MIN,
 ) -> tuple[float, str]:
     """Return ``(units, tag)`` for a multi rung.
 
@@ -202,15 +201,21 @@ def recommend_units(
     - Positive edge (market-shrunk prob × book_odds > 1) → Kelly → rounded down to
       ``unit_step``, clipped to ``[unit_step, unit_max]`` (``unit_max_longshot`` when
       book_odds >= 5.0). Tag = ``"Nu"``.
-    - No/negative edge, promo branch probs available, and positive promo_ev → multi-outcome
+    - No/negative edge, promo branch probs available, and total_ev clears
+      ``promo_ev_min`` (a real combined-edge floor -- ``promo_ev`` alone is just the
+      isolated one-miss-refund component, p_one_loss*refund_factor, which is almost
+      always sizeable and says nothing about whether the bet is actually good; the
+      raw edge can still be deeply negative underneath it. ``total_ev`` = edge +
+      promo_ev is the number actually shown to the user as "Total EV -- that's the
+      number to bet on", so it's what has to clear the floor) → multi-outcome
       Kelly on the promo-adjusted payout; if f* ≤ 0 → ``(0.0, "NO BET")``, else
       ``(units, "Nu PROMO KELLY")``. Dollar stake capped at ``promo_refund_cap`` (bookie
       bonus-back cap); prints "(capped by promo refund limit)" when the cap bites.
-    - No edge, no promo → ``(0.0, "NO BET")``.
+    - No edge, no promo (or total_ev below the floor) → ``(0.0, "NO BET")``.
 
-    The per-round governor (KELLY_PER_ROUND_CAP) is a ceiling enforced upstream by
-    ``_apply_round_cap`` (lowest-EV rungs marked NO BET); this function sizes each
-    rung independently with no cross-rung influence.
+    There is no round-level cap: each rung sizes independently with no
+    cross-rung influence, capped only per-bet (``unit_max``/``unit_max_longshot``,
+    ``promo_refund_cap``) and by the ``promo_ev_min``/edge eligibility gates above.
     ``refund_factor`` (default BONUS_BET_FACTOR=0.75) is the value of the returned stake
     as a fraction; pass a higher R for Pull 'Em where the recovery payout can exceed the
     original stake.
@@ -229,8 +234,10 @@ def recommend_units(
         units = max(units, unit_step)   # at least 0.25u if Kelly says anything
         return (units, f"{units:g}u")
 
+    _real_ev = total_ev if total_ev is not None else promo_ev
     if (p_win is not None and p_one_loss is not None and p_dead is not None
-            and promo_ev is not None and promo_ev > 0.0):
+            and promo_ev is not None and _real_ev is not None
+            and _real_ev > promo_ev_min):
         frac_promo = multi_outcome_kelly(
             p_win, p_one_loss, p_dead, book_odds, refund_factor,
         )

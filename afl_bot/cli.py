@@ -70,7 +70,6 @@ from afl_bot.config import (
     CACHE_DIR,
     CORR_GAIN_HAIRCUT,
     DEFAULT_BANKROLL,
-    KELLY_PER_ROUND_CAP,
     LEG_PROB_MAX,
     LEG_PROB_MIN,
     MANUALLY_UNAVAILABLE,
@@ -742,59 +741,6 @@ def _enforce_ladder_monotonicity(rungs: list[dict]) -> None:
             min_units = u
 
 
-def _apply_round_cap(matches: list[dict]) -> None:
-    """Apply per-round Kelly cap as a budget allocator across all staked rungs.
-
-    Ranks all staked rungs by total_ev descending and gives each its FULL formula
-    units until the round budget (15u) is exhausted.  The last rung that partially
-    fits is trimmed to the remaining budget (floor to UNIT_STEP, min UNIT_STEP).
-    Rungs that don't fit are marked 'NO BET (round cap)'.  A kept rung's units are
-    never reduced below its formula output other than that final trim.
-    """
-    import math as _math
-    round_cap_units = KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE
-
-    staked: list[tuple[float, dict]] = []
-    for m in matches:
-        for r in m.get("sgms", []) + m.get("market_sgms", []):
-            if (r.get("units", 0.0) > 0
-                    and r.get("units_tag") not in ("NO BET", "MODEL-ONLY", "CHECK PRICING")):
-                ev = r.get("total_ev") if r.get("total_ev") is not None else (r.get("edge") or 0.0)
-                staked.append((ev, r))
-        pe = m.get("pull_em")
-        if pe and not pe.get("no_valid_combo") and pe.get("units", 0.0) > 0:
-            ev = (pe.get("total_ev") if pe.get("total_ev") is not None
-                  else (pe.get("option_ev") or 0.0) / 100.0)
-            staked.append((ev, pe))
-
-    total = sum(r.get("units", 0.0) for _, r in staked)
-    if total <= round_cap_units + 1e-9:
-        return
-
-    # Allocation: rank by EV desc — give each rung its FULL formula units until budget gone.
-    staked.sort(key=lambda x: x[0], reverse=True)
-    budget = round_cap_units
-    for _, r in staked:
-        u = r.get("units", 0.0)
-        if budget <= 1e-9:
-            r["units"] = 0.0
-            r["units_tag"] = "NO BET (round cap)"
-        elif u <= budget + 1e-9:
-            budget = max(0.0, budget - u)
-        else:
-            # Partial fit: trim to remaining budget, floored to UNIT_STEP.
-            trimmed = _math.floor(budget / UNIT_STEP) * UNIT_STEP
-            if trimmed >= UNIT_STEP:
-                r["units"] = trimmed
-                old_tag = r.get("units_tag", "")
-                if old_tag and old_tag not in ("NO BET", "MODEL-ONLY", "CHECK PRICING"):
-                    r["units_tag"] = re.sub(r"^[\d.]+u", f"{trimmed:g}u", old_tag)
-            else:
-                r["units"] = 0.0
-                r["units_tag"] = "NO BET (round cap)"
-            budget = 0.0
-
-
 def _rung_to_json(rung: dict, ladder: str, year: int, round_no: int,
                   home: str, away: str,
                   leg_by_name: dict, odds_book: dict,
@@ -886,6 +832,7 @@ def _units_fields(rung: dict) -> dict:
         rung.get("joint_prob"),
         rung.get("book_odds"),
         rung.get("promo_ev"),
+        total_ev=rung.get("total_ev"),
         p_win=rung.get("p_all_win"),
         p_one_loss=rung.get("p_one_loss"),
         p_dead=rung.get("p_two_plus_loss"),
@@ -1446,10 +1393,11 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         print(f"\nWARNING: {len(unmatched)} odds key(s) matched no priceable leg "
               f"(typo? player not in pool/lineup?): {', '.join(unmatched)}", file=sys.stderr)
 
-    # FIX-PULLEM-MENU-AND-STAKE-COLUMNS Part B: apply per-round cap across all
-    # staked rungs in all matches (lowest-EV first), then build multis_records from
-    # the final units. This ensures units, units_tag, Stake%, and $ always agree.
-    _apply_round_cap(matches)
+    # No round-level cap: each rung stakes independently off its own per-bet
+    # formula (UNIT_MAX/UNIT_MAX_LONGSHOT + PROMO_REFUND_CAP still apply per
+    # rung in recommend_units). Removed 2026-07-10 -- Ben wants every rung that
+    # clears PROMO_EV_MIN to show its own Kelly units, not get crowded out by
+    # a round-wide 15u budget allocator.
     for m in matches:
         _home = m["_home_name"]
         _away = m["_away_name"]

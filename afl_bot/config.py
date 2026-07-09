@@ -222,12 +222,26 @@ BONUS_BET_FACTOR = 0.75   # value of a bonus bet vs cash (R in multi-outcome Kel
 PROMO_MIN_LEGS = 3         # minimum legs for a rung to qualify for promo EV
 DEFAULT_STAKE = 50.0
 
+# Minimum total_ev (edge + promo_ev, the number shown to the user as "Total EV
+# -- that's the number to bet on") to make a rung PROMO-KELLY-eligible at all
+# (2026-07-09). promo_ev in isolation is just the one-miss partial-refund
+# component (p_one_loss * BONUS_BET_FACTOR) and is almost ALWAYS sizeable --
+# it says nothing about whether the bet is actually good, since the raw edge
+# underneath it can still be deeply negative (e.g. -18% raw edge still nets
+# +5.6% total EV once the refund is added back). Gating on promo_ev alone (the
+# original >0.0 check) was confirmed to pass nearly every band across every
+# game once real Sportsbet prices replaced model-only bands. This is the ONLY
+# staking-eligibility filter now (2026-07-10: the round-level budget allocator
+# that used to also thin the field, _apply_round_cap/KELLY_PER_ROUND_CAP, was
+# removed -- see recommend_units) -- it doesn't touch multi_outcome_kelly's own
+# math, just which rungs are allowed to be sized at all.
+PROMO_EV_MIN = 0.10
+
 # ----------------------------------------------------------------------------- #
 # Kelly staking & bankroll sims — plan §4.4
 # ----------------------------------------------------------------------------- #
 KELLY_FRACTION = 0.25       # fractional Kelly (0.25x) — full Kelly is too volatile
 KELLY_PER_BET_CAP = 0.05    # max fraction of bankroll on any one bet
-KELLY_PER_ROUND_CAP = 0.15  # max total fraction of bankroll staked across a round
 DEFAULT_BANKROLL = 1000.0
 
 # Unit staking (live bankroll config).
