@@ -307,6 +307,19 @@ MULTI_TARGET_ODDS = (2.10, 2.75, 3.50, 5.00, 8.00, 15.00)   # 6 rungs: safe -> l
 # considered "in window". band <= combo <= band * BAND_UPPER_FACTOR.  Combos
 # outside this window are never shown under that band label (FIX-RESTORE-BANDS).
 BAND_UPPER_FACTOR = 1.30
+# Maximum number of ladder rungs a single player may appear in, across the whole
+# book-priced ladder (FIX-BOOK-LADDER-STARVATION). FIX-NO-PLAYER-DOUBLE-UPS set
+# this to a hard 1, which is arithmetically infeasible on the BOOK ladder: 6
+# rungs x 3 legs needs 18 DISTINCT priced players, and a real Sportsbet/PointsBet
+# scrape only covers ~18-25 players per game. Filling bands short-to-long then
+# consumed 15 players before the $15.00 band was ever reached, so the longest
+# (and highest-EV) rungs printed "no combo in band window" even though 9-123
+# in-window combos existed -- measured on 2026 R21: 41/48 rungs filled. Cap 2 +
+# longest-band-first fills 48/48. Trade-off: a player can now carry two rungs, so
+# one bust kills two multis -- that correlated exposure is managed by staking,
+# not by starving the ladder. The MODEL ladder (search_match_sgms) keeps the
+# hard 1 -- its pool is unpriced and never starves.
+MAX_RUNGS_PER_PLAYER = 2
 # Sanity guard: if a rung's book_combo > SUSPECT_BOOK_FAIR_RATIO * model_fair
 # OR raw_edge > SUSPECT_MAX_RAW_EDGE, flag as "CHECK PRICING" and stake 0.
 SUSPECT_BOOK_FAIR_RATIO = 1.75

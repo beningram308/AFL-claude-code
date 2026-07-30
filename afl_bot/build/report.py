@@ -29,6 +29,7 @@ from afl_bot.config import (
     BONUS_BET_FACTOR,
     CORR_GAIN_HAIRCUT,
     MAX_MARKS_LEGS_PER_MULTI,
+    MAX_RUNGS_PER_PLAYER,
     MAX_TACKLE_MARKS_LEGS,
     MULTI_MARKET_SHRINK,
     MULTI_TARGET_ODDS,
@@ -638,19 +639,33 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
 
     selected: list[dict] = []
     chosen: set[int] = set()
-    used_players: set[str] = set()
-    for i, target in enumerate(target_odds):
+    # FIX-BOOK-LADDER-STARVATION. Two changes vs FIX-NO-PLAYER-DOUBLE-UPS:
+    #   (1) bands are filled LONGEST-FIRST. The long bands have by far the
+    #       thinnest in-window candidate pool, so whichever end is filled last
+    #       is the end that starves; fill the scarce end while the player pool
+    #       is still untouched.
+    #   (2) the diversity rule is a COUNT cap (MAX_RUNGS_PER_PLAYER), not a hard
+    #       one-appearance ban. 6 rungs x 3 legs needs 18 distinct priced
+    #       players and a real book scrape covers ~18-25 per game, so a hard 1
+    #       is infeasible by arithmetic, not by bad luck.
+    # Output order is unchanged (safest -> longest) — see the sort at the end.
+    player_rungs: dict[str, int] = {}
+    top_target = target_odds[-1]
+
+    def _combo_players(c: dict) -> list[str]:
+        return [leg_subject[n] for n in c["legs"]
+                if leg_subject.get(n) not in (None, "total")]
+
+    for target in sorted(target_odds, reverse=True):
         # No fallback to already-chosen combos — each band uses only unclaimed
-        # combos within its window, and combos containing any player already
-        # used in a prior rung (FIX-NO-PLAYER-DOUBLE-UPS).
+        # combos within its window, and only combos whose players have not
+        # already filled MAX_RUNGS_PER_PLAYER rungs.
         available = [
             c for c in priced if id(c) not in chosen
-            and not any(
-                leg_subject.get(n) not in (None, "total") and leg_subject[n] in used_players
-                for n in c["legs"]
-            )
+            and not any(player_rungs.get(p, 0) >= MAX_RUNGS_PER_PLAYER
+                        for p in _combo_players(c))
         ]
-        is_top = (i == len(target_odds) - 1)
+        is_top = (target == top_target)
         if is_top:
             # Top rung: value pick from combos in window with positive, plausible edge.
             in_window = [c for c in available
@@ -668,10 +683,8 @@ def search_market_sgms(legs: list[LegCandidate], *, min_legs: int = 3, max_legs:
             continue
         pick["target_odds"] = target
         chosen.add(id(pick))
-        used_players.update(
-            leg_subject[n] for n in pick["legs"]
-            if leg_subject.get(n) not in (None, "total")
-        )
+        for p in _combo_players(pick):
+            player_rungs[p] = player_rungs.get(p, 0) + 1
         selected.append(pick)
 
     # Promote haircut joint as the reported joint_prob/fair_odds.

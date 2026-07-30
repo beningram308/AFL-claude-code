@@ -1074,8 +1074,14 @@ def test_no_player_double_ups_in_model_ladder():
         f"Player double-up detected: {all_players}"
 
 
-def test_no_player_double_ups_in_market_ladder():
-    """FIX-NO-PLAYER-DOUBLE-UPS: same constraint for the Sportsbet (market) ladder."""
+def test_player_reuse_capped_in_market_ladder():
+    """FIX-BOOK-LADDER-STARVATION: the book ladder relaxes FIX-NO-PLAYER-DOUBLE-
+    UPS' hard one-appearance rule to a COUNT cap (MAX_RUNGS_PER_PLAYER).
+
+    The hard rule was arithmetically infeasible here: 6 rungs x 3 legs needs 18
+    DISTINCT priced players, and a real book scrape covers ~18-25 per game, so
+    the long bands starved (2026 R21: 41/48 rungs filled, every miss at $8/$15).
+    What must still hold is that no player carries MORE than the cap."""
     rng = np.random.default_rng(7)
     n = 40000
     # Player "X" has two legs; each is priced. Force X into the lowest band
@@ -1100,8 +1106,44 @@ def test_no_player_double_ups_in_market_ladder():
             s = leg_subj.get(lname, "total")
             if s != "total":
                 all_players.append(s)
-    assert len(all_players) == len(set(all_players)), \
-        f"Player double-up detected in market ladder: {all_players}"
+    from collections import Counter
+
+    from afl_bot.config import MAX_RUNGS_PER_PLAYER
+    counts = Counter(all_players)
+    over = {p: n for p, n in counts.items() if n > MAX_RUNGS_PER_PLAYER}
+    assert not over, \
+        f"Player exceeded MAX_RUNGS_PER_PLAYER={MAX_RUNGS_PER_PLAYER} in market ladder: {over}"
+    # Within a single rung, a player still cannot appear twice.
+    for r in real_rungs:
+        subs = [leg_subj.get(n, "total") for n in r["legs"]]
+        subs = [s for s in subs if s != "total"]
+        assert len(subs) == len(set(subs)), f"Player twice in one rung: {r['legs']}"
+
+
+def test_book_ladder_fills_long_bands_that_the_hard_rule_starved():
+    """Regression for the reported bug: with a realistically-sized priced pool
+    the OLD rule (one appearance, bands filled short-to-long) left the longest
+    bands empty. Longest-first + MAX_RUNGS_PER_PLAYER must fill strictly more
+    rungs than the old behaviour did."""
+    rng = np.random.default_rng(11)
+    n = 20000
+    # 12 priced players — below the 18 distinct players a hard-1 rule needs.
+    probs = [0.86, 0.82, 0.78, 0.74, 0.70, 0.66, 0.62, 0.58, 0.54, 0.48, 0.42, 0.36]
+    legs = []
+    for i, p in enumerate(probs):
+        subj = f"P{i}"
+        mask = rng.random(n) < p
+        legs.append(_leg(f"{subj} 15+ disp", float(mask.mean()), mask, subj,
+                         odds=round(1.0 / p, 2)))
+    odds_book = {leg.name: leg.market_odds for leg in legs}
+    out = search_market_sgms(legs, odds_book=odds_book, min_joint_prob=0.001)
+    filled = [r for r in out if not r.get("no_bet")]
+    # With only 12 distinct players a hard one-appearance rule caps the ladder
+    # at 4 rungs (12 // 3). The cap must beat that.
+    assert len(filled) > 4, f"book ladder still starved: only {len(filled)} rungs filled"
+    # Output order must still be safest -> longest.
+    bands = [r["target_odds"] for r in out]
+    assert bands == sorted(bands), f"ladder not in ascending band order: {bands}"
 
 
 # --------------------------------------------------------------------------- #
