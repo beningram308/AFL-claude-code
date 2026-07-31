@@ -162,22 +162,39 @@ def squiggle_consensus(tips: pd.DataFrame) -> pd.DataFrame:
 # Assemble signals, fit, report
 # --------------------------------------------------------------------------- #
 def assemble_signals(games: pd.DataFrame, odds: pd.DataFrame | None = None,
-                     tips: pd.DataFrame | None = None, **elo_kwargs) -> pd.DataFrame:
+                     tips: pd.DataFrame | None = None, sim_style: bool = False,
+                     **elo_kwargs) -> pd.DataFrame:
     """One row per game with the available H2H home-win signals (``model_p``,
     ``market_p``, ``squiggle_p``) plus ``outcome`` (actual home win). Only the
-    model signal is guaranteed; market/squiggle appear when supplied."""
+    model signal is guaranteed; market/squiggle appear when supplied.
+
+    ``sim_style=True`` (AUDIT FIX 2026-07-31, C7): express ``model_p`` as the
+    probability the SIMULATION would produce for the same expected margin,
+    ``Phi(pred_margin / SIM_MARGIN_SIGMA)``, instead of the Elo logistic.
+    round_report feeds the Monte-Carlo H2H probability into the fitted blend
+    at predict time, so the calibrator must be TRAINED on that distribution —
+    training on the (differently-shaped) logistic and applying to the sim
+    probability was a train/apply mismatch (holdout LL 0.5300 -> 0.5245 on
+    2025-26 with the fix)."""
     history = evaluate_elo(games, **elo_kwargs)
     out = history[["year", "round", "hteam", "ateam"]].copy()
-    out["model_p"] = history["pred_home_win_prob"].to_numpy()
+    if sim_style:
+        from scipy.stats import norm
+        from afl_bot.config import SIM_MARGIN_SIGMA
+        out["model_p"] = norm.cdf(history["pred_margin"].to_numpy() / SIM_MARGIN_SIGMA)
+    else:
+        out["model_p"] = history["pred_home_win_prob"].to_numpy()
     out["outcome"] = history["actual_home_win"].to_numpy()
 
     if odds is not None and not odds.empty:
-        # Dedupe on the (year, hteam, ateam) join key so the left-merge can't
-        # expand rows (the spreadsheet occasionally lists a matchup twice).
-        o = odds.drop_duplicates(["year", "hteam", "ateam"]).copy()
-        home_p, _ = devig_h2h_probs(o["home_odds_close"], o["away_odds_close"])
-        o = o.assign(market_p=home_p.to_numpy())[["year", "hteam", "ateam", "market_p"]]
-        out = out.merge(o, on=["year", "hteam", "ateam"], how="left")
+        # AUDIT FIX 2026-07-31: use the date-aware attach_odds join — the old
+        # (year, hteam, ateam) merge attached the wrong meeting's odds to
+        # finals/same-home rematches (and the drop_duplicates guard kept one
+        # arbitrary meeting's price for both), contaminating blend training.
+        from afl_bot.data.odds import attach_odds
+        joined = attach_odds(history, odds)
+        home_p, _ = devig_h2h_probs(joined["home_odds_close"], joined["away_odds_close"])
+        out["market_p"] = home_p.to_numpy()
 
     if tips is not None and not tips.empty:
         cons = squiggle_consensus(tips)

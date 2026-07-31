@@ -1,0 +1,28 @@
+# FIX: REMOVE "TO WIN" LEGS + ADD TOTAL POINTS O/U BACK — NOTHING ELSE
+
+**For:** Claude Code · 2026-07-05 · Single part. Change ONLY the leg pool.
+Do not touch staking, bands, calibration, promo logic, settlement, tracker,
+or anything else. Commit + push.
+
+## Change
+1. REMOVE head-to-head "to win" legs from the leg pool everywhere multis are
+   built (model ladder, Sportsbet ladder, Pull 'Em). No "X to win" leg may
+   appear on any rung.
+2. ADD back game total points over/under legs (the sim already prices
+   totals — this existed before, see FIX-TOTAL-POINTS-LEGS.txt for how it
+   was wired). Use the book's actual O/U lines when book prices are
+   available; model-only lines only where the ladder already allows
+   model-only legs.
+3. Make sure settlement can grade a total points leg (final combined score
+   vs line) so it never shows Ungradeable on a completed game. If that
+   grader already exists, just verify it — don't rewrite it.
+
+## Verify
+- Full test suite green (adjust only tests that assert h2h legs exist /
+  totals don't).
+- Regenerate R17 with --sportsbet, refresh dashboard multis.json, restart
+  dashboard.
+- Print one game's ladders: zero "to win" legs, at least some total points
+  O/U legs where they price competitively, everything else unchanged
+  (same staking behaviour, same bands).
+- Ledger untouched. Commit + push.

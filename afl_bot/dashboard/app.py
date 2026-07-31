@@ -20,6 +20,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import sys
 import webbrowser
 from pathlib import Path
 
@@ -62,8 +63,9 @@ def _load_multis_files() -> dict[str, dict]:
                 result[name] = {"records": raw, "generated_at": None}
             else:
                 result[name] = {"records": raw.get("records", []), "generated_at": raw.get("generated_at")}
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - one bad report file must not break the whole dashboard
+            print(f"WARNING: dashboard could not load {p} ({exc!r}); omitting it from the round list.",
+                  file=sys.stderr)
     return result
 
 

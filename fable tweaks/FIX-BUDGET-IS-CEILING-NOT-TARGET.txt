@@ -1,0 +1,29 @@
+# FIX: ROUND BUDGET IS A CEILING, NOT A TARGET — NOTHING ELSE
+
+**For:** Claude Code · 2026-07-05 · Single part. Staking only. Commit + push.
+
+## Why
+With only 2 games left in the round, rungs are showing 3u each — it looks
+like staking is spreading the 15u round budget across whatever bets exist.
+Stakes must reflect the CONFIDENCE (shrunk Kelly) of each multi, never "use
+up the budget".
+
+## Change
+- A rung's units come ONLY from its own shrunk-Kelly formula (promo or
+  plain), rounded to 0.25u, capped at 3u. The number of games or rungs in
+  the round must have ZERO influence on it.
+- KELLY_PER_ROUND_CAP (15u) acts only as a ceiling: if the sum of formula
+  units exceeds it, trim lowest-EV rungs to NO BET (round cap) as now.
+  If the sum is UNDER 15u, nothing is scaled up — ever.
+- If the code currently normalises, redistributes, or scales stakes toward
+  the budget, remove that. If 3u genuinely is what the formula says for
+  those rungs, say so in the summary with the numbers (frac, raw units)
+  so Ben can see it's honest.
+
+## Test
+- A round with one game and a round with six games: the same rung (same
+  probs/prices) gets IDENTICAL units in both.
+- Round under budget → no rung's units differ from its solo formula output.
+- Full suite green. Regenerate R17 (--sportsbet), refresh dashboard, print
+  the remaining games' ladders with frac → units shown per rung.
+- Nothing else changed. Commit + push.

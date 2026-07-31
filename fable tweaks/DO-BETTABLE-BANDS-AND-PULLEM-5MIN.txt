@@ -1,0 +1,95 @@
+# DO: BETTABLE BAND SELECTION + PULL 'EM $5 TOKEN MINIMUM (BOTH PARTS, ONE RUN)
+
+**For:** Claude Code · 2026-07-03 · Execute BOTH parts top-to-bottom, commit per
+part, push at the end. Do NOT stop after Part A. This file SUPERSEDES
+"FIX-PULLEM-MIN-ODDS-AND-ELIGIBILITY.txt" (its content is Part B here — if any
+of it already shipped, verify-don't-redo).
+
+Context: the Kelly/Total-EV same-basis fix is live. NO BET is now honest
+(Total EV <= 0 on the market-shrunk basis). The remaining problem is WHICH
+combo each band shows.
+
+---
+
+## PART A — BAND SELECTION: PREFER BETTABLE COMBOS, NOT NEAR-LOCKS
+
+**Problem (live R17):** each ladder band picks the SAFEST combo at that price
+(highest joint prob). At the book's real prices those are its shortest-priced
+near-locks — reliably −EV after margin — so whole ladders read NO BET even when
+other combos in the same band have positive Total EV (e.g. West Coast game:
+every Sportsbet band NO BET at −9% to −33%, while stakeable combos exist).
+
+**Fix — selection metric change inside each band:**
+1. Among candidates whose odds land in the band window (book combo when priced,
+   fair otherwise — unchanged), select the combo with the **highest
+   market-shrunk Total EV** (the SAME number staking uses: shrunk edge +
+   `p_one' * BONUS_BET_FACTOR` promo term). Tie-break: higher joint prob.
+2. If the best available Total EV in a band is still <= 0, show the current
+   safest combo with NO BET — an honest "nothing worth betting at this price".
+   Never hide the band.
+3. **Selection-bias guard (project lesson — do not skip):** the selection
+   metric must ONLY ever use market-shrunk probabilities (never raw model EV),
+   and the existing 15% edge cap + VALUE gating stay. Picking-by-EV amplifies
+   the optimizer's curse; the shrink is what keeps it bounded. Add a comment
+   citing Phase 3.5 in the code.
+4. Model ladder (fair odds, no book prices): unchanged — there's no market EV
+   to select on without prices.
+5. Tests: band with one −EV near-lock + one +EV alternative at same odds →
+   alternative selected, units > 0; band with only −EV combos → safest shown,
+   NO BET; selection metric provably uses shrunk probs (unit test on inputs).
+
+**Acceptance A:** regenerated R17 Sportsbet ladders show stakeable rungs
+(units > 0) wherever any combo in the band clears Total EV > 0; NO BET remains
+only on genuinely dead bands.
+
+---
+
+## PART B — PULL 'EM: $5.00 TOKEN MINIMUM + ELIGIBLE MARKETS
+
+**Problem (live R17):** Pull 'Em SGMs build at $3.41 / $4.32 book combo —
+below the $5.00 minimum combined odds Ben's Pull 'Em token requires, so the
+token can't be applied to them at all.
+
+**Verified constraints (PointsBet support, July 2026):**
+- Eligible AFL markets allowlist: Player Disposals O/U, To Get Disposals,
+  Anytime Goalscorer, To Get Goals, Player Fantasy, To Get Marks,
+  To Get Tackles, To Get Kicks. **NOT eligible: match result (h2h), total
+  points** — Pull 'Em SGM legs must be player props only.
+- Pull deadline: before the start of Q3 (update any "second half" wording).
+- The $5.00 minimum is a token condition, Ben-confirmed from his app.
+
+**Fix:**
+1. Config: `PULL_EM_MIN_COMBO_ODDS = 5.0`;
+   `PULL_EM_ELIGIBLE_MARKETS = {"disposals","goals","marks","tackles","kicks","fantasy"}`.
+2. `build_pull_em_sgm`: choose the 4-leg combo maximising Total EV (base +
+   option EV) **subject to combined odds >= PULL_EM_MIN_COMBO_ODDS** (book
+   combo when priced; fair-odds proxy labelled MODEL-ONLY otherwise).
+   - Reach $5 by RAISING DISPOSAL LINES (25+/30+, ~1.25–1.50 each), not by
+     stacking volatile markets; anchors stay disposals-first, 3 different
+     players, HT-readable.
+   - Anchor floor p >= 0.70 preferred; relax stepwise to 0.60 max if needed
+     (print "anchors relaxed to p>=0.6X to meet token min odds").
+   - Booster: 1 leg, p 0.45–0.65, marked PULL CANDIDATE, eligible market.
+   - Every leg must pass PULL_EM_ELIGIBLE_MARKETS + existing book-menu /
+     one-leg-per-player / LEG_PROB_MAX gates.
+   - No eligible $5+ combo even relaxed → print "No Pull 'Em SGM meets the
+     $5.00 token minimum this game" — never emit an ineligible multi.
+3. Display: "token min $5.00 — combo $X.XX ELIGIBLE/INELIGIBLE" on every
+   Pull 'Em block.
+4. Tests: >=5.0 enforced (both price paths); h2h/total_points rejected even if
+   high-EV; line-raising preferred over market-switching; relax message; the
+   no-valid-combo path.
+
+**Acceptance B:** regenerated R17 shows every Pull 'Em combo >= $5.00 with
+ELIGIBLE tag (or the explicit no-valid-combo message). West Coast ($4.32) and
+Sydney ($3.41) games specifically must be fixed.
+
+---
+
+## SHIP
+Full pytest green → regenerate R17 (--auto-lineup --sportsbet) → dashboard
+reload shows both changes → commit per part → push → report: how many rungs
+flipped NO BET → staked, new round total units vs the 15u cap, and each game's
+Pull 'Em combo odds.
+
+# END — both parts, one run, don't stop after Part A.

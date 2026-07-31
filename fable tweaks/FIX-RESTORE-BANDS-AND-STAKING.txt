@@ -1,0 +1,88 @@
+# FIX: RESTORE TREE + BAND-PRICED MULTIS + ONE STAKING BASIS
+
+**For:** Claude Code · 2026-07-04 · Do ALL parts in order, in one run. Commit + push at the end.
+
+## Why
+1. SECOND mass-truncation incident: 46 tracked files are modified/truncated in
+   the working tree AFTER commit db2562b (config.py cut off mid-line,
+   dashboard/app.py lost 127 lines, many tests gutted). reports/bets_ledger.json
+   is corrupt again (truncated mid-record) and reports/2026_r17_multis.json is
+   corrupt ("Extra data" ~char 128465). The dashboard is serving garbage.
+2. On the (corrupted) dashboard, Sportsbet ladder bands don't match prices:
+   Band $2.10 shows book combo $11.02, $2.75→$12.18, $3.50→$10.10, $5.00→$11.88,
+   $8.00→$15.61, and $15.00→$5.61 (UNDER the band). Bands are meaningless.
+3. Staking is inconsistent: Model ladder stakes 3u on a +23.1% EV rung while
+   the Sportsbet ladder stakes a flat 1u on rungs claiming +87–104% EV. Also
+   the Stake column says 4.0% (= $60 of $1500) but Units/$ shows 1u = $15.
+   And +87–104% EV is not believable given the calibration check proved the
+   book has an 8–11pp margin on props — those edges are almost certainly a
+   leg-pricing/mapping bug, not free money.
+
+## Part 0 — Restore integrity FIRST (do nothing else until this is clean)
+- Preserve evidence: copy current reports/bets_ledger.json to
+  reports/bets_ledger.corrupt-<timestamp>.json before touching anything.
+- `git status` then `git restore .` (working tree back to db2562b). Do NOT
+  commit any of the truncated content.
+- Restore the ledger from the clean daily backup
+  reports/ledger_backups/bets_ledger.2026-07-04.json (8 bets: 4 pending incl.
+  Sydney $18.50 @ 2.25, 4 lost). Verify it loads clean and the dashboard
+  renders all 8.
+- Delete/regenerate the corrupt reports/2026_r17_multis.json (regen in Part D).
+- Briefly investigate + report the truncation cause: atomic writes only protect
+  the bot's OWN writes — something external (OneDrive/Desktop sync, killed
+  process, disk sleep) is truncating source files. Check OneDrive status on
+  the repo path and say clearly in your summary what you think did it and
+  what setting to change. Do not move the repo without asking Ben.
+
+## Part A — Bands must be the right amount
+Every Sportsbet-ladder rung's BOOK combo price must land at or just above its
+band: require band <= book_combo <= band * 1.3 (closest-above wins ties, then
+max Total EV within that window). If no combo exists in a band's window with
+Total EV > 0, that band is NO BET — never show a $11.02 combo under a $2.10
+label, and never show a combo BELOW the band (the $15.00/$5.61 case).
+Same rule for the model ladder using fair odds.
+Add a test: for every generated rung in both ladders, assert the band window
+holds or the rung is explicitly NO BET / MODEL-ONLY.
+
+## Part B — One staking basis, reasonable, profit-maximizing
+- ONE pipeline used by BOTH ladders: market-shrunk Kelly (the a2f26aa basis)
+  → stake_pct → dollars (BANKROLL=1500) → units rounded to 0.25u (UNIT=15).
+  The Stake %, Units and $ columns must all be the same number expressed three
+  ways — no more 4.0% next to 1u/$15.
+- Keep the existing per-bet cap (3u) and apply it identically to model-only,
+  promo, and real-book rungs. Within a ladder, stakes must be monotonic in
+  shrunk Total EV: a rung with genuinely higher shrunk EV never gets a smaller
+  stake than a lower-EV rung. No flat 1u default on the real ladder.
+- Do NOT loosen caps or inflate stakes — the point is correct sizing, not max
+  sizing. If shrunk EV <= 0, it's NO BET regardless of raw edge.
+
+## Part C — Edge sanity guard (kill the fake +104% EVs)
+- If a rung's book_combo > 1.75x model fair (or raw edge > +40%), treat it as
+  suspect: flag "CHECK PRICING" instead of VALUE, stake 0, and log leg-by-leg
+  book price vs model price for that rung in the report so the bad leg is
+  visible.
+- Audit the William McCabe 2+ goals leg specifically (model 28%, appears in
+  every huge-edge rung): verify the scraper maps the right player AND market
+  (2+ goals vs 1+ goals vs anytime) and the right price. Fix the mapping if
+  wrong. After the fix, edges should collapse back toward the calibrated
+  reality (book margin 8–11pp on props); if a rung still shows >+40% edge
+  afterwards, it stays flagged, not staked.
+
+## Part D — Regenerate + verify end to end
+- Full test suite green (the restored suite plus new tests from Parts A–C).
+- `round-report --year 2026 --round 17 --sportsbet`, confirm N/9 events priced.
+- Make sure the dashboard reads THE SAME multis.json the report writes (wire
+  the paths together if they differ), restart the dashboard.
+- Print in your summary: Hawthorn vs Melbourne, both ladders — band, book/fair
+  combo, shrunk EV, stake%/units/$ per rung — so Ben can eyeball that bands
+  match prices and stakes make sense.
+- Verify ledger still has the 8 bets and Sydney is pending.
+- Commit + push.
+
+## Acceptance
+- Working tree clean vs origin/master apart from this run's commits.
+- No rung anywhere violates its band window; no rung shows units/$ that
+  disagree with its stake %.
+- No staked rung carries a >+40% raw edge; suspect rungs are flagged with the
+  offending leg printed.
+- Ledger: 8 bets, loads clean, backup rotation still working.

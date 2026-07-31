@@ -1,0 +1,90 @@
+========================================================================
+DO — DISPOSALS-PREFERRED LEGS + NEGATIVE-EV DIAGNOSTIC
+For: Claude Code   |  Written: 2026-07-01
+Run both parts, commit each, push at the end. Don't stop after one part.
+========================================================================
+
+GROUND RULES
+- Build on the EXISTING leg-preference config (LEG_PROB_MAX, MULTI_TARGET_ODDS,
+  MAX_MARKS_LEGS_PER_MULTI, MULTI_MARKET_SHRINK, market_anchored_prob). Extend,
+  don't rebuild.
+- Everything config-tunable. Tests green before commit. Regenerate R17 with
+  --sportsbet to show the effect. Push to origin at the end.
+- Do NOT touch the 2026 roster/player data — it's correct.
+
+------------------------------------------------------------------------
+PART A — PREFER DISPOSALS, MINIMISE TACKLES & MARKS (unless best/value)
+------------------------------------------------------------------------
+Goal: multis should be disposals-heavy. Tackles and marks legs should only
+appear when they are genuinely the strongest option — not banned, just
+de-prioritised.
+
+1. When filling each ladder rung, PREFER disposals legs first: if a disposals
+   leg can fill a band at comparable hit% / joint prob, use it over a tackle or
+   marks leg.
+
+2. Treat tackles and marks as de-prioritised. Only include one when:
+   (a) no disposals leg fills that band, OR
+   (b) the tackle/marks leg has a REAL book price with positive edge (a true
+       value leg), OR
+   (c) it is clearly the highest-hit-% option available for that slot.
+
+3. Add a combined cap for tackles+marks per multi, config-tunable, alongside the
+   existing marks cap:
+       MAX_TACKLE_MARKS_LEGS = 1     # combined tackles+marks legs per multi
+   Keep MAX_MARKS_LEGS_PER_MULTI as-is (marks still capped within that).
+   Add a soft preference weight so disposals win ties (e.g. a small score bonus
+   for disposals / penalty for tackles+marks in the leg-ranking step).
+
+4. GUARDS — do NOT force disposals if it makes the multi materially worse:
+   - Never lower a rung's joint prob / value just to swap in a disposals leg.
+   - Never override a genuine VALUE PICK where a marks/tackles leg has real
+     positive edge — value always wins over the stat-type preference.
+   - Priced legs (real book market) are never dropped just for being marks/
+     tackles; the preference is for MODEL-ONLY leg choice.
+
+5. Add/keep tests: a multi prefers a disposals leg over a marks/tackles leg of
+   equal quality; the tackles+marks cap holds; a positive-edge marks/tackles
+   value leg still survives the preference.
+
+6. Regenerate R17 with --sportsbet and show me the multis (expect disposals-
+   heavy, tackles/marks only where they're the best or a value leg). Commit.
+
+------------------------------------------------------------------------
+PART B — NEGATIVE-EV DIAGNOSTIC (why the book combos are all -EV)
+------------------------------------------------------------------------
+Question to answer: on the Sportsbet ladder, how much of the negative edge is
+REAL (book prices its near-locks short via margin + SGM correlation loading)
+versus the MODEL under-rating those legs (the 0.78 cap, conservative marks,
+greasiness compounding downward across 3 legs)?
+
+Diagnostic ONLY — no model change, no fix. Just measure and report.
+
+1. For every leg on the Sportsbet ladder that has a real book price, compute:
+   - model per-leg probability (the calibrated leg prob the report uses)
+   - book DEVIGGED per-leg probability (strip the book's margin from the single-
+     leg price — for a two-way market, p_devig = p_implied / sum_of_implied on
+     that market; if only the over is priced, note it and use the raw implied).
+   - the gap = book_devig_prob - model_prob (positive = model is UNDER the book).
+
+2. Bucket the gap by market type (disposals / goals / marks / tackles) and by
+   leg probability band, and report:
+   - mean and median gap per market type
+   - how many legs the model is 20-40 pts under the book (calibration concern)
+     vs within a few points (negative edge is real).
+
+3. Also show, per ladder rung: model joint prob, book combo prob (product of
+   book devigged legs), and the split of the total -EV into
+   (book margin + correlation loading) vs (model-vs-book leg disagreement).
+
+4. Print a one-paragraph verdict: is the -EV mostly the book's structural edge
+   (accept it, only back the VALUE picks), or is the model systematically too
+   conservative on the book's locks (a calibration gap worth a follow-up fix)?
+   If the latter, propose the follow-up but DO NOT implement it in this run.
+
+5. No config/model changes in Part B. Add the diagnostic behind a flag or a
+   small script, tests green, commit.
+
+------------------------------------------------------------------------
+ORDER: Part A, then Part B. Commit each part. Push to origin when done.
+------------------------------------------------------------------------

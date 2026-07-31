@@ -1,0 +1,83 @@
+CONTEXT — READ FIRST
+An external audit (2026-07-31) already fixed and shipped the following. These are
+DONE and regression-tested in tests/test_audit_fixes.py (13 tests). DO NOT redo,
+"improve", or revert any of them:
+  - promo_multi_ev EV formula (afl_bot/build/multi.py)
+  - date-aware attach_odds join (afl_bot/data/odds.py)
+  - grade_round year-aware dedup + stale-data warning (afl_bot/cli.py)
+  - venue alias pooling (afl_bot/data/venues.py, afl_bot/models/scoring.py)
+  - days_rest order-invariance (afl_bot/ratings/hga.py)
+  - sim-style blend calibrator, ensemble odds join (afl_bot/backtest/ensemble.py)
+  - data_cache/elo_params.json artifact (points_per_400=116.0) — do NOT change
+    this value or delete the file; do NOT change ELO_* config defaults.
+Originals are in audit_backup_20260731/. Full details: AUDIT-REPORT-2026-07-31.md
+and CHANGELOG-AUDIT-2026-07-31.md.
+
+HARD RULES
+- Before starting: run the fast test suite and confirm green. After every task:
+  run it again. Never leave the repo red.
+- Do not change any modelling assumption, constant, or probability calculation.
+  This job is ops, reporting, and hygiene only.
+- Do not regenerate tests/golden/backtest_metrics.json.
+- calibration_log.csv is append-only per (year, round). Never rewrite history.
+- Back up any file you modify into audit_backup_20260731/ (same relative path)
+  BEFORE editing, unless a backup of it already exists there.
+- Add every change to CHANGELOG-AUDIT-2026-07-31.md under a "Phase 3" heading.
+
+TASK 1 — Clear the grading backlog (highest value, do first)
+1. Force-refresh DFS Australia player stats:
+   python -c "from afl_bot.data.dfs_australia import fetch_player_stats; fetch_player_stats(force_refresh=True)"
+2. Confirm the refreshed cache covers rounds 18-21 of 2026. If it doesn't, STOP
+   this task and report why instead of grading anyway.
+3. Run grade-round for 2026 rounds 18, 19, 20, and 21 (21 only if all its games
+   are complete). The stale-data warning must NOT appear; if it does, stop.
+4. Report the updated per-market calibration summary (n, log loss, Brier,
+   mean predicted vs hit rate) for 2026 rounds 17-21 combined.
+ACCEPTANCE: calibration_log.csv contains player-prop rows for 2026 r18-r20
+(and r21 if complete); 2025 R1 rows still present and untouched.
+
+TASK 2 — grade-round breakdown report
+Extend grade_round so that, after the existing summary lines, it also prints and
+appends to reports/calibration_summary.md (one section per graded round):
+  - per-market: n, log loss, Brier, mean pred, hit rate
+  - H2H split by favourite (prob >= 0.5) vs underdog
+  - probability-bucket reliability table (reuse
+    afl_bot.backtest.walkforward.calibration_curve)
+No new dependencies. Pure reporting — must not alter what gets written to
+calibration_log.csv. Add a test that the summary file is written and contains
+the per-market section.
+ACCEPTANCE: new test green; running grade-round on an already-graded round
+regenerates its section without duplicating it.
+
+TASK 3 — dependency lockfile
+Create requirements.lock via pip freeze from the environment that actually runs
+the bot. Add a README "Reproducible install" note: pip install -r
+requirements.lock. Do not change requirements.txt.
+
+TASK 4 — split slow tests
+Add pytest.ini with markers = slow. Mark the long-running walk-forward suites
+(tests/test_multis_backtest.py, tests/test_stake_cap_backtest.py, and any other
+test file taking >30s) with pytestmark = pytest.mark.slow at module level.
+Document: fast suite = pytest -m "not slow", full suite = pytest.
+ACCEPTANCE: pytest -m "not slow" finishes in under ~90s locally with zero
+failures; pytest (full) still collects everything.
+
+TASK 5 — kill silent exception swallowing in grading/fetch paths
+In afl_bot/cli.py grade_round (the fryzigg/DFS fallback try/excepts) and any
+other bare "except Exception: pass" in afl_bot/data/*.py: print a one-line
+warning to stderr naming the source and the exception instead of passing
+silently. Do not change control flow — same fallbacks, just visible.
+ACCEPTANCE: grep -rn "except Exception" afl_bot/ shows no block that both
+catches broadly AND produces no output/log, outside of documented best-effort
+paths that already print.
+
+TASK 6 (OPTIONAL — only if tasks 1-5 are green and time remains)
+Extract grade_round and the report-writing helpers from cli.py into a new
+afl_bot/grading.py module, imported by cli.py, with zero behaviour change.
+Gate: full fast suite green before AND after; diff of grade-round output on an
+already-graded round must be byte-identical.
+
+FINAL STEP
+Run the fast suite, then print a short summary: tasks completed, tests
+before/after counts, files changed, and anything you could NOT verify.
+Do not claim an improvement you didn't measure.

@@ -83,20 +83,32 @@ def fit_team_hga(games: pd.DataFrame, league_hga: float = ELO_HOME_ADVANTAGE,
 
 def days_rest(games: pd.DataFrame) -> pd.DataFrame:
     """Home/away days since each team's previous game, from ``unixtime``.
-    Returns the games (sorted) with ``home_rest`` / ``away_rest`` columns."""
-    g = games.sort_values("unixtime").reset_index(drop=True)
+    Returns the games IN THE CALLER'S ROW ORDER (original index preserved)
+    with ``home_rest`` / ``away_rest`` columns.
+
+    AUDIT FIX 2026-07-31: previously this returned the frame re-sorted by
+    ``unixtime`` with a reset index; ``game_hga_points`` then re-labelled it
+    with ``games.index`` positionally and combined the rest columns with
+    other per-game arrays computed in the ORIGINAL order — misaligning every
+    game's rest adjustment whenever the input wasn't already unixtime-sorted.
+    Rest is still computed in chronological order, but results are mapped
+    back to the caller's row order via the preserved index."""
+    order = games.index
+    g = games.sort_values("unixtime")
     last: dict[str, float] = {}
-    home_rest, away_rest = [], []
-    for _, row in g.iterrows():
+    home_rest: dict = {}
+    away_rest: dict = {}
+    for idx, row in g.iterrows():
         ut = float(row["unixtime"])
         h, a = row["hteam"], row["ateam"]
-        home_rest.append((ut - last[h]) / 86400.0 if h in last else np.nan)
-        away_rest.append((ut - last[a]) / 86400.0 if a in last else np.nan)
+        home_rest[idx] = (ut - last[h]) / 86400.0 if h in last else np.nan
+        away_rest[idx] = (ut - last[a]) / 86400.0 if a in last else np.nan
         last[h] = ut
         last[a] = ut
-    g["home_rest"] = home_rest
-    g["away_rest"] = away_rest
-    return g
+    out = games.copy()
+    out["home_rest"] = pd.Series(home_rest).reindex(order)
+    out["away_rest"] = pd.Series(away_rest).reindex(order)
+    return out
 
 
 def game_hga_points(games: pd.DataFrame, team_hga: dict[str, float] | None = None,
@@ -104,9 +116,9 @@ def game_hga_points(games: pd.DataFrame, team_hga: dict[str, float] | None = Non
     """Per-game home-ground advantage in points (team venue HGA + interstate +
     rest), indexed like ``games``."""
     team_hga = team_hga if team_hga is not None else fit_team_hga(games)
+    # days_rest now preserves the caller's row order/index (AUDIT FIX 2026-07-31),
+    # so no positional re-labelling is needed here.
     rested = days_rest(games)
-    # realign to the input order
-    rested = rested.set_index(games.index) if len(rested) == len(games) else rested
 
     base = games["hteam"].map(lambda t: team_hga.get(t, league_hga))
 

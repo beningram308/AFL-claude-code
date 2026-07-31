@@ -41,6 +41,18 @@ MARKETS_URL = (
     "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Events/"
     "{event_id}/MarketGroupings/{group_id}/Markets"
 )
+# Auto-discovery: Sportsbet's competition-events endpoint returns every event in
+# a competition (id + both team names + start time) in ONE call, so --sportsbet
+# can find the round's games itself with nothing to paste (FIX-REAL-SPORTSBET-ODDS
+# PART A3, finally implemented).
+COMPETITION_EVENTS_URL = (
+    "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/"
+    "Competitions/{competition_id}/Events"
+)
+# Sportsbet's AFL competition id (class 50 = Australian Rules). Stable within a
+# season; it CAN change each new season — if discovery starts returning nothing,
+# re-check the number on any AFL match's SportCard ("competitionId") and update.
+AFL_COMPETITION_ID = 4165
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 CACHE_NAME_PREFIX = "sportsbet_event_"
 
@@ -204,6 +216,54 @@ def fetch_event_odds(event_id: str, *, cache_seconds: float = 120.0,
         except OSError:
             pass
     return odds
+
+
+def discover_afl_event_ids(*, competition_id: int = AFL_COMPETITION_ID,
+                           within_days: float = 7.0, timeout: float = 20.0) -> list[str]:
+    """Auto-discover this round's AFL match event IDs straight off Sportsbet's
+    competition-events endpoint -- NO URL pasting (FIX-REAL-SPORTSBET-ODDS A3).
+
+    Returns a list of event-id strings for actual matches (``eventSort ==
+    "MTCH"``, dropping futures/specials) starting within the next ``within_days``
+    (so a single upcoming round, not the whole fixture), or ``[]`` on any
+    geo-block / network / parse failure -- AU-IP only, same never-raise contract
+    as ``fetch_event_odds``. A stale event that jumped a few hours ago is still
+    included (in-play), so a run mid-round doesn't drop the live game."""
+    headers = {"Accept": "application/json", "User-Agent": USER_AGENT}
+    try:
+        resp = requests.get(COMPETITION_EVENTS_URL.format(competition_id=competition_id),
+                            headers=headers, timeout=timeout)
+        if not _is_json_response(resp):
+            print("Sportsbet discover: non-JSON response (geo-blocked? not an AU IP) "
+                  "-- skipping auto-discovery.", file=sys.stderr)
+            return []
+        resp.raise_for_status()
+        events = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        print(f"Sportsbet discover: events fetch failed ({exc}) -- skipping "
+              f"auto-discovery.", file=sys.stderr)
+        return []
+
+    now = time.time()
+    lo, hi = now - 6 * 3600, now + within_days * 86400
+    ids: list[str] = []
+    for ev in events if isinstance(events, list) else []:
+        if str(ev.get("eventSort")) != "MTCH":
+            continue                                  # drop futures / specials
+        start = ev.get("startTime")
+        if start is not None:
+            try:
+                if not (lo <= float(start) <= hi):
+                    continue                          # a different round's fixture
+            except (TypeError, ValueError):
+                pass
+        eid = ev.get("id")
+        if eid is not None:
+            ids.append(str(eid))
+
+    print(f"Sportsbet discover: {len(ids)} AFL match event(s) found for the next "
+          f"{within_days:g} days.", file=sys.stderr)
+    return ids
 
 
 def fetch_sportsbet_odds(event_urls_or_ids: list[str], *, cache_seconds: float = 120.0,

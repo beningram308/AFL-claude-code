@@ -1,0 +1,4490 @@
+{
+  "generated_at": "2026-07-09T14:33:29.339885+00:00",
+  "year": 2026,
+  "round": 18,
+  "records": [
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Josh Daicos",
+          "market": "disposals",
+          "line": 20,
+          "name": "Josh Daicos 20+ disposals",
+          "book_odds": 1.1,
+          "hit_prob": 0.8237
+        },
+        {
+          "player": "Scott Pendlebury",
+          "market": "disposals",
+          "line": 20,
+          "name": "Scott Pendlebury 20+ disposals",
+          "book_odds": 1.31,
+          "hit_prob": 0.7224
+        },
+        {
+          "player": "Jordan De Goey",
+          "market": "goals",
+          "line": 1,
+          "name": "Jordan De Goey 1+ goals",
+          "book_odds": 1.14,
+          "hit_prob": 0.8001
+        }
+      ],
+      "model_joint": 0.476134168253631,
+      "model_fair": 2.100248347367736,
+      "book_combo": 1.64274,
+      "edge": -0.16337651733227265,
+      "p_all_win": 0.5092853906690817,
+      "p_one_loss": 0.3384528581359518,
+      "promo_ev": 0.2538396436019638,
+      "total_ev": 0.09046312626969116,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Steele Sidebottom",
+          "market": "disposals",
+          "line": 15,
+          "name": "Steele Sidebottom 15+ disposals",
+          "book_odds": 1.5,
+          "hit_prob": 0.6427
+        },
+        {
+          "player": "Tom Blamires",
+          "market": "disposals",
+          "line": 15,
+          "name": "Tom Blamires 15+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.7875
+        },
+        {
+          "player": "Luke McDonald",
+          "market": "disposals",
+          "line": 15,
+          "name": "Luke McDonald 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.7182
+        }
+      ],
+      "model_joint": 0.3634961374328244,
+      "model_fair": 2.7510608697590473,
+      "book_combo": 2.08125,
+      "edge": -0.18260524797595068,
+      "p_all_win": 0.39274222319473845,
+      "p_one_loss": 0.34800088406543983,
+      "promo_ev": 0.2610006630490799,
+      "total_ev": 0.0783954150731292,
+      "suggested_stake": 0.027065486200668603,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Patrick Lipinski",
+          "market": "disposals",
+          "line": 15,
+          "name": "Patrick Lipinski 15+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.7491
+        },
+        {
+          "player": "Darcy Cameron",
+          "market": "disposals",
+          "line": 15,
+          "name": "Darcy Cameron 15+ disposals",
+          "book_odds": 1.58,
+          "hit_prob": 0.6236
+        },
+        {
+          "player": "Tristan Xerri",
+          "market": "disposals",
+          "line": 15,
+          "name": "Tristan Xerri 15+ disposals",
+          "book_odds": 1.44,
+          "hit_prob": 0.6115
+        }
+      ],
+      "model_joint": 0.28567253048052704,
+      "model_fair": 3.500511576377013,
+      "book_combo": 2.661984,
+      "edge": -0.1796582209659936,
+      "p_all_win": 0.30816931245041534,
+      "p_one_loss": 0.35662321595640484,
+      "promo_ev": 0.2674674119673036,
+      "total_ev": 0.08780919100131002,
+      "suggested_stake": 0.019247037737028114,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Nick Daicos",
+          "market": "goals",
+          "line": 2,
+          "name": "Nick Daicos 2+ goals",
+          "book_odds": 1.65,
+          "hit_prob": 0.5255
+        },
+        {
+          "player": "Jack Buller",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Buller 1+ goals",
+          "book_odds": 1.27,
+          "hit_prob": 0.7259
+        },
+        {
+          "player": "Charlie Spargo",
+          "market": "disposals",
+          "line": 15,
+          "name": "Charlie Spargo 15+ disposals",
+          "book_odds": 1.57,
+          "hit_prob": 0.5242
+        }
+      ],
+      "model_joint": 0.1999923857885578,
+      "model_fair": 5.000190362533358,
+      "book_combo": 3.289935,
+      "edge": -0.25652853769554085,
+      "p_all_win": 0.22598363259592033,
+      "p_one_loss": 0.3470655096778416,
+      "promo_ev": 0.2602991322583812,
+      "total_ev": 0.003770594562840346,
+      "suggested_stake": 0.0005788770116667247,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Dan Houston",
+          "market": "disposals",
+          "line": 20,
+          "name": "Dan Houston 20+ disposals",
+          "book_odds": 1.56,
+          "hit_prob": 0.5582
+        },
+        {
+          "player": "Luke Davies-Uniacke",
+          "market": "disposals",
+          "line": 25,
+          "name": "Luke Davies-Uniacke 25+ disposals",
+          "book_odds": 1.87,
+          "hit_prob": 0.4958
+        },
+        {
+          "player": "Paul Curtis",
+          "market": "goals",
+          "line": 2,
+          "name": "Paul Curtis 2+ goals",
+          "book_odds": 1.82,
+          "hit_prob": 0.4516
+        }
+      ],
+      "model_joint": 0.12499994698813731,
+      "model_fair": 8.000003392760652,
+      "book_combo": 5.309304000000001,
+      "edge": -0.25225296109207096,
+      "p_all_win": 0.1408371114006523,
+      "p_one_loss": 0.2588744074818995,
+      "promo_ev": 0.19415580561142462,
+      "total_ev": -0.05809715548064634,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Jeremy Howe",
+          "market": "marks",
+          "line": 5,
+          "name": "Jeremy Howe 5+ marks",
+          "book_odds": 1.22,
+          "hit_prob": 0.7686
+        },
+        {
+          "player": "Beau McCreery",
+          "market": "goals",
+          "line": 1,
+          "name": "Beau McCreery 1+ goals",
+          "book_odds": 2.65,
+          "hit_prob": 0.3586
+        },
+        {
+          "player": "Angus Anderson",
+          "market": "goals",
+          "line": 2,
+          "name": "Angus Anderson 2+ goals",
+          "book_odds": 5.5,
+          "hit_prob": 0.2332
+        }
+      ],
+      "model_joint": 0.06428247161865744,
+      "model_fair": 15.556340240498136,
+      "book_combo": 17.781499999999998,
+      "edge": 0.10727907681536775,
+      "p_all_win": 0.06227140999439687,
+      "p_one_loss": 0.4071040304471284,
+      "promo_ev": 0.3053280228353463,
+      "total_ev": 0.41260709965071407,
+      "suggested_stake": 0.008942983241131639,
+      "value_pick": true,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Scott Pendlebury",
+          "market": "disposals",
+          "line": 20,
+          "name": "Scott Pendlebury 20+ disposals",
+          "book_odds": 1.31,
+          "hit_prob": 0.7224
+        },
+        {
+          "player": "Angus Anderson",
+          "market": "goals",
+          "line": 1,
+          "name": "Angus Anderson 1+ goals",
+          "book_odds": 1.83,
+          "hit_prob": 0.5616
+        },
+        {
+          "player": "Harry Sheezel",
+          "market": "disposals",
+          "line": 25,
+          "name": "Harry Sheezel 25+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.8169
+        }
+      ],
+      "model_joint": 0.3314131495370446,
+      "model_fair": 3.017381782819762,
+      "book_combo": 2.661003,
+      "edge": -0.08858146113185683,
+      "p_all_win": 0.34250939922583445,
+      "p_one_loss": 0.4370248205139798,
+      "promo_ev": 0.32776861538548485,
+      "total_ev": 0.23918715425362802,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Darcy Cameron",
+          "market": "disposals",
+          "line": 15,
+          "name": "Darcy Cameron 15+ disposals",
+          "book_odds": 1.58,
+          "hit_prob": 0.6236
+        },
+        {
+          "player": "Jack Buller",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Buller 1+ goals",
+          "book_odds": 1.27,
+          "hit_prob": 0.7259
+        },
+        {
+          "player": "Jy Simpkin",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jy Simpkin 20+ disposals",
+          "book_odds": 1.69,
+          "hit_prob": 0.579
+        }
+      ],
+      "model_joint": 0.26207783508919597,
+      "model_fair": 3.815660334875929,
+      "book_combo": 3.3911540000000002,
+      "edge": -0.08344027591944947,
+      "p_all_win": 0.2702795933421338,
+      "p_one_loss": 0.41946888013271505,
+      "promo_ev": 0.3146016600995363,
+      "total_ev": 0.2311613841800868,
+      "suggested_stake": 0.03783150490041611,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Jordan De Goey",
+          "market": "goals",
+          "line": 1,
+          "name": "Jordan De Goey 1+ goals",
+          "book_odds": 1.14,
+          "hit_prob": 0.8001
+        },
+        {
+          "player": "Jeremy Howe",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jeremy Howe 20+ disposals",
+          "book_odds": 3.32,
+          "hit_prob": 0.3075
+        },
+        {
+          "player": "Luke Davies-Uniacke",
+          "market": "disposals",
+          "line": 20,
+          "name": "Luke Davies-Uniacke 20+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.793
+        }
+      ],
+      "model_joint": 0.19509350697246317,
+      "model_fair": 5.125747214852962,
+      "book_combo": 4.428215999999999,
+      "edge": -0.10206285819632044,
+      "p_all_win": 0.2027762741934178,
+      "p_one_loss": 0.4807631046977537,
+      "promo_ev": 0.3605723285233153,
+      "total_ev": 0.25850947032699484,
+      "suggested_stake": 0.03138812347820277,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Steele Sidebottom",
+          "market": "disposals",
+          "line": 15,
+          "name": "Steele Sidebottom 15+ disposals",
+          "book_odds": 1.5,
+          "hit_prob": 0.6427
+        },
+        {
+          "player": "Beau McCreery",
+          "market": "goals",
+          "line": 1,
+          "name": "Beau McCreery 1+ goals",
+          "book_odds": 2.65,
+          "hit_prob": 0.3586
+        },
+        {
+          "player": "Colby McKercher",
+          "market": "disposals",
+          "line": 20,
+          "name": "Colby McKercher 20+ disposals",
+          "book_odds": 1.33,
+          "hit_prob": 0.704
+        }
+      ],
+      "model_joint": 0.16227531831033173,
+      "model_fair": 6.162366590386974,
+      "book_combo": 5.28675,
+      "edge": -0.10656822069214023,
+      "p_all_win": 0.16899452013200167,
+      "p_one_loss": 0.41428512773063314,
+      "promo_ev": 0.31071384579797484,
+      "total_ev": 0.20414562510583462,
+      "suggested_stake": 0.01789853778079702,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Patrick Lipinski",
+          "market": "goals",
+          "line": 1,
+          "name": "Patrick Lipinski 1+ goals",
+          "book_odds": 1.97,
+          "hit_prob": 0.4766
+        },
+        {
+          "player": "Tim Membrey",
+          "market": "goals",
+          "line": 2,
+          "name": "Tim Membrey 2+ goals",
+          "book_odds": 1.65,
+          "hit_prob": 0.5475
+        },
+        {
+          "player": "Paul Curtis",
+          "market": "disposals",
+          "line": 15,
+          "name": "Paul Curtis 15+ disposals",
+          "book_odds": 2.75,
+          "hit_prob": 0.3474
+        }
+      ],
+      "model_joint": 0.0906476688531738,
+      "model_fair": 11.031723293620999,
+      "book_combo": 8.938875,
+      "edge": -0.14228386431006457,
+      "p_all_win": 0.09595347688494754,
+      "p_one_loss": 0.36883195014583964,
+      "promo_ev": 0.2766239626093797,
+      "total_ev": 0.13434009829931515,
+      "suggested_stake": 0.0059336297554208935,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.5,
+      "units_tag": "0.5u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Collingwood-North_Melbourne-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Collingwood vs North Melbourne",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Jack Crisp",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jack Crisp 20+ disposals",
+          "book_odds": 1.82,
+          "hit_prob": 0.5113
+        },
+        {
+          "player": "Luke McDonald",
+          "market": "disposals",
+          "line": 20,
+          "name": "Luke McDonald 20+ disposals",
+          "book_odds": 2.79,
+          "hit_prob": 0.34
+        },
+        {
+          "player": "Zac Banch",
+          "market": "marks",
+          "line": 4,
+          "name": "Zac Banch 4+ marks",
+          "book_odds": 3.7,
+          "hit_prob": 0.2967
+        }
+      ],
+      "model_joint": 0.0515912949966476,
+      "model_fair": 19.383114924038637,
+      "book_combo": 18.787860000000002,
+      "edge": -0.02303247928821317,
+      "p_all_win": 0.05199993616685385,
+      "p_one_loss": 0.2542256312571024,
+      "promo_ev": 0.1906692234428268,
+      "total_ev": 0.16763674415461363,
+      "suggested_stake": 0.0029228403957449398,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Nasiah Wanganeen-Milera",
+          "market": "disposals",
+          "line": 25,
+          "name": "Nasiah Wanganeen-Milera 25+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8134
+        },
+        {
+          "player": "Bradley Hill",
+          "market": "disposals",
+          "line": 20,
+          "name": "Bradley Hill 20+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.7703
+        },
+        {
+          "player": "Logan Evans",
+          "market": "disposals",
+          "line": 15,
+          "name": "Logan Evans 15+ disposals",
+          "book_odds": 1.15,
+          "hit_prob": 0.7575
+        }
+      ],
+      "model_joint": 0.4746429706851841,
+      "model_fair": 2.106846749581948,
+      "book_combo": 1.37862,
+      "edge": -0.2592357808154937,
+      "p_all_win": 0.537322989064794,
+      "p_one_loss": 0.25727001624138846,
+      "promo_ev": 0.19295251218104134,
+      "total_ev": -0.06628326863445236,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Darcy Wilson",
+          "market": "goals",
+          "line": 1,
+          "name": "Darcy Wilson 1+ goals",
+          "book_odds": 1.58,
+          "hit_prob": 0.6356
+        },
+        {
+          "player": "Zak Butters",
+          "market": "disposals",
+          "line": 25,
+          "name": "Zak Butters 25+ disposals",
+          "book_odds": 1.23,
+          "hit_prob": 0.7495
+        },
+        {
+          "player": "Jason Horne-Francis",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jason Horne-Francis 20+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.762
+        }
+      ],
+      "model_joint": 0.36297650344056553,
+      "model_fair": 2.754999264473718,
+      "book_combo": 2.42925,
+      "edge": -0.08867949676275444,
+      "p_all_win": 0.3751447991097028,
+      "p_one_loss": 0.4203675818786682,
+      "promo_ev": 0.31527568640900117,
+      "total_ev": 0.22659618964624673,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Callum Wilkie",
+          "market": "disposals",
+          "line": 20,
+          "name": "Callum Wilkie 20+ disposals",
+          "book_odds": 1.33,
+          "hit_prob": 0.6696
+        },
+        {
+          "player": "Mitch Georgiades",
+          "market": "goals",
+          "line": 2,
+          "name": "Mitch Georgiades 2+ goals",
+          "book_odds": 1.29,
+          "hit_prob": 0.6382
+        },
+        {
+          "player": "Jack Whitlock",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Whitlock 1+ goals",
+          "book_odds": 1.26,
+          "hit_prob": 0.6668
+        }
+      ],
+      "model_joint": 0.28497791176871184,
+      "model_fair": 3.509043889729953,
+      "book_combo": 2.161782,
+      "edge": -0.2879549099556079,
+      "p_all_win": 0.3293787671672685,
+      "p_one_loss": 0.33142752516122903,
+      "promo_ev": 0.24857064387092176,
+      "total_ev": -0.03938426608468615,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Jack Macrae",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jack Macrae 20+ disposals",
+          "book_odds": null,
+          "hit_prob": 0.6148
+        },
+        {
+          "player": "Max Hall",
+          "market": "disposals",
+          "line": 20,
+          "name": "Max Hall 20+ disposals",
+          "book_odds": 1.31,
+          "hit_prob": 0.6761
+        },
+        {
+          "player": "Jase Burgoyne",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jase Burgoyne 20+ disposals",
+          "book_odds": 2.16,
+          "hit_prob": 0.481
+        }
+      ],
+      "model_joint": 0.19994771560387542,
+      "model_fair": 5.001307451699727,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": 0.18216,
+      "p_one_loss": 0.389,
+      "promo_ev": 0.29175,
+      "total_ev": 0.29175,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "MODEL-ONLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Jack Sinclair",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jack Sinclair 20+ disposals",
+          "book_odds": null,
+          "hit_prob": 0.5473
+        },
+        {
+          "player": "Joe Berry",
+          "market": "disposals",
+          "line": 15,
+          "name": "Joe Berry 15+ disposals",
+          "book_odds": 2.24,
+          "hit_prob": 0.384
+        },
+        {
+          "player": "Miles Bergman",
+          "market": "disposals",
+          "line": 15,
+          "name": "Miles Bergman 15+ disposals",
+          "book_odds": 1.3,
+          "hit_prob": 0.5941
+        }
+      ],
+      "model_joint": 0.12485945688499042,
+      "model_fair": 8.009004883956145,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": 0.06594,
+      "p_one_loss": 0.27398,
+      "promo_ev": 0.205485,
+      "total_ev": 0.205485,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "MODEL-ONLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Hugo Garcia",
+          "market": "goals",
+          "line": 1,
+          "name": "Hugo Garcia 1+ goals",
+          "book_odds": 3.3,
+          "hit_prob": 0.3166
+        },
+        {
+          "player": "Jack Lukosius",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Lukosius 1+ goals",
+          "book_odds": 2.75,
+          "hit_prob": 0.3951
+        },
+        {
+          "player": "Xavier Bamert",
+          "market": "goals",
+          "line": 1,
+          "name": "Xavier Bamert 1+ goals",
+          "book_odds": 2.08,
+          "hit_prob": 0.4832
+        }
+      ],
+      "model_joint": 0.0604260655733702,
+      "model_fair": 16.54914961798705,
+      "book_combo": 18.875999999999998,
+      "edge": 0.10545181032220174,
+      "p_all_win": 0.05856388060617725,
+      "p_one_loss": 0.39091265580335105,
+      "promo_ev": 0.2931844918525133,
+      "total_ev": 0.398636302174715,
+      "suggested_stake": 0.007960566186279674,
+      "value_pick": true,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Marcus Windhager",
+          "market": "disposals",
+          "line": 20,
+          "name": "Marcus Windhager 20+ disposals",
+          "book_odds": 1.37,
+          "hit_prob": 0.6798
+        },
+        {
+          "player": "Darcy Wilson",
+          "market": "goals",
+          "line": 1,
+          "name": "Darcy Wilson 1+ goals",
+          "book_odds": 1.58,
+          "hit_prob": 0.6356
+        },
+        {
+          "player": "Jason Horne-Francis",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jason Horne-Francis 20+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.762
+        }
+      ],
+      "model_joint": 0.3292381527395076,
+      "model_fair": 3.0373150610864883,
+      "book_combo": 2.70575,
+      "edge": -0.08187290116880808,
+      "p_all_win": 0.33932443826339903,
+      "p_one_loss": 0.43577609423250296,
+      "promo_ev": 0.32683207067437725,
+      "total_ev": 0.24495916950556917,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Zak Butters",
+          "market": "disposals",
+          "line": 25,
+          "name": "Zak Butters 25+ disposals",
+          "book_odds": 1.23,
+          "hit_prob": 0.7495
+        },
+        {
+          "player": "Jase Burgoyne",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jase Burgoyne 20+ disposals",
+          "book_odds": 2.16,
+          "hit_prob": 0.481
+        },
+        {
+          "player": "Joe Richards",
+          "market": "disposals",
+          "line": 15,
+          "name": "Joe Richards 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.735
+        }
+      ],
+      "model_joint": 0.2649591080972942,
+      "model_fair": 3.7741672938934987,
+      "book_combo": 3.321,
+      "edge": -0.09005310150666423,
+      "p_all_win": 0.2739978616360541,
+      "p_one_loss": 0.42033911272462954,
+      "promo_ev": 0.3152543345434722,
+      "total_ev": 0.22520123303680795,
+      "suggested_stake": 0.03808210253488555,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Logan Evans",
+          "market": "disposals",
+          "line": 15,
+          "name": "Logan Evans 15+ disposals",
+          "book_odds": 1.15,
+          "hit_prob": 0.7575
+        },
+        {
+          "player": "Jack Lukosius",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Lukosius 1+ goals",
+          "book_odds": 2.75,
+          "hit_prob": 0.3951
+        },
+        {
+          "player": "Corey Durdin",
+          "market": "goals",
+          "line": 1,
+          "name": "Corey Durdin 1+ goals",
+          "book_odds": 1.27,
+          "hit_prob": 0.698
+        }
+      ],
+      "model_joint": 0.2088948134054443,
+      "model_fair": 4.787098270645419,
+      "book_combo": 4.016375,
+      "edge": -0.1207500703565314,
+      "p_all_win": 0.21891629383298836,
+      "p_one_loss": 0.43400430093966014,
+      "promo_ev": 0.3255032257047451,
+      "total_ev": 0.2047531553482137,
+      "suggested_stake": 0.02660374570686854,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 2.5,
+      "units_tag": "2.5u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Nasiah Wanganeen-Milera",
+          "market": "disposals",
+          "line": 25,
+          "name": "Nasiah Wanganeen-Milera 25+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8134
+        },
+        {
+          "player": "Willem Drew",
+          "market": "disposals",
+          "line": 20,
+          "name": "Willem Drew 20+ disposals",
+          "book_odds": 2.68,
+          "hit_prob": 0.4115
+        },
+        {
+          "player": "Xavier Bamert",
+          "market": "goals",
+          "line": 1,
+          "name": "Xavier Bamert 1+ goals",
+          "book_odds": 2.08,
+          "hit_prob": 0.4832
+        }
+      ],
+      "model_joint": 0.16173107329559577,
+      "model_fair": 6.183103714227511,
+      "book_combo": 6.020352000000002,
+      "edge": -0.019741507067034925,
+      "p_all_win": 0.16282411608706016,
+      "p_one_loss": 0.391907491579554,
+      "promo_ev": 0.2939306186846655,
+      "total_ev": 0.2741891116176306,
+      "suggested_stake": 0.019928066264732203,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Callum Wilkie",
+          "market": "disposals",
+          "line": 20,
+          "name": "Callum Wilkie 20+ disposals",
+          "book_odds": 1.33,
+          "hit_prob": 0.6696
+        },
+        {
+          "player": "Hugo Garcia",
+          "market": "goals",
+          "line": 1,
+          "name": "Hugo Garcia 1+ goals",
+          "book_odds": 3.3,
+          "hit_prob": 0.3166
+        },
+        {
+          "player": "Aliir Aliir",
+          "market": "disposals",
+          "line": 15,
+          "name": "Aliir Aliir 15+ disposals",
+          "book_odds": 1.91,
+          "hit_prob": 0.5148
+        }
+      ],
+      "model_joint": 0.10912555208983644,
+      "model_fair": 9.163756616569149,
+      "book_combo": 8.38299,
+      "edge": -0.06390119106481651,
+      "p_all_win": 0.11166645897647302,
+      "p_one_loss": 0.3715672290816478,
+      "promo_ev": 0.27867542181123584,
+      "total_ev": 0.21477423074641933,
+      "suggested_stake": 0.010258971328733098,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-St_Kilda-Port_Adelaide-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "St Kilda vs Port Adelaide",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [],
+      "model_joint": null,
+      "model_fair": null,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": null,
+      "p_one_loss": null,
+      "promo_ev": null,
+      "total_ev": null,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": true,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Clayton Oliver",
+          "market": "disposals",
+          "line": 25,
+          "name": "Clayton Oliver 25+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.8035
+        },
+        {
+          "player": "Lawson Humphries",
+          "market": "disposals",
+          "line": 15,
+          "name": "Lawson Humphries 15+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.7659
+        },
+        {
+          "player": "Oliver Henry",
+          "market": "goals",
+          "line": 1,
+          "name": "Oliver Henry 1+ goals",
+          "book_odds": 1.15,
+          "hit_prob": 0.7724
+        }
+      ],
+      "model_joint": 0.4753613288012946,
+      "model_fair": 2.1036629178937885,
+      "book_combo": 1.5338699999999998,
+      "edge": -0.20314313894366876,
+      "p_all_win": 0.5195074296102873,
+      "p_one_loss": 0.3214666029307824,
+      "promo_ev": 0.24109995219808678,
+      "total_ev": 0.03795681325441802,
+      "suggested_stake": 0.027955155752147385,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Ryan Angwin",
+          "market": "disposals",
+          "line": 15,
+          "name": "Ryan Angwin 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.7182
+        },
+        {
+          "player": "Shaun Mannagh",
+          "market": "goals",
+          "line": 1,
+          "name": "Shaun Mannagh 1+ goals",
+          "book_odds": 1.36,
+          "hit_prob": 0.6685
+        },
+        {
+          "player": "Jack Martin",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Martin 1+ goals",
+          "book_odds": 1.22,
+          "hit_prob": 0.7574
+        }
+      ],
+      "model_joint": 0.3635999674820733,
+      "model_fair": 2.750275273468784,
+      "book_combo": 2.0740000000000003,
+      "edge": -0.18442025058163491,
+      "p_all_win": 0.393239994897958,
+      "p_one_loss": 0.39083564628512374,
+      "promo_ev": 0.2931267347138428,
+      "total_ev": 0.1087064841322079,
+      "suggested_stake": 0.04059367382698457,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Stephen Coniglio",
+          "market": "disposals",
+          "line": 15,
+          "name": "Stephen Coniglio 15+ disposals",
+          "book_odds": 1.65,
+          "hit_prob": 0.6084
+        },
+        {
+          "player": "Phoenix Gothard",
+          "market": "goals",
+          "line": 1,
+          "name": "Phoenix Gothard 1+ goals",
+          "book_odds": 1.45,
+          "hit_prob": 0.6677
+        },
+        {
+          "player": "Jack Bowes",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jack Bowes 15+ disposals",
+          "book_odds": 1.23,
+          "hit_prob": 0.7032
+        }
+      ],
+      "model_joint": 0.28566200189782653,
+      "model_fair": 3.5006405939760676,
+      "book_combo": 2.9427749999999997,
+      "edge": -0.11952075177384269,
+      "p_all_win": 0.2992003290180722,
+      "p_one_loss": 0.40949880809116457,
+      "promo_ev": 0.3071241060683734,
+      "total_ev": 0.18760335429453073,
+      "suggested_stake": 0.03773464591832938,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "total",
+          "market": "total_points",
+          "line": 5,
+          "name": "Total points 190.5+",
+          "book_odds": null,
+          "hit_prob": 0.4383
+        },
+        {
+          "player": "Finn Callaghan",
+          "market": "disposals",
+          "line": 25,
+          "name": "Finn Callaghan 25+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.7421
+        },
+        {
+          "player": "Aaron Cadman",
+          "market": "goals",
+          "line": 2,
+          "name": "Aaron Cadman 2+ goals",
+          "book_odds": 1.38,
+          "hit_prob": 0.6146
+        }
+      ],
+      "model_joint": 0.1999474780591517,
+      "model_fair": 5.001313393431068,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": 0.1796,
+      "p_one_loss": 0.36976,
+      "promo_ev": 0.27732,
+      "total_ev": 0.27732,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "MODEL-ONLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Harry Rowston",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harry Rowston 15+ disposals",
+          "book_odds": 1.59,
+          "hit_prob": 0.5745
+        },
+        {
+          "player": "Patrick Dangerfield",
+          "market": "disposals",
+          "line": 15,
+          "name": "Patrick Dangerfield 15+ disposals",
+          "book_odds": 1.43,
+          "hit_prob": 0.7041
+        },
+        {
+          "player": "Oliver Wiltshire",
+          "market": "goals",
+          "line": 2,
+          "name": "Oliver Wiltshire 2+ goals",
+          "book_odds": 3.3,
+          "hit_prob": 0.3089
+        }
+      ],
+      "model_joint": 0.12494648878972674,
+      "model_fair": 8.003426184171582,
+      "book_combo": 7.503209999999999,
+      "edge": -0.04687519188602596,
+      "p_all_win": 0.12702893936248275,
+      "p_one_loss": 0.39991771212136024,
+      "promo_ev": 0.2999382840910202,
+      "total_ev": 0.25306309220499423,
+      "suggested_stake": 0.014222010688432526,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Harvey Thomas",
+          "market": "disposals",
+          "line": 20,
+          "name": "Harvey Thomas 20+ disposals",
+          "book_odds": 2.14,
+          "hit_prob": 0.4599
+        },
+        {
+          "player": "Harrison Oliver",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harrison Oliver 15+ disposals",
+          "book_odds": 3.45,
+          "hit_prob": 0.3278
+        },
+        {
+          "player": "Tom Atkins",
+          "market": "disposals",
+          "line": 20,
+          "name": "Tom Atkins 20+ disposals",
+          "book_odds": 2.61,
+          "hit_prob": 0.4123
+        }
+      ],
+      "model_joint": 0.062141768182223014,
+      "model_fair": 16.092236015358047,
+      "book_combo": 19.269630000000003,
+      "edge": 0.14808666031290785,
+      "p_all_win": 0.059580109234734016,
+      "p_one_loss": 0.3065588466932284,
+      "promo_ev": 0.2299191350199213,
+      "total_ev": 0.3780057953328292,
+      "suggested_stake": 0.00675848442951778,
+      "value_pick": true,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Phoenix Gothard",
+          "market": "goals",
+          "line": 1,
+          "name": "Phoenix Gothard 1+ goals",
+          "book_odds": 1.45,
+          "hit_prob": 0.6677
+        },
+        {
+          "player": "Patrick Dangerfield",
+          "market": "disposals",
+          "line": 15,
+          "name": "Patrick Dangerfield 15+ disposals",
+          "book_odds": 1.43,
+          "hit_prob": 0.7041
+        },
+        {
+          "player": "Jack Martin",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Martin 1+ goals",
+          "book_odds": 1.22,
+          "hit_prob": 0.7574
+        }
+      ],
+      "model_joint": 0.3560314953877478,
+      "model_fair": 2.808740274258369,
+      "book_combo": 2.5296699999999994,
+      "edge": -0.07451835529685724,
+      "p_all_win": 0.3658507412837022,
+      "p_one_loss": 0.4468115510504859,
+      "promo_ev": 0.33510866328786443,
+      "total_ev": 0.2605903079910072,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Clayton Oliver",
+          "market": "disposals",
+          "line": 25,
+          "name": "Clayton Oliver 25+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.8035
+        },
+        {
+          "player": "Harvey Thomas",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harvey Thomas 15+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.792
+        },
+        {
+          "player": "Tom Atkins",
+          "market": "disposals",
+          "line": 20,
+          "name": "Tom Atkins 20+ disposals",
+          "book_odds": 2.61,
+          "hit_prob": 0.4123
+        }
+      ],
+      "model_joint": 0.2623454558223687,
+      "model_fair": 3.811767948735081,
+      "book_combo": 3.4812179999999997,
+      "edge": -0.0650387077297242,
+      "p_all_win": 0.268573037445594,
+      "p_one_loss": 0.4382962149689139,
+      "promo_ev": 0.3287221612266854,
+      "total_ev": 0.2636834534969612,
+      "suggested_stake": 0.0427129270387294,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Harrison Oliver",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harrison Oliver 15+ disposals",
+          "book_odds": 3.45,
+          "hit_prob": 0.3278
+        },
+        {
+          "player": "Bailey Smith",
+          "market": "disposals",
+          "line": 25,
+          "name": "Bailey Smith 25+ disposals",
+          "book_odds": 1.13,
+          "hit_prob": 0.8079
+        },
+        {
+          "player": "Oliver Henry",
+          "market": "goals",
+          "line": 1,
+          "name": "Oliver Henry 1+ goals",
+          "book_odds": 1.15,
+          "hit_prob": 0.7724
+        }
+      ],
+      "model_joint": 0.2045328324805327,
+      "model_fair": 4.889190590440679,
+      "book_combo": 4.483275,
+      "edge": -0.06226729909562978,
+      "p_all_win": 0.2091624316831714,
+      "p_one_loss": 0.4652346504499385,
+      "promo_ev": 0.3489259878374539,
+      "total_ev": 0.2866586887418241,
+      "suggested_stake": 0.03356024969655996,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Finn Callaghan",
+          "market": "disposals",
+          "line": 25,
+          "name": "Finn Callaghan 25+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.7421
+        },
+        {
+          "player": "Stephen Coniglio",
+          "market": "disposals",
+          "line": 20,
+          "name": "Stephen Coniglio 20+ disposals",
+          "book_odds": 4.1,
+          "hit_prob": 0.2751
+        },
+        {
+          "player": "Lawson Humphries",
+          "market": "disposals",
+          "line": 15,
+          "name": "Lawson Humphries 15+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.7659
+        }
+      ],
+      "model_joint": 0.15635507012844274,
+      "model_fair": 6.395699219593704,
+      "book_combo": 5.99625,
+      "edge": -0.04684193305674389,
+      "p_all_win": 0.15895902721588595,
+      "p_one_loss": 0.4094153466167053,
+      "promo_ev": 0.307061509962529,
+      "total_ev": 0.2602195769057851,
+      "suggested_stake": 0.019399337944001876,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Jack Bowes",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Bowes 1+ goals",
+          "book_odds": 2.12,
+          "hit_prob": 0.4531
+        },
+        {
+          "player": "Shaun Mannagh",
+          "market": "goals",
+          "line": 1,
+          "name": "Shaun Mannagh 1+ goals",
+          "book_odds": 1.36,
+          "hit_prob": 0.6685
+        },
+        {
+          "player": "Oliver Wiltshire",
+          "market": "goals",
+          "line": 2,
+          "name": "Oliver Wiltshire 2+ goals",
+          "book_odds": 3.3,
+          "hit_prob": 0.3089
+        }
+      ],
+      "model_joint": 0.09356292673267984,
+      "model_fair": 10.68799400490235,
+      "book_combo": 9.514560000000001,
+      "edge": -0.08234243986973522,
+      "p_all_win": 0.09644771383335274,
+      "p_one_loss": 0.36538118542220793,
+      "promo_ev": 0.27403588906665594,
+      "total_ev": 0.19169344919692072,
+      "suggested_stake": 0.007864388496204057,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": false,
+      "units": 0.75,
+      "units_tag": "0.75u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Greater_Western_Sydney-Geelong-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Greater Western Sydney vs Geelong",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [],
+      "model_joint": null,
+      "model_fair": null,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": null,
+      "p_one_loss": null,
+      "promo_ev": null,
+      "total_ev": null,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.331,
+      "no_bet": true,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Oliver Hollands",
+          "market": "disposals",
+          "line": 15,
+          "name": "Oliver Hollands 15+ disposals",
+          "book_odds": 1.28,
+          "hit_prob": 0.7478
+        },
+        {
+          "player": "Harry McKay",
+          "market": "goals",
+          "line": 1,
+          "name": "Harry McKay 1+ goals",
+          "book_odds": 1.17,
+          "hit_prob": 0.764
+        },
+        {
+          "player": "Jai Newcombe",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jai Newcombe 20+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8333
+        }
+      ],
+      "model_joint": 0.47610246204052953,
+      "model_fair": 2.1003882141547763,
+      "book_combo": 1.6174080000000002,
+      "edge": -0.17246105180696336,
+      "p_all_win": 0.5116451434598052,
+      "p_one_loss": 0.33977897820484976,
+      "promo_ev": 0.25483423365363733,
+      "total_ev": 0.08237318184667397,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Sam Walsh",
+          "market": "disposals",
+          "line": 25,
+          "name": "Sam Walsh 25+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.6467
+        },
+        {
+          "player": "Mitch McGovern",
+          "market": "goals",
+          "line": 1,
+          "name": "Mitch McGovern 1+ goals",
+          "book_odds": 1.31,
+          "hit_prob": 0.6797
+        },
+        {
+          "player": "Connor Macdonald",
+          "market": "disposals",
+          "line": 15,
+          "name": "Connor Macdonald 15+ disposals",
+          "book_odds": 1.07,
+          "hit_prob": 0.827
+        }
+      ],
+      "model_joint": 0.3635720306378853,
+      "model_fair": 2.750486604388971,
+      "book_combo": 1.7521250000000004,
+      "edge": -0.2722322668639464,
+      "p_all_win": 0.41536290683373245,
+      "p_one_loss": 0.3282547345799556,
+      "promo_ev": 0.24619105093496668,
+      "total_ev": -0.026041215928979733,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Patrick Cripps",
+          "market": "disposals",
+          "line": 25,
+          "name": "Patrick Cripps 25+ disposals",
+          "book_odds": 1.34,
+          "hit_prob": 0.6163
+        },
+        {
+          "player": "Will Day",
+          "market": "disposals",
+          "line": 20,
+          "name": "Will Day 20+ disposals",
+          "book_odds": 1.31,
+          "hit_prob": 0.5857
+        },
+        {
+          "player": "Mabior Chol",
+          "market": "goals",
+          "line": 1,
+          "name": "Mabior Chol 1+ goals",
+          "book_odds": 1.16,
+          "hit_prob": 0.7915
+        }
+      ],
+      "model_joint": 0.2857000092365703,
+      "model_fair": 3.5001748955911394,
+      "book_combo": 2.036264,
+      "edge": -0.3136795172939283,
+      "p_all_win": 0.3370488712200735,
+      "p_one_loss": 0.3123571275922884,
+      "promo_ev": 0.2342678456942163,
+      "total_ev": -0.07941167159971199,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Ben Ainsworth",
+          "market": "disposals",
+          "line": 15,
+          "name": "Ben Ainsworth 15+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.7183
+        },
+        {
+          "player": "Wade Derksen",
+          "market": "disposals",
+          "line": 15,
+          "name": "Wade Derksen 15+ disposals",
+          "book_odds": 2.3,
+          "hit_prob": 0.3877
+        },
+        {
+          "player": "Harry Morrison",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harry Morrison 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.7182
+        }
+      ],
+      "model_joint": 0.19998372531440736,
+      "model_fair": 5.000406900250685,
+      "book_combo": 3.3637499999999996,
+      "edge": -0.24547855798024665,
+      "p_all_win": 0.22430960743805378,
+      "p_one_loss": 0.3367076159412438,
+      "promo_ev": 0.25253071195593285,
+      "total_ev": 0.007052153975686204,
+      "suggested_stake": 0.0010352461418202856,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "total",
+          "market": "total_points",
+          "line": 5,
+          "name": "Total points 175.5+",
+          "book_odds": 1.87,
+          "hit_prob": 0.3325
+        },
+        {
+          "player": "Josh Ward",
+          "market": "disposals",
+          "line": 20,
+          "name": "Josh Ward 20+ disposals",
+          "book_odds": 1.33,
+          "hit_prob": 0.6696
+        },
+        {
+          "player": "James Sicily",
+          "market": "disposals",
+          "line": 20,
+          "name": "James Sicily 20+ disposals",
+          "book_odds": 1.49,
+          "hit_prob": 0.5611
+        }
+      ],
+      "model_joint": 0.12493388250268196,
+      "model_fair": 8.004233759232871,
+      "book_combo": 3.7057790000000006,
+      "edge": -0.40276698137482025,
+      "p_all_win": 0.1611626107830984,
+      "p_one_loss": 0.29015495989229234,
+      "promo_ev": 0.21761621991921926,
+      "total_ev": -0.185150761455601,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Karl Amon",
+          "market": "disposals",
+          "line": 25,
+          "name": "Karl Amon 25+ disposals",
+          "book_odds": 2.58,
+          "hit_prob": 0.3462
+        },
+        {
+          "player": "Blake Hardwick",
+          "market": "tackles",
+          "line": 3,
+          "name": "Blake Hardwick 3+ tackles",
+          "book_odds": 2.65,
+          "hit_prob": 0.3452
+        },
+        {
+          "player": "William McCabe",
+          "market": "goals",
+          "line": 1,
+          "name": "William McCabe 1+ goals",
+          "book_odds": 1.93,
+          "hit_prob": 0.5072
+        }
+      ],
+      "model_joint": 0.06061649874250332,
+      "model_fair": 16.49715870670729,
+      "book_combo": 13.195409999999999,
+      "edge": -0.1501053347461383,
+      "p_all_win": 0.0644083560309124,
+      "p_one_loss": 0.28804122236044677,
+      "promo_ev": 0.2160309167703351,
+      "total_ev": 0.0659255820241968,
+      "suggested_stake": 0.0017344920669432613,
+      "value_pick": true,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Oliver Hollands",
+          "market": "disposals",
+          "line": 15,
+          "name": "Oliver Hollands 15+ disposals",
+          "book_odds": 1.28,
+          "hit_prob": 0.7478
+        },
+        {
+          "player": "Jai Newcombe",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jai Newcombe 20+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8333
+        },
+        {
+          "player": "William McCabe",
+          "market": "goals",
+          "line": 1,
+          "name": "William McCabe 1+ goals",
+          "book_odds": 1.93,
+          "hit_prob": 0.5072
+        }
+      ],
+      "model_joint": 0.31607893164799267,
+      "model_fair": 3.1637667046839715,
+      "book_combo": 2.668032,
+      "edge": -0.11751847187800701,
+      "p_all_win": 0.33076122329941804,
+      "p_one_loss": 0.43266294618490886,
+      "promo_ev": 0.32449720963868167,
+      "total_ev": 0.20697873776067466,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Will Hayward",
+          "market": "goals",
+          "line": 1,
+          "name": "Will Hayward 1+ goals",
+          "book_odds": 1.47,
+          "hit_prob": 0.6373
+        },
+        {
+          "player": "Talor Byrne",
+          "market": "goals",
+          "line": 1,
+          "name": "Talor Byrne 1+ goals",
+          "book_odds": 1.93,
+          "hit_prob": 0.4825
+        },
+        {
+          "player": "Mabior Chol",
+          "market": "goals",
+          "line": 1,
+          "name": "Mabior Chol 1+ goals",
+          "book_odds": 1.16,
+          "hit_prob": 0.7915
+        }
+      ],
+      "model_joint": 0.24342574482599716,
+      "model_fair": 4.108028921570349,
+      "book_combo": 3.2910359999999996,
+      "edge": -0.14915783283812223,
+      "p_all_win": 0.25853323001081663,
+      "p_one_loss": 0.44589210013801556,
+      "promo_ev": 0.33441907510351165,
+      "total_ev": 0.18526124226538943,
+      "suggested_stake": 0.03279062413501441,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "George Hewett",
+          "market": "goals",
+          "line": 1,
+          "name": "George Hewett 1+ goals",
+          "book_odds": 2.3,
+          "hit_prob": 0.3893
+        },
+        {
+          "player": "Harry McKay",
+          "market": "goals",
+          "line": 1,
+          "name": "Harry McKay 1+ goals",
+          "book_odds": 1.17,
+          "hit_prob": 0.764
+        },
+        {
+          "player": "Connor Macdonald",
+          "market": "goals",
+          "line": 1,
+          "name": "Connor Macdonald 1+ goals",
+          "book_odds": 1.57,
+          "hit_prob": 0.5745
+        }
+      ],
+      "model_joint": 0.170874195222723,
+      "model_fair": 5.85225872576352,
+      "book_combo": 4.22487,
+      "edge": -0.20855905412203068,
+      "p_all_win": 0.18732906477074307,
+      "p_one_loss": 0.4124233260377124,
+      "promo_ev": 0.30931749452828433,
+      "total_ev": 0.10075844040625365,
+      "suggested_stake": 0.011786197792891012,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Mitch McGovern",
+          "market": "goals",
+          "line": 1,
+          "name": "Mitch McGovern 1+ goals",
+          "book_odds": 1.31,
+          "hit_prob": 0.6797
+        },
+        {
+          "player": "Karl Amon",
+          "market": "disposals",
+          "line": 25,
+          "name": "Karl Amon 25+ disposals",
+          "book_odds": 2.58,
+          "hit_prob": 0.3462
+        },
+        {
+          "player": "Jack Ginnivan",
+          "market": "goals",
+          "line": 1,
+          "name": "Jack Ginnivan 1+ goals",
+          "book_odds": 1.49,
+          "hit_prob": 0.5909
+        }
+      ],
+      "model_joint": 0.1390653052021001,
+      "model_fair": 7.190866180077952,
+      "book_combo": 5.035902,
+      "edge": -0.22476056355160023,
+      "p_all_win": 0.1539425184303427,
+      "p_one_loss": 0.3554835109260371,
+      "promo_ev": 0.2666126331945278,
+      "total_ev": 0.04185206964292759,
+      "suggested_stake": 0.003621582855156383,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Wade Derksen",
+          "market": "disposals",
+          "line": 15,
+          "name": "Wade Derksen 15+ disposals",
+          "book_odds": 2.3,
+          "hit_prob": 0.3877
+        },
+        {
+          "player": "Dylan Moore",
+          "market": "goals",
+          "line": 1,
+          "name": "Dylan Moore 1+ goals",
+          "book_odds": 1.36,
+          "hit_prob": 0.6301
+        },
+        {
+          "player": "Harry Morrison",
+          "market": "disposals",
+          "line": 20,
+          "name": "Harry Morrison 20+ disposals",
+          "book_odds": 2.56,
+          "hit_prob": 0.3484
+        }
+      ],
+      "model_joint": 0.08511372937188541,
+      "model_fair": 11.74898582613768,
+      "book_combo": 8.00768,
+      "edge": -0.23882736868750543,
+      "p_all_win": 0.09505532580129257,
+      "p_one_loss": 0.27017277687392593,
+      "promo_ev": 0.20262958265544445,
+      "total_ev": -0.036197786032060975,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Carlton-Hawthorn-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Carlton vs Hawthorn",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Adam Cerra",
+          "market": "disposals",
+          "line": 20,
+          "name": "Adam Cerra 20+ disposals",
+          "book_odds": 2.21,
+          "hit_prob": 0.4076
+        },
+        {
+          "player": "Josh Ward",
+          "market": "disposals",
+          "line": 20,
+          "name": "Josh Ward 20+ disposals",
+          "book_odds": 1.33,
+          "hit_prob": 0.6696
+        },
+        {
+          "player": "James Sicily",
+          "market": "tackles",
+          "line": 3,
+          "name": "James Sicily 3+ tackles",
+          "book_odds": 5.25,
+          "hit_prob": 0.2316
+        }
+      ],
+      "model_joint": 0.06321204091978821,
+      "model_fair": 15.819770813426702,
+      "book_combo": 15.431325000000001,
+      "edge": -0.01841583949008674,
+      "p_all_win": 0.06360984299857032,
+      "p_one_loss": 0.2926005542465536,
+      "promo_ev": 0.21945041568491522,
+      "total_ev": 0.20103457619482848,
+      "suggested_stake": 0.004489394003040146,
+      "value_pick": false,
+      "greasiness": 0.851,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "James Peatling",
+          "market": "disposals",
+          "line": 15,
+          "name": "James Peatling 15+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.7787
+        },
+        {
+          "player": "John Noble",
+          "market": "disposals",
+          "line": 20,
+          "name": "John Noble 20+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.7766
+        },
+        {
+          "player": "Joel Jeffrey",
+          "market": "disposals",
+          "line": 15,
+          "name": "Joel Jeffrey 15+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.7787
+        }
+      ],
+      "model_joint": 0.4708765322769517,
+      "model_fair": 2.1236989559968937,
+      "book_combo": 1.442556,
+      "edge": -0.24055067482851722,
+      "p_all_win": 0.5264608966109342,
+      "p_one_loss": 0.29654139639700916,
+      "promo_ev": 0.22240604729775687,
+      "total_ev": -0.01814462753076035,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Rory Laird",
+          "market": "disposals",
+          "line": 20,
+          "name": "Rory Laird 20+ disposals",
+          "book_odds": 1.22,
+          "hit_prob": 0.6829
+        },
+        {
+          "player": "Riley Thilthorpe",
+          "market": "goals",
+          "line": 1,
+          "name": "Riley Thilthorpe 1+ goals",
+          "book_odds": 1.13,
+          "hit_prob": 0.7943
+        },
+        {
+          "player": "Mac Andrew",
+          "market": "disposals",
+          "line": 15,
+          "name": "Mac Andrew 15+ disposals",
+          "book_odds": 1.3,
+          "hit_prob": 0.6699
+        }
+      ],
+      "model_joint": 0.3634086983887703,
+      "model_fair": 2.7517227970427163,
+      "book_combo": 1.7921799999999999,
+      "edge": -0.26152964919121025,
+      "p_all_win": 0.41205144059680937,
+      "p_one_loss": 0.3222547237747209,
+      "promo_ev": 0.2416910428310407,
+      "total_ev": -0.01983860636016954,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Josh Rachele",
+          "market": "goals",
+          "line": 1,
+          "name": "Josh Rachele 1+ goals",
+          "book_odds": 1.28,
+          "hit_prob": 0.7356
+        },
+        {
+          "player": "Beau Addinsall",
+          "market": "disposals",
+          "line": 15,
+          "name": "Beau Addinsall 15+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.6552
+        },
+        {
+          "player": "Ben King",
+          "market": "goals",
+          "line": 2,
+          "name": "Ben King 2+ goals",
+          "book_odds": 1.44,
+          "hit_prob": 0.5925
+        }
+      ],
+      "model_joint": 0.28558758018587777,
+      "model_fair": 3.5015528313561086,
+      "book_combo": 2.1012479999999996,
+      "edge": -0.2999322512321886,
+      "p_all_win": 0.33316759790743955,
+      "p_one_loss": 0.344744694732062,
+      "promo_ev": 0.2585585210490465,
+      "total_ev": -0.04137373018314211,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Jake Soligo",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jake Soligo 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.7182
+        },
+        {
+          "player": "Christian Petracca",
+          "market": "goals",
+          "line": 1,
+          "name": "Christian Petracca 1+ goals",
+          "book_odds": 1.37,
+          "hit_prob": 0.584
+        },
+        {
+          "player": "Bailey Humphrey",
+          "market": "goals",
+          "line": 1,
+          "name": "Bailey Humphrey 1+ goals",
+          "book_odds": 1.68,
+          "hit_prob": 0.4769
+        }
+      ],
+      "model_joint": 0.1999989350651941,
+      "model_fair": 5.00002662351191,
+      "book_combo": 2.8770000000000002,
+      "edge": -0.3184522978630775,
+      "p_all_win": 0.23689527359642767,
+      "p_one_loss": 0.31174195423131706,
+      "promo_ev": 0.23380646567348778,
+      "total_ev": -0.08464583218958971,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Ben Keays",
+          "market": "goals",
+          "line": 1,
+          "name": "Ben Keays 1+ goals",
+          "book_odds": 1.45,
+          "hit_prob": 0.6677
+        },
+        {
+          "player": "Noah Anderson",
+          "market": "disposals",
+          "line": 30,
+          "name": "Noah Anderson 30+ disposals",
+          "book_odds": 2.27,
+          "hit_prob": 0.4044
+        },
+        {
+          "player": "Jed Walter",
+          "market": "goals",
+          "line": 2,
+          "name": "Jed Walter 2+ goals",
+          "book_odds": 2.15,
+          "hit_prob": 0.4627
+        }
+      ],
+      "model_joint": 0.12492700047160159,
+      "model_fair": 8.004674699824559,
+      "book_combo": 7.076725,
+      "edge": -0.08694447944070394,
+      "p_all_win": 0.12902232608435343,
+      "p_one_loss": 0.37734189868984164,
+      "promo_ev": 0.28300642401738124,
+      "total_ev": 0.1960619445766773,
+      "suggested_stake": 0.011491398295880882,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Jordan Dawson",
+          "market": "goals",
+          "line": 2,
+          "name": "Jordan Dawson 2+ goals",
+          "book_odds": 3.25,
+          "hit_prob": 0.3045
+        },
+        {
+          "player": "Alex Neal-Bullen",
+          "market": "goals",
+          "line": 1,
+          "name": "Alex Neal-Bullen 1+ goals",
+          "book_odds": 2.15,
+          "hit_prob": 0.448
+        },
+        {
+          "player": "Zac Taylor",
+          "market": "goals",
+          "line": 1,
+          "name": "Zac Taylor 1+ goals",
+          "book_odds": 2.18,
+          "hit_prob": 0.4489
+        }
+      ],
+      "model_joint": 0.06122784798231948,
+      "model_fair": 16.332437492965063,
+      "book_combo": 15.232750000000001,
+      "edge": -0.05049862398549221,
+      "p_all_win": 0.06233289301107861,
+      "p_one_loss": 0.32202012209132014,
+      "promo_ev": 0.2415150915684901,
+      "total_ev": 0.1910164675829979,
+      "suggested_stake": 0.004454968073527834,
+      "value_pick": true,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Josh Rachele",
+          "market": "goals",
+          "line": 1,
+          "name": "Josh Rachele 1+ goals",
+          "book_odds": 1.28,
+          "hit_prob": 0.7356
+        },
+        {
+          "player": "Ben Keays",
+          "market": "goals",
+          "line": 1,
+          "name": "Ben Keays 1+ goals",
+          "book_odds": 1.45,
+          "hit_prob": 0.6677
+        },
+        {
+          "player": "Taylor Walker",
+          "market": "goals",
+          "line": 1,
+          "name": "Taylor Walker 1+ goals",
+          "book_odds": 1.33,
+          "hit_prob": 0.7058
+        }
+      ],
+      "model_joint": 0.34667427772457904,
+      "model_fair": 2.8845520543478744,
+      "book_combo": 2.46848,
+      "edge": -0.10818110919182344,
+      "p_all_win": 0.361282607437847,
+      "p_one_loss": 0.4310418522317859,
+      "promo_ev": 0.3232813891738394,
+      "total_ev": 0.21510027998201597,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Jordan Dawson",
+          "market": "goals",
+          "line": 1,
+          "name": "Jordan Dawson 1+ goals",
+          "book_odds": 1.45,
+          "hit_prob": 0.6426
+        },
+        {
+          "player": "Riley Thilthorpe",
+          "market": "goals",
+          "line": 1,
+          "name": "Riley Thilthorpe 1+ goals",
+          "book_odds": 1.13,
+          "hit_prob": 0.7943
+        },
+        {
+          "player": "Jed Walter",
+          "market": "goals",
+          "line": 2,
+          "name": "Jed Walter 2+ goals",
+          "book_odds": 2.15,
+          "hit_prob": 0.4627
+        }
+      ],
+      "model_joint": 0.23620692806845983,
+      "model_fair": 4.233576077455993,
+      "book_combo": 3.5227749999999993,
+      "edge": -0.12592210423022365,
+      "p_all_win": 0.2481219765014162,
+      "p_one_loss": 0.4506214223109559,
+      "promo_ev": 0.33796606673321694,
+      "total_ev": 0.2120439625029933,
+      "suggested_stake": 0.03414462138765644,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "James Peatling",
+          "market": "disposals",
+          "line": 15,
+          "name": "James Peatling 15+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.7787
+        },
+        {
+          "player": "Zac Taylor",
+          "market": "goals",
+          "line": 1,
+          "name": "Zac Taylor 1+ goals",
+          "book_odds": 2.18,
+          "hit_prob": 0.4489
+        },
+        {
+          "player": "Darcy Fogarty",
+          "market": "goals",
+          "line": 2,
+          "name": "Darcy Fogarty 2+ goals",
+          "book_odds": 1.77,
+          "hit_prob": 0.5192
+        }
+      ],
+      "model_joint": 0.18149657990897816,
+      "model_fair": 5.509745696042907,
+      "book_combo": 4.398804,
+      "edge": -0.15122408873255044,
+      "p_all_win": 0.19295606516395128,
+      "p_one_loss": 0.41197310277009497,
+      "promo_ev": 0.3089798270775712,
+      "total_ev": 0.15775573834502077,
+      "suggested_stake": 0.0175183347823306,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 1.75,
+      "units_tag": "1.75u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Alex Neal-Bullen",
+          "market": "goals",
+          "line": 1,
+          "name": "Alex Neal-Bullen 1+ goals",
+          "book_odds": 2.15,
+          "hit_prob": 0.448
+        },
+        {
+          "player": "Jake Soligo",
+          "market": "goals",
+          "line": 1,
+          "name": "Jake Soligo 1+ goals",
+          "book_odds": 2.65,
+          "hit_prob": 0.3568
+        },
+        {
+          "player": "Joel Jeffrey",
+          "market": "disposals",
+          "line": 15,
+          "name": "Joel Jeffrey 15+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.7787
+        }
+      ],
+      "model_joint": 0.12447201371006131,
+      "model_fair": 8.033934457984655,
+      "book_combo": 6.495149999999999,
+      "edge": -0.14365170011332173,
+      "p_all_win": 0.1318442683982169,
+      "p_one_loss": 0.4033366070540698,
+      "promo_ev": 0.30250245529055236,
+      "total_ev": 0.15885075517723063,
+      "suggested_stake": 0.010622430750538479,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Toby Murray",
+          "market": "goals",
+          "line": 1,
+          "name": "Toby Murray 1+ goals",
+          "book_odds": 1.7,
+          "hit_prob": 0.5222
+        },
+        {
+          "player": "Noah Anderson",
+          "market": "disposals",
+          "line": 30,
+          "name": "Noah Anderson 30+ disposals",
+          "book_odds": 2.27,
+          "hit_prob": 0.4044
+        },
+        {
+          "player": "Ethan Read",
+          "market": "goals",
+          "line": 1,
+          "name": "Ethan Read 1+ goals",
+          "book_odds": 2.2,
+          "hit_prob": 0.3972
+        }
+      ],
+      "model_joint": 0.08388137723816448,
+      "model_fair": 11.92159729519818,
+      "book_combo": 8.4898,
+      "edge": -0.2158979126425733,
+      "p_all_win": 0.09235813415597854,
+      "p_one_loss": 0.2902251888050037,
+      "promo_ev": 0.21766889160375277,
+      "total_ev": 0.0017709789611794757,
+      "suggested_stake": 7.627010476406826e-05,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Adelaide-Gold_Coast-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Adelaide vs Gold Coast",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [],
+      "model_joint": null,
+      "model_fair": null,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": null,
+      "p_one_loss": null,
+      "promo_ev": null,
+      "total_ev": null,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.53,
+      "no_bet": true,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Bailey Williams",
+          "market": "disposals",
+          "line": 15,
+          "name": "Bailey Williams 15+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.7894
+        },
+        {
+          "player": "Joel Freijah",
+          "market": "disposals",
+          "line": 15,
+          "name": "Joel Freijah 15+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8221
+        },
+        {
+          "player": "Aaron Naughton",
+          "market": "goals",
+          "line": 2,
+          "name": "Aaron Naughton 2+ goals",
+          "book_odds": 1.19,
+          "hit_prob": 0.7299
+        }
+      ],
+      "model_joint": 0.4737398297982841,
+      "model_fair": 2.110863256791802,
+      "book_combo": 1.3880160000000001,
+      "edge": -0.2568311523020286,
+      "p_all_win": 0.5354180698911045,
+      "p_one_loss": 0.295634418549713,
+      "promo_ev": 0.22172581391228474,
+      "total_ev": -0.035105338389743834,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Rhylee West",
+          "market": "goals",
+          "line": 1,
+          "name": "Rhylee West 1+ goals",
+          "book_odds": 1.32,
+          "hit_prob": 0.709
+        },
+        {
+          "player": "Cody Weightman",
+          "market": "goals",
+          "line": 1,
+          "name": "Cody Weightman 1+ goals",
+          "book_odds": 1.31,
+          "hit_prob": 0.6844
+        },
+        {
+          "player": "Jordan Croft",
+          "market": "goals",
+          "line": 1,
+          "name": "Jordan Croft 1+ goals",
+          "book_odds": 1.27,
+          "hit_prob": 0.7493
+        }
+      ],
+      "model_joint": 0.36358351364201996,
+      "model_fair": 2.7503997361788746,
+      "book_combo": 2.196084,
+      "edge": -0.15115504727023377,
+      "p_all_win": 0.38652663228262957,
+      "p_one_loss": 0.40921143104860935,
+      "promo_ev": 0.30690857328645704,
+      "total_ev": 0.15575352601622328,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Bailey Dale",
+          "market": "disposals",
+          "line": 25,
+          "name": "Bailey Dale 25+ disposals",
+          "book_odds": 1.36,
+          "hit_prob": 0.6633
+        },
+        {
+          "player": "Lachlan Bramble",
+          "market": "disposals",
+          "line": 15,
+          "name": "Lachlan Bramble 15+ disposals",
+          "book_odds": 1.22,
+          "hit_prob": 0.6985
+        },
+        {
+          "player": "Willem Duursma",
+          "market": "disposals",
+          "line": 15,
+          "name": "Willem Duursma 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.6165
+        }
+      ],
+      "model_joint": 0.2856482041165677,
+      "model_fair": 3.5008096868409457,
+      "book_combo": 2.074,
+      "edge": -0.3056742184966791,
+      "p_all_win": 0.33477617237382884,
+      "p_one_loss": 0.28434121513791955,
+      "promo_ev": 0.21325591135343966,
+      "total_ev": -0.09241830714323943,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Cooper Hynes",
+          "market": "disposals",
+          "line": 15,
+          "name": "Cooper Hynes 15+ disposals",
+          "book_odds": 1.42,
+          "hit_prob": 0.5793
+        },
+        {
+          "player": "Milan Murdock",
+          "market": "disposals",
+          "line": 15,
+          "name": "Milan Murdock 15+ disposals",
+          "book_odds": 1.37,
+          "hit_prob": 0.5718
+        },
+        {
+          "player": "Jake Waterman",
+          "market": "goals",
+          "line": 2,
+          "name": "Jake Waterman 2+ goals",
+          "book_odds": 1.4,
+          "hit_prob": 0.6038
+        }
+      ],
+      "model_joint": 0.19999121179547413,
+      "model_fair": 5.000219714767638,
+      "book_combo": 2.72356,
+      "edge": -0.3414839514017388,
+      "p_all_win": 0.2417850345130128,
+      "p_one_loss": 0.2611151385616653,
+      "promo_ev": 0.19583635392124898,
+      "total_ev": -0.14564759748048983,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Michael Sellwood",
+          "market": "disposals",
+          "line": 15,
+          "name": "Michael Sellwood 15+ disposals",
+          "book_odds": 2.24,
+          "hit_prob": 0.3943
+        },
+        {
+          "player": "Liam Duggan",
+          "market": "disposals",
+          "line": 15,
+          "name": "Liam Duggan 15+ disposals",
+          "book_odds": 1.1,
+          "hit_prob": 0.7967
+        },
+        {
+          "player": "Jobe Shanahan",
+          "market": "goals",
+          "line": 2,
+          "name": "Jobe Shanahan 2+ goals",
+          "book_odds": 2.2,
+          "hit_prob": 0.3979
+        }
+      ],
+      "model_joint": 0.12499243981763078,
+      "model_fair": 8.000483880937455,
+      "book_combo": 5.420800000000002,
+      "edge": -0.24183073667744015,
+      "p_all_win": 0.1398629839364226,
+      "p_one_loss": 0.3167807141012785,
+      "promo_ev": 0.23758553557595888,
+      "total_ev": -0.004245201101481272,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Arthur Jones",
+          "market": "goals",
+          "line": 2,
+          "name": "Arthur Jones 2+ goals",
+          "book_odds": 2.55,
+          "hit_prob": 0.4214
+        },
+        {
+          "player": "Sam Davidson",
+          "market": "tackles",
+          "line": 3,
+          "name": "Sam Davidson 3+ tackles",
+          "book_odds": 1.69,
+          "hit_prob": 0.5655
+        },
+        {
+          "player": "Elliot Yeo",
+          "market": "disposals",
+          "line": 20,
+          "name": "Elliot Yeo 20+ disposals",
+          "book_odds": 4.65,
+          "hit_prob": 0.249
+        }
+      ],
+      "model_joint": 0.05934745829034792,
+      "model_fair": 16.849921273926515,
+      "book_combo": 20.039175,
+      "edge": 0.1419555768641121,
+      "p_all_win": 0.056986157207774876,
+      "p_one_loss": 0.36551672595146634,
+      "promo_ev": 0.2741375444635997,
+      "total_ev": 0.4160931213277118,
+      "suggested_stake": 0.007586924666791785,
+      "value_pick": true,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Rhylee West",
+          "market": "goals",
+          "line": 1,
+          "name": "Rhylee West 1+ goals",
+          "book_odds": 1.32,
+          "hit_prob": 0.709
+        },
+        {
+          "player": "Jordan Croft",
+          "market": "goals",
+          "line": 1,
+          "name": "Jordan Croft 1+ goals",
+          "book_odds": 1.27,
+          "hit_prob": 0.7493
+        },
+        {
+          "player": "Elliot Yeo",
+          "market": "disposals",
+          "line": 15,
+          "name": "Elliot Yeo 15+ disposals",
+          "book_odds": 1.58,
+          "hit_prob": 0.6236
+        }
+      ],
+      "model_joint": 0.3312909353041833,
+      "model_fair": 3.018494904129581,
+      "book_combo": 2.648712,
+      "edge": -0.0918792931264395,
+      "p_all_win": 0.34285369903317553,
+      "p_one_loss": 0.435338192428719,
+      "promo_ev": 0.3265036443215393,
+      "total_ev": 0.23462435119509978,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Joel Freijah",
+          "market": "disposals",
+          "line": 15,
+          "name": "Joel Freijah 15+ disposals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8221
+        },
+        {
+          "player": "Arthur Jones",
+          "market": "goals",
+          "line": 2,
+          "name": "Arthur Jones 2+ goals",
+          "book_odds": 2.55,
+          "hit_prob": 0.4214
+        },
+        {
+          "player": "Jobe Shanahan",
+          "market": "goals",
+          "line": 1,
+          "name": "Jobe Shanahan 1+ goals",
+          "book_odds": 1.23,
+          "hit_prob": 0.7375
+        }
+      ],
+      "model_joint": 0.25552200547611204,
+      "model_fair": 3.9135572614840286,
+      "book_combo": 3.38742,
+      "edge": -0.1008297361575815,
+      "p_all_win": 0.2654439850512834,
+      "p_one_loss": 0.438800818621182,
+      "promo_ev": 0.32910061396588647,
+      "total_ev": 0.22827087780830496,
+      "suggested_stake": 0.03843595238728744,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Luke Kennedy",
+          "market": "disposals",
+          "line": 15,
+          "name": "Luke Kennedy 15+ disposals",
+          "book_odds": 3.4,
+          "hit_prob": 0.308
+        },
+        {
+          "player": "Liam Duggan",
+          "market": "disposals",
+          "line": 15,
+          "name": "Liam Duggan 15+ disposals",
+          "book_odds": 1.1,
+          "hit_prob": 0.7967
+        },
+        {
+          "player": "Liam Baker",
+          "market": "disposals",
+          "line": 15,
+          "name": "Liam Baker 15+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.7614
+        }
+      ],
+      "model_joint": 0.18686657160560638,
+      "model_fair": 5.35141192674398,
+      "book_combo": 4.3758,
+      "edge": -0.1367319419761407,
+      "p_all_win": 0.19728233877779133,
+      "p_one_loss": 0.4251009665660578,
+      "promo_ev": 0.3188257249245433,
+      "total_ev": 0.18209378294840262,
+      "suggested_stake": 0.02073656273967963,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 2.0,
+      "units_tag": "2u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Cooper Hynes",
+          "market": "goals",
+          "line": 1,
+          "name": "Cooper Hynes 1+ goals",
+          "book_odds": 1.82,
+          "hit_prob": 0.525
+        },
+        {
+          "player": "Cody Weightman",
+          "market": "goals",
+          "line": 1,
+          "name": "Cody Weightman 1+ goals",
+          "book_odds": 1.31,
+          "hit_prob": 0.6844
+        },
+        {
+          "player": "Tom Cole",
+          "market": "disposals",
+          "line": 15,
+          "name": "Tom Cole 15+ disposals",
+          "book_odds": 2.29,
+          "hit_prob": 0.433
+        }
+      ],
+      "model_joint": 0.15555673146022417,
+      "model_fair": 6.428522832878498,
+      "book_combo": 5.459818000000001,
+      "edge": -0.11301641816422625,
+      "p_all_win": 0.1624566206851169,
+      "p_one_loss": 0.4069067236508214,
+      "promo_ev": 0.30518004273811605,
+      "total_ev": 0.1921636245738898,
+      "suggested_stake": 0.016018566119531594,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "total",
+          "market": "total_points",
+          "line": 5,
+          "name": "Total points 175.5+",
+          "book_odds": 1.87,
+          "hit_prob": 0.488
+        },
+        {
+          "player": "Bailey Dale",
+          "market": "disposals",
+          "line": 30,
+          "name": "Bailey Dale 30+ disposals",
+          "book_odds": 2.57,
+          "hit_prob": 0.3485
+        },
+        {
+          "player": "Jedd Busslinger",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jedd Busslinger 15+ disposals",
+          "book_odds": 1.86,
+          "hit_prob": 0.4999
+        }
+      ],
+      "model_joint": 0.08502673472330542,
+      "model_fair": 11.76100673810663,
+      "book_combo": 8.938974000000002,
+      "edge": -0.17996117175260662,
+      "p_all_win": 0.09173746654228922,
+      "p_one_loss": 0.3059425170784181,
+      "promo_ev": 0.22945688780881357,
+      "total_ev": 0.04949571605620695,
+      "suggested_stake": 0.0020432139044432524,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Western_Bulldogs-West_Coast-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Western Bulldogs vs West Coast",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [],
+      "model_joint": null,
+      "model_fair": null,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": null,
+      "p_one_loss": null,
+      "promo_ev": null,
+      "total_ev": null,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.0,
+      "no_bet": true,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Jack Steele",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jack Steele 20+ disposals",
+          "book_odds": 1.22,
+          "hit_prob": 0.708
+        },
+        {
+          "player": "Bayley Fritsch",
+          "market": "goals",
+          "line": 1,
+          "name": "Bayley Fritsch 1+ goals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8014
+        },
+        {
+          "player": "Kane McAuliffe",
+          "market": "disposals",
+          "line": 15,
+          "name": "Kane McAuliffe 15+ disposals",
+          "book_odds": 1.07,
+          "hit_prob": 0.8372
+        }
+      ],
+      "model_joint": 0.4750377186460142,
+      "model_fair": 2.1050959971142293,
+      "book_combo": 1.4098320000000002,
+      "edge": -0.2477074672843893,
+      "p_all_win": 0.5336043817388246,
+      "p_one_loss": 0.29039947785493186,
+      "promo_ev": 0.21779960839119888,
+      "total_ev": -0.02990785889319042,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Jake Bowey",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jake Bowey 20+ disposals",
+          "book_odds": 1.14,
+          "hit_prob": 0.6968
+        },
+        {
+          "player": "Harvey Langford",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harvey Langford 15+ disposals",
+          "book_odds": 1.38,
+          "hit_prob": 0.6338
+        },
+        {
+          "player": "Jacob van Rooyen",
+          "market": "goals",
+          "line": 1,
+          "name": "Jacob van Rooyen 1+ goals",
+          "book_odds": 1.09,
+          "hit_prob": 0.8229
+        }
+      ],
+      "model_joint": 0.36343900197631185,
+      "model_fair": 2.751493358066116,
+      "book_combo": 1.7147879999999998,
+      "edge": -0.2825843705092832,
+      "p_all_win": 0.4183698681648792,
+      "p_one_loss": 0.3060642010214563,
+      "promo_ev": 0.22954815076609225,
+      "total_ev": -0.05303621974319095,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Kade Chandler",
+          "market": "disposals",
+          "line": 15,
+          "name": "Kade Chandler 15+ disposals",
+          "book_odds": 1.25,
+          "hit_prob": 0.6335
+        },
+        {
+          "player": "Jayden Short",
+          "market": "disposals",
+          "line": 20,
+          "name": "Jayden Short 20+ disposals",
+          "book_odds": 1.22,
+          "hit_prob": 0.7099
+        },
+        {
+          "player": "Seth Campbell",
+          "market": "disposals",
+          "line": 15,
+          "name": "Seth Campbell 15+ disposals",
+          "book_odds": 1.28,
+          "hit_prob": 0.6352
+        }
+      ],
+      "model_joint": 0.28566226920621834,
+      "model_fair": 3.5006373182525703,
+      "book_combo": 1.952,
+      "edge": -0.3317904378820964,
+      "p_all_win": 0.342320472396467,
+      "p_one_loss": 0.2622889478140954,
+      "promo_ev": 0.19671671086057155,
+      "total_ev": -0.13507372702152484,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Trent Rivers",
+          "market": "disposals",
+          "line": 15,
+          "name": "Trent Rivers 15+ disposals",
+          "book_odds": 1.07,
+          "hit_prob": 0.7943
+        },
+        {
+          "player": "Caleb Windsor",
+          "market": "disposals",
+          "line": 15,
+          "name": "Caleb Windsor 15+ disposals",
+          "book_odds": 1.44,
+          "hit_prob": 0.5737
+        },
+        {
+          "player": "Bailey Laurie",
+          "market": "goals",
+          "line": 1,
+          "name": "Bailey Laurie 1+ goals",
+          "book_odds": 1.99,
+          "hit_prob": 0.4388
+        }
+      ],
+      "model_joint": 0.19997951900586752,
+      "model_fair": 5.000512077292572,
+      "book_combo": 3.066192,
+      "edge": -0.29011829899527086,
+      "p_all_win": 0.23151899848565555,
+      "p_one_loss": 0.31891049496549834,
+      "promo_ev": 0.23918287122412374,
+      "total_ev": -0.050935427771147124,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Kysaiah Pickett",
+          "market": "disposals",
+          "line": 20,
+          "name": "Kysaiah Pickett 20+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.6635
+        },
+        {
+          "player": "Sam Cumming",
+          "market": "goals",
+          "line": 1,
+          "name": "Sam Cumming 1+ goals",
+          "book_odds": 2.65,
+          "hit_prob": 0.3844
+        },
+        {
+          "player": "Nathan Broad",
+          "market": "disposals",
+          "line": 15,
+          "name": "Nathan Broad 15+ disposals",
+          "book_odds": 1.83,
+          "hit_prob": 0.49
+        }
+      ],
+      "model_joint": 0.12497060188890724,
+      "model_fair": 8.001881921709485,
+      "book_combo": 5.382945,
+      "edge": -0.2454675925613372,
+      "p_all_win": 0.14017093012071696,
+      "p_one_loss": 0.2792049835825119,
+      "promo_ev": 0.20940373768688392,
+      "total_ev": -0.036063854874453294,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Dion Prestia",
+          "market": "disposals",
+          "line": 20,
+          "name": "Dion Prestia 20+ disposals",
+          "book_odds": 2.19,
+          "hit_prob": 0.4774
+        },
+        {
+          "player": "Rhyan Mansell",
+          "market": "goals",
+          "line": 2,
+          "name": "Rhyan Mansell 2+ goals",
+          "book_odds": 3.05,
+          "hit_prob": 0.3321
+        },
+        {
+          "player": "Jasper Alger",
+          "market": "goals",
+          "line": 2,
+          "name": "Jasper Alger 2+ goals",
+          "book_odds": 3.0,
+          "hit_prob": 0.3293
+        }
+      ],
+      "model_joint": 0.052206417981620255,
+      "model_fair": 19.15473305125165,
+      "book_combo": 20.0385,
+      "edge": 0.03460373004352291,
+      "p_all_win": 0.0516307972175324,
+      "p_one_loss": 0.2913032363257696,
+      "promo_ev": 0.2184774272443272,
+      "total_ev": 0.2530811572878501,
+      "suggested_stake": 0.00427319674809724,
+      "value_pick": true,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Kysaiah Pickett",
+          "market": "goals",
+          "line": 1,
+          "name": "Kysaiah Pickett 1+ goals",
+          "book_odds": 1.08,
+          "hit_prob": 0.8277
+        },
+        {
+          "player": "Jacob van Rooyen",
+          "market": "goals",
+          "line": 1,
+          "name": "Jacob van Rooyen 1+ goals",
+          "book_odds": 1.09,
+          "hit_prob": 0.8229
+        },
+        {
+          "player": "Dion Prestia",
+          "market": "disposals",
+          "line": 20,
+          "name": "Dion Prestia 20+ disposals",
+          "book_odds": 2.19,
+          "hit_prob": 0.4774
+        }
+      ],
+      "model_joint": 0.32515044605504184,
+      "model_fair": 3.0754993946116835,
+      "book_combo": 2.5780680000000005,
+      "edge": -0.12130502987982772,
+      "p_all_win": 0.34083467547022506,
+      "p_one_loss": 0.4558933423398132,
+      "promo_ev": 0.3419200067548599,
+      "total_ev": 0.22061497687503218,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Kade Chandler",
+          "market": "goals",
+          "line": 1,
+          "name": "Kade Chandler 1+ goals",
+          "book_odds": 1.47,
+          "hit_prob": 0.6373
+        },
+        {
+          "player": "Rhyan Mansell",
+          "market": "goals",
+          "line": 1,
+          "name": "Rhyan Mansell 1+ goals",
+          "book_odds": 1.42,
+          "hit_prob": 0.6788
+        },
+        {
+          "player": "Jasper Alger",
+          "market": "goals",
+          "line": 1,
+          "name": "Jasper Alger 1+ goals",
+          "book_odds": 1.4,
+          "hit_prob": 0.6816
+        }
+      ],
+      "model_joint": 0.29490452146568075,
+      "model_fair": 3.3909280028328563,
+      "book_combo": 2.9223599999999994,
+      "edge": -0.10363711698716493,
+      "p_all_win": 0.30672568848904147,
+      "p_one_loss": 0.45125973313543505,
+      "promo_ev": 0.3384447998515763,
+      "total_ev": 0.23480768286441134,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Harvey Langford",
+          "market": "goals",
+          "line": 1,
+          "name": "Harvey Langford 1+ goals",
+          "book_odds": 1.46,
+          "hit_prob": 0.64
+        },
+        {
+          "player": "Tim Taranto",
+          "market": "disposals",
+          "line": 20,
+          "name": "Tim Taranto 20+ disposals",
+          "book_odds": 1.17,
+          "hit_prob": 0.781
+        },
+        {
+          "player": "Sam Cumming",
+          "market": "goals",
+          "line": 1,
+          "name": "Sam Cumming 1+ goals",
+          "book_odds": 2.65,
+          "hit_prob": 0.3844
+        }
+      ],
+      "model_joint": 0.19213513242459695,
+      "model_fair": 5.204670209871419,
+      "book_combo": 4.52673,
+      "edge": -0.09769209899970321,
+      "p_all_win": 0.1993288534991698,
+      "p_one_loss": 0.45644787371744033,
+      "promo_ev": 0.3423359052880802,
+      "total_ev": 0.244643806288377,
+      "suggested_stake": 0.027841018235799136,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 2.75,
+      "units_tag": "2.75u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Harry Sharp",
+          "market": "disposals",
+          "line": 15,
+          "name": "Harry Sharp 15+ disposals",
+          "book_odds": 2.24,
+          "hit_prob": 0.4385
+        },
+        {
+          "player": "James Trezise",
+          "market": "disposals",
+          "line": 15,
+          "name": "James Trezise 15+ disposals",
+          "book_odds": 1.34,
+          "hit_prob": 0.6877
+        },
+        {
+          "player": "Steely Green",
+          "market": "goals",
+          "line": 1,
+          "name": "Steely Green 1+ goals",
+          "book_odds": 2.0,
+          "hit_prob": 0.4678
+        }
+      ],
+      "model_joint": 0.14106660410645794,
+      "model_fair": 7.088850024668742,
+      "book_combo": 6.0032000000000005,
+      "edge": -0.11486172167108377,
+      "p_all_win": 0.14744440936982212,
+      "p_one_loss": 0.3722222095139619,
+      "promo_ev": 0.2791666571354714,
+      "total_ev": 0.16430493546438762,
+      "suggested_stake": 0.011671496366165589,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Bailey Laurie",
+          "market": "disposals",
+          "line": 15,
+          "name": "Bailey Laurie 15+ disposals",
+          "book_odds": 2.85,
+          "hit_prob": 0.3299
+        },
+        {
+          "player": "Matthew Jefferson",
+          "market": "goals",
+          "line": 1,
+          "name": "Matthew Jefferson 1+ goals",
+          "book_odds": 1.23,
+          "hit_prob": 0.7125
+        },
+        {
+          "player": "Taj Hotton",
+          "market": "goals",
+          "line": 1,
+          "name": "Taj Hotton 1+ goals",
+          "book_odds": 2.6,
+          "hit_prob": 0.3479
+        }
+      ],
+      "model_joint": 0.0817810819464913,
+      "model_fair": 12.227766815976976,
+      "book_combo": 9.1143,
+      "edge": -0.19096701361132085,
+      "p_all_win": 0.08876523555168023,
+      "p_one_loss": 0.3212058875909712,
+      "promo_ev": 0.2409044156932284,
+      "total_ev": 0.049937402081907556,
+      "suggested_stake": 0.0020482374689121145,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Melbourne-Richmond-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Melbourne vs Richmond",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [],
+      "model_joint": null,
+      "model_fair": null,
+      "book_combo": null,
+      "edge": null,
+      "p_all_win": null,
+      "p_one_loss": null,
+      "promo_ev": null,
+      "total_ev": null,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.544,
+      "no_bet": true,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-model-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "model",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Jarrod Berry",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jarrod Berry 15+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.7753
+        },
+        {
+          "player": "Andrew McGrath",
+          "market": "disposals",
+          "line": 15,
+          "name": "Andrew McGrath 15+ disposals",
+          "book_odds": 1.11,
+          "hit_prob": 0.7753
+        },
+        {
+          "player": "Jacob Farrow",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jacob Farrow 15+ disposals",
+          "book_odds": 1.1,
+          "hit_prob": 0.7922
+        }
+      ],
+      "model_joint": 0.47614278148204614,
+      "model_fair": 2.100210354733073,
+      "book_combo": 1.3553100000000002,
+      "edge": -0.266009195122176,
+      "p_all_win": 0.5415667300306379,
+      "p_one_loss": 0.2669100933049362,
+      "promo_ev": 0.20018256997870215,
+      "total_ev": -0.06582662514347387,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-model-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "model",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Darcy Wilmot",
+          "market": "disposals",
+          "line": 20,
+          "name": "Darcy Wilmot 20+ disposals",
+          "book_odds": 1.13,
+          "hit_prob": 0.7012
+        },
+        {
+          "player": "Mason Redman",
+          "market": "disposals",
+          "line": 20,
+          "name": "Mason Redman 20+ disposals",
+          "book_odds": 1.33,
+          "hit_prob": 0.6445
+        },
+        {
+          "player": "Nate Caddy",
+          "market": "goals",
+          "line": 1,
+          "name": "Nate Caddy 1+ goals",
+          "book_odds": 1.13,
+          "hit_prob": 0.8045
+        }
+      ],
+      "model_joint": 0.3636063579262774,
+      "model_fair": 2.7502269369083856,
+      "book_combo": 1.6982769999999998,
+      "edge": -0.28687176396002667,
+      "p_all_win": 0.4199127916352712,
+      "p_one_loss": 0.3134599685567205,
+      "promo_ev": 0.23509497641754035,
+      "total_ev": -0.051776787542486324,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-model-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "model",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Zac Bailey",
+          "market": "goals",
+          "line": 2,
+          "name": "Zac Bailey 2+ goals",
+          "book_odds": 1.62,
+          "hit_prob": 0.5083
+        },
+        {
+          "player": "Jye Caldwell",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jye Caldwell 15+ disposals",
+          "book_odds": 1.12,
+          "hit_prob": 0.7707
+        },
+        {
+          "player": "Xavier Duursma",
+          "market": "disposals",
+          "line": 15,
+          "name": "Xavier Duursma 15+ disposals",
+          "book_odds": 1.22,
+          "hit_prob": 0.7293
+        }
+      ],
+      "model_joint": 0.285707365950429,
+      "model_fair": 3.5000847691602837,
+      "book_combo": 2.2135680000000004,
+      "edge": -0.2756754880258805,
+      "p_all_win": 0.3272203573480098,
+      "p_one_loss": 0.3336457085780032,
+      "promo_ev": 0.2502342814335024,
+      "total_ev": -0.025441206592378085,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-model-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "model",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Hugh McCluggage",
+          "market": "disposals",
+          "line": 20,
+          "name": "Hugh McCluggage 20+ disposals",
+          "book_odds": 1.3,
+          "hit_prob": 0.6794
+        },
+        {
+          "player": "Archie Perkins",
+          "market": "disposals",
+          "line": 15,
+          "name": "Archie Perkins 15+ disposals",
+          "book_odds": 1.28,
+          "hit_prob": 0.6229
+        },
+        {
+          "player": "Isaac Kako",
+          "market": "goals",
+          "line": 1,
+          "name": "Isaac Kako 1+ goals",
+          "book_odds": 1.92,
+          "hit_prob": 0.4726
+        }
+      ],
+      "model_joint": 0.1999963785511567,
+      "model_fair": 5.000090537860474,
+      "book_combo": 3.19488,
+      "edge": -0.2707766775708603,
+      "p_all_win": 0.22824748423388036,
+      "p_one_loss": 0.30662005488657507,
+      "promo_ev": 0.2299650411649313,
+      "total_ev": -0.040811636405929025,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-model-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "model",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Will Ashcroft",
+          "market": "goals",
+          "line": 1,
+          "name": "Will Ashcroft 1+ goals",
+          "book_odds": 2.12,
+          "hit_prob": 0.4258
+        },
+        {
+          "player": "Bruce Reville",
+          "market": "disposals",
+          "line": 15,
+          "name": "Bruce Reville 15+ disposals",
+          "book_odds": 1.3,
+          "hit_prob": 0.6161
+        },
+        {
+          "player": "Conor McKenna",
+          "market": "disposals",
+          "line": 15,
+          "name": "Conor McKenna 15+ disposals",
+          "book_odds": 1.69,
+          "hit_prob": 0.4765
+        }
+      ],
+      "model_joint": 0.1249847871560646,
+      "model_fair": 8.000973740518766,
+      "book_combo": 4.657640000000001,
+      "edge": -0.3133993919628203,
+      "p_all_win": 0.1474138422113301,
+      "p_one_loss": 0.26008754681948393,
+      "promo_ev": 0.19506566011461296,
+      "total_ev": -0.11833373184820734,
+      "suggested_stake": null,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-model-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "model",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "total",
+          "market": "total_points",
+          "line": 5,
+          "name": "Total points 175.5+",
+          "book_odds": 1.87,
+          "hit_prob": 0.4261
+        },
+        {
+          "player": "Darcy Parish",
+          "market": "disposals",
+          "line": 25,
+          "name": "Darcy Parish 25+ disposals",
+          "book_odds": 2.72,
+          "hit_prob": 0.4012
+        },
+        {
+          "player": "Ben McKay",
+          "market": "marks",
+          "line": 4,
+          "name": "Ben McKay 4+ marks",
+          "book_odds": 3.7,
+          "hit_prob": 0.3638
+        }
+      ],
+      "model_joint": 0.062190463451039873,
+      "model_fair": 16.07963575938393,
+      "book_combo": 18.81968,
+      "edge": 0.12780346590019964,
+      "p_all_win": 0.05992681415944371,
+      "p_one_loss": 0.3590054796026471,
+      "promo_ev": 0.2692541097019853,
+      "total_ev": 0.39705757560218496,
+      "suggested_stake": 0.0076849864486723315,
+      "value_pick": true,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-sportsbet-2.10",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "sportsbet",
+      "band": 2.1,
+      "legs": [
+        {
+          "player": "Kai Lohmann",
+          "market": "goals",
+          "line": 2,
+          "name": "Kai Lohmann 2+ goals",
+          "book_odds": 1.69,
+          "hit_prob": 0.5344
+        },
+        {
+          "player": "Darcy Parish",
+          "market": "disposals",
+          "line": 20,
+          "name": "Darcy Parish 20+ disposals",
+          "book_odds": 1.38,
+          "hit_prob": 0.7193
+        },
+        {
+          "player": "Nate Caddy",
+          "market": "goals",
+          "line": 1,
+          "name": "Nate Caddy 1+ goals",
+          "book_odds": 1.13,
+          "hit_prob": 0.8045
+        }
+      ],
+      "model_joint": 0.30924802381984035,
+      "model_fair": 3.233650413179595,
+      "book_combo": 2.6353859999999996,
+      "edge": -0.13875906562314466,
+      "p_all_win": 0.3267987818015484,
+      "p_one_loss": 0.449447499181483,
+      "promo_ev": 0.3370856243861123,
+      "total_ev": 0.19832655876296762,
+      "suggested_stake": 0.05,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-sportsbet-2.75",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "sportsbet",
+      "band": 2.75,
+      "legs": [
+        {
+          "player": "Zac Bailey",
+          "market": "goals",
+          "line": 1,
+          "name": "Zac Bailey 1+ goals",
+          "book_odds": 1.1,
+          "hit_prob": 0.808
+        },
+        {
+          "player": "Hugh McCluggage",
+          "market": "goals",
+          "line": 1,
+          "name": "Hugh McCluggage 1+ goals",
+          "book_odds": 2.45,
+          "hit_prob": 0.4171
+        },
+        {
+          "player": "Logan Morris",
+          "market": "goals",
+          "line": 2,
+          "name": "Logan Morris 2+ goals",
+          "book_odds": 1.14,
+          "hit_prob": 0.7683
+        }
+      ],
+      "model_joint": 0.2589315685824133,
+      "model_fair": 3.8620242617567038,
+      "book_combo": 3.0723000000000003,
+      "edge": -0.15336340638318857,
+      "p_all_win": 0.2755709382601996,
+      "p_one_loss": 0.4550541388484859,
+      "promo_ev": 0.3412906041363644,
+      "total_ev": 0.18792719775317585,
+      "suggested_stake": 0.03762350104201858,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 3.0,
+      "units_tag": "3u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-sportsbet-3.50",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "sportsbet",
+      "band": 3.5,
+      "legs": [
+        {
+          "player": "Jaspa Fletcher",
+          "market": "disposals",
+          "line": 15,
+          "name": "Jaspa Fletcher 15+ disposals",
+          "book_odds": 1.1,
+          "hit_prob": 0.7967
+        },
+        {
+          "player": "Xavier Duursma",
+          "market": "disposals",
+          "line": 15,
+          "name": "Xavier Duursma 15+ disposals",
+          "book_odds": 1.22,
+          "hit_prob": 0.7293
+        },
+        {
+          "player": "Archer Day-Wicks",
+          "market": "disposals",
+          "line": 15,
+          "name": "Archer Day-Wicks 15+ disposals",
+          "book_odds": 2.83,
+          "hit_prob": 0.3512
+        }
+      ],
+      "model_joint": 0.20404334550296224,
+      "model_fair": 4.900919446968596,
+      "book_combo": 3.7978600000000005,
+      "edge": -0.1688039548860898,
+      "p_all_win": 0.2188590535496069,
+      "p_one_loss": 0.411478631489452,
+      "promo_ev": 0.308608973617089,
+      "total_ev": 0.1398050187309992,
+      "suggested_stake": 0.019005157276993367,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 1.75,
+      "units_tag": "1.75u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-sportsbet-5.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "sportsbet",
+      "band": 5.0,
+      "legs": [
+        {
+          "player": "Levi Ashcroft",
+          "market": "goals",
+          "line": 1,
+          "name": "Levi Ashcroft 1+ goals",
+          "book_odds": 2.45,
+          "hit_prob": 0.3898
+        },
+        {
+          "player": "Conor McKenna",
+          "market": "goals",
+          "line": 1,
+          "name": "Conor McKenna 1+ goals",
+          "book_odds": 1.21,
+          "hit_prob": 0.7201
+        },
+        {
+          "player": "Sullivan Robey",
+          "market": "goals",
+          "line": 1,
+          "name": "Sullivan Robey 1+ goals",
+          "book_odds": 2.1,
+          "hit_prob": 0.4543
+        }
+      ],
+      "model_joint": 0.12751078801424123,
+      "model_fair": 7.842473688487546,
+      "book_combo": 6.22545,
+      "edge": -0.15464097356755646,
+      "p_all_win": 0.13579083061183425,
+      "p_one_loss": 0.4034166024972116,
+      "promo_ev": 0.3025624518729087,
+      "total_ev": 0.14792147830535224,
+      "suggested_stake": 0.010413039837448379,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 1.0,
+      "units_tag": "1u PROMO KELLY"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-sportsbet-8.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "sportsbet",
+      "band": 8.0,
+      "legs": [
+        {
+          "player": "Sam Draper",
+          "market": "goals",
+          "line": 1,
+          "name": "Sam Draper 1+ goals",
+          "book_odds": 1.8,
+          "hit_prob": 0.5005
+        },
+        {
+          "player": "Dyson Sharp",
+          "market": "goals",
+          "line": 1,
+          "name": "Dyson Sharp 1+ goals",
+          "book_odds": 2.55,
+          "hit_prob": 0.3522
+        },
+        {
+          "player": "Isaac Kako",
+          "market": "goals",
+          "line": 1,
+          "name": "Isaac Kako 1+ goals",
+          "book_odds": 1.92,
+          "hit_prob": 0.4726
+        }
+      ],
+      "model_joint": 0.08331214846336565,
+      "model_fair": 12.00305139699673,
+      "book_combo": 8.8128,
+      "edge": -0.19934002351653846,
+      "p_all_win": 0.09085193996045089,
+      "p_one_loss": 0.3222999115414017,
+      "promo_ev": 0.24172493365605127,
+      "total_ev": 0.042384910139512816,
+      "suggested_stake": 0.0018081405375606086,
+      "value_pick": false,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.0,
+      "units_tag": "NO BET"
+    },
+    {
+      "id": "2026-r18-Brisbane_Lions-Essendon-sportsbet-15.00",
+      "year": 2026,
+      "round": 18,
+      "game": "Brisbane Lions vs Essendon",
+      "ladder": "sportsbet",
+      "band": 15.0,
+      "legs": [
+        {
+          "player": "Will Ashcroft",
+          "market": "goals",
+          "line": 1,
+          "name": "Will Ashcroft 1+ goals",
+          "book_odds": 2.12,
+          "hit_prob": 0.4258
+        },
+        {
+          "player": "Darcy Fort",
+          "market": "goals",
+          "line": 1,
+          "name": "Darcy Fort 1+ goals",
+          "book_odds": 2.18,
+          "hit_prob": 0.3899
+        },
+        {
+          "player": "Ben McKay",
+          "market": "marks",
+          "line": 4,
+          "name": "Ben McKay 4+ marks",
+          "book_odds": 3.7,
+          "hit_prob": 0.3638
+        }
+      ],
+      "model_joint": 0.060382997956554565,
+      "model_fair": 16.560953146438635,
+      "book_combo": 17.099920000000004,
+      "edge": 0.02440832581293506,
+      "p_all_win": 0.05990719990578522,
+      "p_one_loss": 0.33013895368609397,
+      "promo_ev": 0.2476042152645705,
+      "total_ev": 0.27201254107750555,
+      "suggested_stake": 0.005653456777627633,
+      "value_pick": true,
+      "greasiness": 0.335,
+      "no_bet": false,
+      "units": 0.25,
+      "units_tag": "0.25u"
+    }
+  ]
+}

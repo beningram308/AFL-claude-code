@@ -45,6 +45,7 @@ marginal naive product onto calibrated per-leg probabilities:
 from __future__ import annotations
 
 import json
+import sys
 
 import numpy as np
 import pandas as pd
@@ -239,15 +240,17 @@ def _fetch_actual_player_log(year: int, games_year: pd.DataFrame) -> pd.DataFram
         if not rows.empty:
             rows = rows.assign(round=rows["round"].astype(str))
             return rows
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - fryzigg is one of two fallback sources, must not abort the backtest
+        print(f"WARNING: _fetch_actual_player_log fryzigg fetch failed for {year} ({exc!r}); "
+              f"falling back to DFS Australia.", file=sys.stderr)
     try:
         from afl_bot.data.dfs_australia import fetch_player_stats, to_player_log
         dfs = to_player_log(fetch_player_stats(), games_year)
         dfs = dfs[dfs["year"] == year].assign(round=lambda d: d["round"].astype(str))
         return dfs
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - both player-stat sources exhausted for this year
+        print(f"WARNING: _fetch_actual_player_log DFS Australia fetch failed for {year} ({exc!r}); "
+              f"prop rungs for this year cannot be graded.", file=sys.stderr)
     return pd.DataFrame(columns=["player", "round", "disposals", "goals", "marks", "tackles"])
 
 

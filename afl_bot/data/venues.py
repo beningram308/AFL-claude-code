@@ -49,6 +49,27 @@ VENUE_METADATA: dict[str, dict] = {
 }
 
 
+# AUDIT FIX 2026-07-31: the Squiggle games history names the SAME ground
+# inconsistently across seasons (e.g. 401 games at "Docklands" and 43 at
+# "Marvel Stadium"). Anything that groups by raw venue string — venue scoring
+# factors, venue-level HGA — splits one ground's sample across aliases and
+# over-shrinks the estimate toward the league mean. Map every alias to one
+# canonical name before grouping.
+VENUE_ALIASES: dict[str, str] = {
+    "Docklands": "Marvel Stadium",
+    "Kardinia Park": "GMHBA Stadium",
+    "Perth Stadium": "Optus Stadium",
+    "York Park": "University of Tasmania Stadium",
+    "Eureka Stadium": "Mars Stadium",
+    "Adelaide Arena at Jiangwan Stadium": "Jiangwan Stadium",
+}
+
+
+def canonical_venue(venue: str) -> str:
+    """Canonical name for a venue (aliases collapsed); unknown names pass through."""
+    return VENUE_ALIASES.get(venue, venue)
+
+
 def venue_info(venue: str) -> dict | None:
     """Metadata dict for ``venue`` (city/lat/lon/roofed), or ``None`` if unknown."""
     return VENUE_METADATA.get(venue)

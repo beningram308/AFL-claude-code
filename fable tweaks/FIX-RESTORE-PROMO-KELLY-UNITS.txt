@@ -1,0 +1,46 @@
+# FIX: PUT PROMO KELLY STAKING BACK — FORMULA UNITS UP TO 3u, NO FLATTENING
+
+**For:** Claude Code · 2026-07-04 · One part, do fully, commit + push.
+
+## Why
+The last change flattened staking: every stakeable rung on every game now
+shows 0.25u / $3.75, including +28% Total EV promo rungs that previously
+staked 3u PROMO KELLY / $45. Ben did NOT want the promo staking changed.
+The columns agreeing with each other was the fix; the flattening was not.
+Cause: the per-round cap is squashing all rungs to the 0.25u floor instead
+of allocating the budget to the best rungs.
+
+## Part A — per-bet units come from the staking formula, untouched
+- For each stakeable rung, final units = the shrunk-Kelly pipeline exactly as
+  it worked before (promo rungs use the promo Kelly frac from d74c2df — do
+  not change the promo math): frac -> raw units = frac*BANKROLL/UNIT_SIZE ->
+  round down to 0.25u steps -> cap at 3u per bet.
+- If the formula says 3u, the dashboard shows 3u / $45. No global scaling,
+  no default 0.25u. Tag / stake% / $ still derive from that one final number
+  (keep that part — it works now).
+
+## Part B — round cap is a BUDGET, not a flattener
+- Replace the current rescale with allocation: rank all stakeable rungs
+  across the round by shrunk Total EV (desc). Walk the list giving each rung
+  its FULL formula units until the round budget (KELLY_PER_ROUND_CAP, 15u)
+  is used up. Rungs that don't fit become NO BET with a "round cap" note.
+  The last kept rung may be trimmed to the remaining budget (min 0.25u).
+- A kept rung's units are NEVER reduced below its formula output other than
+  that final trim. Uniform 0.25u across the board must be impossible unless
+  the formula itself says so.
+- CHECK PRICING rungs stay excluded from staking (that guard is correct).
+
+## Tests
+- Rung with promo Kelly frac implying 3u+ -> exactly 3u, $45, tag "3u PROMO
+  KELLY", stake% = 45/1500.
+- Round with more formula units than budget -> top-EV rungs keep full units,
+  overflow rungs are NO BET (round cap), total <= 15u.
+- No output where every stakeable rung across all games has identical 0.25u.
+
+## Acceptance
+- Full suite green. Regenerate R17 (--sportsbet), refresh dashboard
+  multis.json, restart dashboard.
+- Print GWS vs Fremantle and Hawthorn vs Melbourne Sportsbet ladders:
+  expect varied units with the best promo rungs at/near 3u, round total
+  <= 15u, CHECK PRICING rungs unstaked.
+- Ledger still 8 bets, Sydney pending. Commit + push.

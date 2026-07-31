@@ -1,0 +1,51 @@
+# FIX: BETS NEVER SETTLE (UNGRADEABLE) + MANUAL SETTLE MUST PERSIST
+
+**For:** Claude Code · 2026-07-04 · Do ALL parts, one run, commit + push.
+
+## Why
+The tracker shows 4 open bets, ALL legs "Ungradeable" — including two
+Carlton vs West Coast R16 bets placed 27 Jun whose game finished a week ago.
+Ungradeable = settle.py can't find the player's stats for that game, so
+these bets will sit pending forever. Separately, manual Won/Lost/Void clicks
+may not be persisting (bets bounce back to pending).
+
+## Part A — make settlement actually grade completed games
+- Run the settle pass and log, PER LEG, exactly why it's ungradeable:
+  (a) no player-stats data fetched for that game/round,
+  (b) player name doesn't match identity mapping (e.g. new 2026 players like
+      Willem Duursma / Harley Reid),
+  (c) market not supported by the grader (tackles/marks/disposals should all
+      be supported).
+- Fix each cause found:
+  - Refresh player stats for ALL completed 2026 games at settle time (fetch
+    from the existing sources — fryzigg/dfs_australia — if the cache is
+    stale; the cache clearly hasn't been updated for R16 games).
+  - Fix identity/name matching for any unmatched player; add missing players
+    to the mapping rather than silently returning None.
+  - The dashboard's Ungradeable banner must show the REASON per leg, not
+    just the leg name (e.g. "no stats for this game yet" vs "player not
+    found"), so Ben can tell "game not played/data not up" from "bug".
+- A leg on a game with no stats available yet stays pending — that's
+  correct. A leg on a completed game with stats available must grade.
+
+## Part B — manual settle must persist
+- Reproduce: click Won/Lost/Void, confirm, reload the page. If status
+  reverts, find and fix the cause. Known suspects:
+  - the dashboard process holds the ledger in memory and a later request /
+    regenerate overwrites the manual change (fix: fresh read-modify-write
+    on every mutation, with the atomic write + verify already in io_utils),
+  - the POST succeeds but a background settle pass resets manual_result
+    (manual_result must always take precedence and never be overwritten by
+    auto-settle),
+  - a save exception being swallowed (the FIX-ATOMIC rules say failures
+    must show loudly in the UI — verify that path actually fires).
+- Test: manual-settle a bet, simulate a settle pass + a regenerate, assert
+  the manual result survives both and is on disk.
+
+## Part C — run + verify
+- settle-bets for 2026 R16 and R17. Expected: both Carlton R16 bets grade
+  from real stats (won/lost per leg, no phantom wins), Geelong grades if
+  its game is complete, Sydney stays pending only if its stats genuinely
+  aren't published.
+- Print per-bet, per-leg grading (leg, line, actual stat value, hit/miss).
+- Full test suite green. Ledger intact (no bets lost). Commit + push.

@@ -100,11 +100,23 @@ def venue_scoring_factors(games: pd.DataFrame, strength: float = 30.0) -> dict[s
     if not league_mean:
         return {}
 
+    # AUDIT FIX 2026-07-31: collapse venue aliases before grouping — the games
+    # history names the same ground inconsistently (Docklands/Marvel Stadium,
+    # Kardinia Park/GMHBA, Perth Stadium/Optus, ...), which split one ground's
+    # sample and over-shrunk its factor toward 1.0. Factors are returned under
+    # BOTH the canonical name and every alias so existing raw-name lookups
+    # (round_report / backtest fixtures) still resolve.
+    from afl_bot.data.venues import VENUE_ALIASES, canonical_venue
+    g["venue"] = g["venue"].map(canonical_venue)
+
     factors: dict[str, float] = {}
     for venue, grp in g.groupby("venue"):
         n = len(grp)
         shrunk = (n * grp["_total"].mean() + strength * league_mean) / (n + strength)
         factors[venue] = float(shrunk / league_mean)
+    for alias, canon in VENUE_ALIASES.items():
+        if canon in factors:
+            factors[alias] = factors[canon]
     return factors
 
 

@@ -1,0 +1,75 @@
+WHAT TO SAY TO CLAUDE CODE — copy/paste per situation
+Each entry: CHECK first, then SAY. If the check fails, use the failure script
+at the bottom instead of proceeding.
+
+── THURSDAY (team sheets are out) ─────────────────────────────────────────────
+CHECK: you've pasted this round's Sportsbet URLs into
+       reports/2026_r<N>_sportsbet_urls.json
+SAY:
+  Run the Thursday step from WEEKLY-RUNBOOK.md for round <N>. Do not change
+  any code, config, or model constants — run the round-report command only,
+  then show me: each recommended rung with book odds, model prob, total EV,
+  and units. Flag anything tagged CHECK PRICING or with edge above 40%.
+
+── MONDAY (round finished) ────────────────────────────────────────────────────
+CHECK: all games in the round are actually complete.
+SAY:
+  Run the Monday step from WEEKLY-RUNBOOK.md for round <N>: refresh DFS player
+  stats, then settle-bets, grade-round, capture-close. Code changes are not
+  allowed. If the stale-data warning appears, stop and tell me instead of
+  working around it. Then show me the round's per-market summary and the
+  cumulative 2026 numbers from calibration_log.csv.
+
+── WHEN IT ASKS "commit this?" / wants to commit ─────────────────────────────
+CHECK: its summary lists ONLY files you expected. Anything touching
+       afl_bot/config.py, data_cache/elo_params.json, or files under
+       audit_backup_20260731/ = do not commit, use the failure script.
+SAY:
+  Run the fast test suite first. If green, commit with a one-line message
+  naming the round or task. If anything is red, do not commit — show me the
+  failures.
+
+── WHEN IT PROPOSES A MODEL/CONFIG CHANGE UNPROMPTED ─────────────────────────
+CHECK: nothing. The answer is always the same.
+SAY:
+  No. Revert any change to model constants or probability calculations. Log
+  the idea as a proposal in fable tweaks/IMPROVEMENTS-TODO.txt with the
+  out-of-sample test that would justify it. Model changes only happen as
+  their own task with before/after holdout numbers.
+
+── WHEN A RUN SHOWS A HUGE EDGE OR WEIRD NUMBER ──────────────────────────────
+CHECK: nothing — treat it as an error until proven otherwise.
+SAY:
+  Assume this number is a bug, not an opportunity. Trace the exact inputs
+  (odds file entry, model prob, calibration step) for that leg and show me
+  the chain. Do not include it in any staked recommendation until traced.
+
+── WHEN TESTS FAIL / SOMETHING BROKE ─────────────────────────────────────────
+SAY:
+  Stop. Do not fix forward. Show me: which tests fail, the exact error, and
+  which files changed since the last green run. Restore modified files from
+  audit_backup_20260731/ or git if needed, confirm the suite is green again,
+  and only then explain what you were trying to do.
+
+── WHEN IT SAYS IT'S DONE WITH ANY TASK ──────────────────────────────────────
+SAY:
+  Before I accept: run pytest -m "not slow", state passed/failed counts,
+  list every file you changed, and name anything you claimed but did not
+  actually verify with a command. Do not summarise work you didn't measure.
+
+── ~ROUND 25 / END OF SEASON (the decision that matters) ─────────────────────
+CHECK: calibration log has 8+ graded 2026 rounds.
+SAY:
+  Using only calibration_log.csv and the bets ledger, report: graded rungs
+  count, per-market mean predicted vs hit rate by round, cumulative CLV, and
+  realized ROI. Then answer plainly: does the live record support the
+  pre-registered gates in WEEKLY-RUNBOOK.md for increasing stakes — yes or
+  no, with the numbers. Do not soften the answer.
+
+── HARD RULES (paste at the start of any new Claude Code session) ────────────
+SAY:
+  Read WEEKLY-RUNBOOK.md and CHANGELOG-AUDIT-2026-07-31.md first. Never
+  modify afl_bot/config.py constants, data_cache/elo_params.json, or
+  audit_backup_20260731/. calibration_log.csv is append-only. Run the fast
+  test suite before and after any change. Never claim a result you didn't
+  verify with a command.

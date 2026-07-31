@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from afl_bot.backtest.ensemble import IsotonicCalibrator
 from afl_bot.backtest.multis import (
     corr_gain_diagnostic,

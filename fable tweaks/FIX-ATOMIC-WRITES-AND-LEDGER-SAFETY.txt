@@ -1,0 +1,62 @@
+# FIX: ATOMIC FILE WRITES + LEDGER SAFETY — STOP THE CORRUPTION FOR GOOD
+
+**For:** Claude Code · 2026-07-03 · Single part, do fully, commit, push.
+
+## Why (second corruption incident in 24h)
+1. Last night a killed run truncated 10 files mid-write (all restored from git).
+2. Today reports/bets_ledger.json was corrupted mid-write AGAIN: Ben's Sydney
+   bet + his manually-added bet were destroyed (Sydney reconstructed by hand as
+   pending; the manual bet is unrecoverable). A won bet also displayed as
+   "void" and the record that would explain why was destroyed.
+Root cause: every JSON/report write is a plain `write_text` — a process killed
+mid-write (crash, sleep, OneDrive/sync interference) leaves a half-file.
+
+## Fix 1 — atomic writes EVERYWHERE
+Add `atomic_write_text(path, text)` in a small util module: write to
+`<path>.tmp-<pid>` in the SAME directory, flush + `os.fsync`, then
+`os.replace(tmp, path)` (atomic on Windows + POSIX). Replace every direct
+write of: bets_ledger.json (`save_ledger`), *_multis.json, odds templates,
+predictions CSVs, calibration_log.csv appends (read-modify-write via temp),
+elo/calibrator caches — grep for `write_text(`/`open(...,"w")` across
+afl_bot/ and convert anything that writes into reports/ or data_cache/.
+
+## Fix 2 — ledger load must never lose data silently
+- `load_ledger`: on JSONDecodeError, (a) copy the corrupt file to
+  `bets_ledger.corrupt-<timestamp>.json` (never overwrite evidence),
+  (b) recover all complete records (json.JSONDecoder.raw_decode loop),
+  (c) log loudly how many were recovered/dropped, (d) save the recovered
+  ledger atomically. The dashboard shows a red banner "ledger was corrupted —
+  N bets recovered, M lost, backup saved" instead of 500ing or dropping bets.
+- Before every `save_ledger`, write a rolling backup
+  `reports/ledger_backups/bets_ledger.<date>.json` (keep last 14) so a bad
+  write never costs more than one day of bets.
+
+## Fix 3 — manual actions can't silently vanish or misfire
+- `/add-manual-bet` and `/place`: on any exception, return the form WITH an
+  error message and the entered values — never a silent redirect. On success,
+  re-read the ledger from disk and assert the new bet_id is present before
+  responding; if not, show "SAVE FAILED — bet not recorded" loudly.
+- The manual settle **void/lost/won buttons get a JS confirm dialog**
+  ("Mark this bet VOID? This overrides auto-settlement.") — one stray click
+  currently voids a bet permanently with no trace.
+- Add a **"Re-open" button** on manually-settled bets: clears `manual_result`,
+  sets status back to pending, payout/settled_at to null, so the next settle
+  pass re-grades from real data. (This is how a mis-voided winner gets its
+  money counted again.)
+
+## Tests
+- atomic_write_text: file either old or new content under simulated kill
+  (write tmp, don't replace → original intact); os.replace path exercised.
+- load_ledger corruption recovery: feed a truncated ledger fixture → complete
+  records recovered, backup file created, no exception.
+- add-manual-bet failure path returns error (monkeypatch save to raise).
+- Re-open clears manual_result and next settle_bets re-grades the bet.
+- Full suite green.
+
+## Acceptance
+Verify the current reports/bets_ledger.json (8 bets: 5 settled R16, 2 Geelong
+R17 pending, 1 reconstructed Sydney R17 pending) loads clean and the dashboard
+renders it. Then run settle-bets for 2026 r17 — the Sydney bet must grade from
+real stats (WON if all three legs hit; stays pending if data isn't up).
+Commit ("io: atomic writes + ledger recovery/backups + manual-action safety"),
+push, confirm clean tree.

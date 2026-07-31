@@ -1,0 +1,205 @@
+# DO: UNIT STAKING + MY-OWN-BET + POINTSBET PULL 'EM MULTI + TRACKER AUDIT
+
+**For:** Claude Code · **Written:** 2026-07-02 · **Mode:** execute ALL parts top-to-bottom.
+Commit per part. DO NOT stop after one part — previous multi-part docs kept getting
+half-done. Every part below ends with an acceptance check; a part is not done until
+its check passes. Verify-don't-redo anything already committed.
+
+## GROUND RULES (unchanged project discipline)
+- No look-ahead/leakage anywhere. Prior-data-only for anything fitted.
+- Every change ships with targeted tests; full `pytest -q` green before each commit.
+- Honest labels: anything model-only or assumed (not fitted) is labelled as such.
+- Do NOT touch: LEG_PROB_MAX=0.78, MULTI_TARGET_ODDS, the retired $1.75 floor,
+  CORR_GAIN_HAIRCUT=0.0 default, disposals-first selection. All settled.
+- If the working tree still has uncommitted changes from before: run the suite,
+  commit them in logical chunks FIRST (NEXT-STEPS-PLAN Part 0), then start Part 1.
+- Push to origin at the very end.
+
+---
+
+## PART 1 — UNIT-BASED STAKING: how many units per multi
+
+Ben's numbers: **bankroll $1,500, 1 unit = $15** (1% of bankroll — the standard
+unit convention). The engine already computes capped fractional Kelly
+(`build/staking.py`: 0.25x Kelly, 5% per-bet cap, 15% per-round cap,
+PROP_KELLY_MULTIPLIER 0.5). This part converts that into a **units
+recommendation shown next to every multi**, using well-known staking rules:
+
+1. **Config** (`config.py`):
+   - `BANKROLL = 1500.0` (replaces/aliases DEFAULT_BANKROLL as the live value)
+   - `UNIT_SIZE = 15.0`          # 1% of bankroll
+   - `UNIT_STEP = 0.25`          # stakes rounded to nearest quarter-unit
+   - `UNIT_MAX = 3.0`            # never more than 3u (4.5% roll) on one multi
+   - `UNIT_MAX_LONGSHOT = 1.0`   # cap at 1u when combined odds >= 5.0
+   - `PROMO_FLAT_UNITS = 0.5`    # flat stake for promo-only plays (Ben confirmed)
+
+2. **`recommend_units(joint_prob, book_odds, promo_ev=None)` in `build/staking.py`:**
+   - Positive edge (market-shrunk prob × book odds > 1): units =
+     `fractional_kelly_fraction(prob, odds) * BANKROLL / UNIT_SIZE`,
+     rounded DOWN to UNIT_STEP, clipped to [UNIT_STEP, UNIT_MAX]
+     (UNIT_MAX_LONGSHOT when odds >= 5.0 — Kelly is noisiest on longshots).
+   - No/negative edge but positive promo EV → `PROMO_FLAT_UNITS`, tag `PROMO ONLY`.
+   - No edge, no promo → 0 units, tag `NO BET`.
+   - No book price at all → `-` and tag `MODEL-ONLY (no price, no stake)`.
+     Never recommend units off model-only fair odds.
+   - Per-round governor: if the round's total recommended units exceed
+     `KELLY_PER_ROUND_CAP * BANKROLL / UNIT_SIZE` (= 15u), scale all
+     Kelly-derived stakes down proportionally (promo flats don't scale, they're
+     already minimal). Reuse `stake_bets`'s existing scaling, don't duplicate it.
+
+3. **Display.** Report ladder + cross-game multis get `Units` and `$` columns.
+   Dashboard ladder tables show the same, plus a round-total exposure line
+   ("Round total: 6.75u / $101.25 of 15u cap"). The tracker's stake field
+   pre-fills with the recommendation ($ value).
+
+4. **Tests:** kelly→units conversion, rounding, both caps, promo flat, NO BET on
+   negative edge, model-only never staked, round governor scaling.
+
+**Acceptance:** regenerated R17 shows a Units column on every ladder; every rung
+has one of [Nu | 0.5u PROMO ONLY | NO BET | MODEL-ONLY]; round total ≤ 15u.
+
+---
+
+## PART 2 — "ADD MY OWN BET" — make it actually visible and usable
+
+The code EXISTS (`dashboard/app.py`: `/add-manual-bet` route, `+ Add my own bet`
+button at line ~489, `ledger.add_manual_bet`, committed in 65dbbfb) but Ben
+reports it is NOT visible in the dashboard he runs. Diagnose for real:
+
+1. Launch the dashboard exactly as Ben does (`python -m afl_bot.cli dashboard`)
+   and fetch the rendered HTML (Flask test client is fine). Confirm whether the
+   button/form is in the response. Likely causes to check, in order:
+   a. the served round/view gates the tracker section (button only renders on a
+      view Ben isn't on — e.g. only when a multis.json is loaded);
+   b. the JS `toggleManualForm()` is broken so the form never opens;
+   c. a stale server process / stale template cache serving pre-65dbbfb code.
+2. Fix whatever it is so the button is ALWAYS visible on the tracker panel,
+   regardless of selected round or whether multis.json loaded.
+3. Upgrade the form to a proper multi-leg builder: "+ add leg" rows
+   (player / market dropdown [disposals, goals, marks, tackles, h2h, total, other]
+   / line / optional per-leg odds), combined odds field (manual entry, with an
+   auto-multiply helper if per-leg odds are entered), stake pre-filled from
+   Part 1's unit recommendation is N/A here — default 0.5u ($7.50), bookie field
+   (sportsbet / pointsbet / tab / other) stored on the bet as `book`.
+4. Manual bets must: appear in the tracker list with a MANUAL badge, auto-settle
+   via the normal settle path (legs in standard schema settle automatically;
+   `market: "other"` legs stay pending for the manual win/loss/void buttons),
+   and count in P&L + cumulative profit.
+5. **Tests:** GET renders the form on every view; POST creates a correct ledger
+   entry (incl. multi-leg); manual bet with standard legs auto-settles; `other`
+   leg never auto-settles.
+
+**Acceptance:** screenshot-equivalent proof (rendered HTML contains the form on
+the default view) + a test-client round trip: add a 2-leg manual bet → shows in
+tracker → settle → correct P&L.
+
+---
+
+## PART 3 — POINTSBET PULL 'EM SGM (dedicated promo multi)
+
+**Verified mechanics (PointsBet support pages, July 2026):** Pull 'Em is a token
+applied AT BET PLACEMENT on a Same Game Multi (AFL supported). During the game,
+BEFORE THE SECOND HALF STARTS, you may remove ONE eligible leg. The odds are
+recalculated down by the removed leg's value and you confirm the new price.
+It is NOT a refund — it's a free mid-game option to drop the worst leg.
+
+Build one dedicated **PULL 'EM SGM per game**, designed so the option is worth
+the most:
+
+1. **Composition rule (`build_pull_em_sgm` in `build/multi.py` or report.py):**
+   - Exactly **4 legs** (pulling one must leave a real 3-leg multi).
+   - **3 anchor legs: disposals only**, p ≥ 0.70, three different players.
+     Disposals accrue steadily → at half-time you can SEE who's off the pace,
+     which is exactly when the pull decision happens. That's why anchors must
+     be disposals, not goals (goals are lumpy and unreadable at HT).
+   - **1 booster leg — the designated pull candidate**: higher disposal line or
+     1+ goals, model p between 0.45 and 0.65, clearly marked "PULL CANDIDATE".
+   - Target combined fair odds ~$3.00–$6.00. Respect the existing book-menu
+     filter, one-leg-per-player, ≤1 tackles/marks cap, LEG_PROB_MAX.
+2. **EV with the pull option, priced off the sim's per-iteration masks:**
+   - Base EV as usual (joint prob × book odds − 1, market-shrunk when priced).
+   - Option value: over sim iterations, take the cases where EXACTLY ONE leg
+     misses and the other three hit. In those cases pulling the missing leg at
+     HT would have saved the bet at reduced odds. Recovered value per iteration
+     ≈ stake × (reduced odds of remaining 3 legs) − stake, where reduced odds =
+     book combined odds ÷ the pulled leg's book price (or fair price if
+     unpriced, labelled). Multiply by `PULL_DETECTION_PROB = 0.7` — a DOCUMENTED
+     ASSUMED PRIOR (not fitted — no data exists) for "the failing leg was
+     already visibly behind at HT". Show `Total EV = base + pull option EV`
+     with the option's contribution printed separately, never silently merged.
+   - Config knobs: `PULL_DETECTION_PROB = 0.7`, `PULL_EM_N_LEGS = 4`,
+     `PULL_EM_ANCHOR_MIN_P = 0.70`, all commented as priors.
+3. **Prices.** There is no PointsBet scraper — do NOT build one in this pass.
+   Emit the pull-em legs into a `reports/<year>_r<N>_pointsbet_odds.json`
+   template (same null-value convention as the existing odds template). With no
+   prices: show fair odds, mark MODEL-ONLY, and per Part 1 recommend no stake.
+   With prices filled in: full EV + Part 1 units (promo flat 0.5u if −EV,
+   since the option still has value; Kelly units if genuinely +EV).
+4. **The pull decision rule, printed under each PULL 'EM SGM:**
+   "At half-time: each disposals leg needs ~50% of its line. Pull the leg
+   furthest below that pace (or an injured/subbed player, pull immediately).
+   If every leg is on pace, pull nothing — the token expires with the bet live."
+5. **Report + dashboard:** new "PointsBet Pull 'Em" block per game, after the
+   SGM ladder; same lock/track flow as other multis so it can be bet-tracked
+   (ledger `ladder: "pull_em"`, `book: "pointsbet"`).
+6. **Tests:** composition (4 legs, 3 disposal anchors ≥0.70, booster band,
+   distinct players), option-EV math on a constructed mask set (exactly-one-miss
+   cases valued, zero-and-two-miss cases not), template emission, model-only
+   never staked.
+
+**Acceptance:** R17 report shows a Pull 'Em SGM for every game with base EV,
+option EV, total EV, the pull rule text, and a pointsbet odds template file.
+
+---
+
+## PART 4 — TRACKER AUDIT: no losses counted as wins, no phantom voids
+
+The FIX-SETTLEMENT-NO-PHANTOM-WINS rules are committed (settle.py: WON only if
+every leg definitively hit; miss → LOST immediately; ungradeable → stays
+PENDING; auto-re-grade of phantom wins). Do NOT rewrite them. This part is an
+AUDIT of the live ledger + the gaps the rules can still leak through:
+
+1. **Audit `reports/bets_ledger.json` (currently 6 bets: 4 void / 1 won /
+   1 pending).** For each bet, re-derive every leg's actual outcome from
+   Fryzigg/Squiggle for its round and print a table: bet, legs, actual stat
+   values, hit/miss, stored status, correct status. The **4 voids are the
+   suspects** — void is supposed to be manual-only; find out what set them
+   (old auto-void logic? manual clicks?). Any bet with ≥1 genuinely-missed leg
+   must end LOST. Any bet whose legs all genuinely hit must end WON. Correct
+   the stored statuses via the normal settle path (not hand-editing JSON),
+   and print the before/after P&L summary.
+2. **Close the leak classes with tests:**
+   - name/format mismatches: leg name "X 25+ disposals" vs market/line fields,
+     `player_disposals` vs `disposals`, team-name variants in h2h — a mismatch
+     must yield None/PENDING, never a hit;
+   - total-points legs grade correctly from the game total;
+   - a bet can NEVER go WON or VOID while any leg_result.hit is null
+     (regression test on settle_bets output invariants);
+   - manual_result always wins over auto-grade;
+   - pnl_summary: voids excluded from strike rate, payout math exact.
+3. **Kill the stale-dashboard class of bugs (recurring problem):** the dashboard
+   must read the SAME multis.json path `round-report` writes — one path
+   constant, no copies. Add a `generated_at` stamp to multis.json; dashboard
+   shows it and a loud "STALE — regenerate" banner when the reports dir has a
+   newer report than the loaded multis. Add a "Reload data" button that
+   re-reads from disk without restarting the server.
+4. **Tests** for 2 and 3 (path constant shared, stale banner logic).
+
+**Acceptance:** audit table printed with every ledger bet re-derived from
+actuals; statuses corrected; invariant tests green; dashboard shows
+generated_at and reload works.
+
+---
+
+## PART 5 — REGENERATE, VERIFY, SHIP
+
+1. Full `pytest -q` green.
+2. `round-report --year 2026 --round 17 --auto-lineup --sportsbet` regenerate;
+   refresh the dashboard's multis (same file now, per Part 4.3).
+3. Print for Ben, in chat: (a) R17 unit-stake table — every recommended multi
+   with Units/$ and tag; (b) one game's Pull 'Em SGM with the EV breakdown;
+   (c) the tracker audit before/after table; (d) confirmation the my-own-bet
+   form renders (test output).
+4. Commit per part (5 commits minimum), push to origin, confirm clean tree.
+
+# END — do not stop until Part 5 item 4 is done.

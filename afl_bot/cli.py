@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 
 from afl_bot.io_utils import atomic_write_text
+from afl_bot.grading import grade_round
 
 from afl_bot.backtest.ensemble import assemble_signals, fit_market_blend, squiggle_consensus
 from afl_bot.backtest.props import apply_prop_calibration, load_or_fit_prop_calibrators
@@ -102,7 +103,7 @@ from afl_bot.data.odds import fetch_historical_odds
 from afl_bot.data.lineups import (apply_outs, fetch_injury_list, fetch_lineup,
                                   load_lineup, load_lineup_tog, load_outs)
 from afl_bot.data.live_odds import fetch_live_odds, fetch_live_props
-from afl_bot.data.sportsbet_odds import fetch_sportsbet_odds
+from afl_bot.data.sportsbet_odds import discover_afl_event_ids, fetch_sportsbet_odds
 from afl_bot.data.player_stats import load_player_log
 from afl_bot.data.squiggle import SquiggleClient
 from afl_bot.data.stoppages import load_boundary_throwins
@@ -444,7 +445,11 @@ def run_round(year: int, round_no: int | None, odds_path: str | None, n_sims: in
     squiggle_lookup: dict[tuple[str, str], float] = {}
     try:
         hist_tips = pd.concat([client.get_tips(y) for y in _history_years(year)], ignore_index=True)
-        blend = fit_market_blend(assemble_signals(history, fetch_historical_odds(), hist_tips))
+        # sim_style=True (AUDIT FIX 2026-07-31, C7): the blend is fed the
+        # Monte-Carlo H2H probability below, so its calibrator must be trained
+        # on sim-style probabilities, not the Elo logistic.
+        blend = fit_market_blend(assemble_signals(history, fetch_historical_odds(), hist_tips,
+                                                  sim_style=True))
         consensus = squiggle_consensus(client.get_tips(year, round_no))
         squiggle_lookup = {(r.hteam, r.ateam): r.squiggle_home_prob for r in consensus.itertuples()}
     except Exception as exc:  # noqa: BLE001 - anchoring is optional, must not break pricing
@@ -1074,26 +1079,34 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     _sb_urls_path = sportsbet_urls_path or str(ROOT_DIR / "reports" /
                                                 f"{year}_r{round_no}_sportsbet_urls.json")
     if use_sportsbet:
+        # Optional manual URL file (to patch a gap / force specific events);
+        # otherwise auto-discover this round's AFL games off Sportsbet's own
+        # competition-events endpoint -- nothing to paste (FIX-REAL-SPORTSBET
+        # PART A3). A present-but-empty file still falls through to discovery.
         try:
             sb_urls = json.loads(Path(_sb_urls_path).read_text())
         except (OSError, json.JSONDecodeError):
-            print(f"Sportsbet: no URL file at {_sb_urls_path} -- skipping scrape.",
-                  file=sys.stderr)
             sb_urls = []
+        if sb_urls:
+            print(f"Sportsbet: using {len(sb_urls)} manual URL(s) from {_sb_urls_path}.",
+                  file=sys.stderr)
+        else:
+            sb_urls = discover_afl_event_ids()
         sb = fetch_sportsbet_odds(sb_urls)
         if not sb:
             n_urls = len(sb_urls)
-            _reason = (f"no URLs in {_sb_urls_path}" if n_urls == 0
+            _reason = ("auto-discovery found no AFL events — geo-blocked (AU IP required) "
+                       "or the AFL competition id changed" if n_urls == 0
                        else f"all {n_urls} event(s) failed — geo-blocked (AU IP required) or stale URLs")
             print(f"WARNING Sportsbet: 0 legs priced ({_reason}). "
                   f"Book/Edge columns will show '—'. "
-                  f"Populate {_sb_urls_path} and rerun with --sportsbet.",
+                  f"Rerun with --sportsbet from an AU IP (optionally populate {_sb_urls_path}).",
                   file=sys.stderr)
     else:
         sb = {}
         sb_urls = []
-        print(f"Sportsbet: not requested. Paste round match URLs into "
-              f"{_sb_urls_path} and rerun with --sportsbet for real prices.",
+        print("Sportsbet: not requested. Rerun with --sportsbet (auto-discovers "
+              "this round's games — nothing to paste) for real prices.",
               file=sys.stderr)
     manual = json.loads(Path(odds_path).read_text()) if odds_path else {}
     odds_book = {**live, **live_props, **sb, **manual}
@@ -1116,17 +1129,18 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
             )
         else:
             n_urls = len(sb_urls)
-            _cause = (f"no URL file / empty list (`{_sb_urls_path}`)" if n_urls == 0
+            _cause = ("auto-discovery found no AFL events (geo-blocked — AU IP required — "
+                      "or the AFL competition id changed)" if n_urls == 0
                       else f"all {n_urls} event(s) failed — possibly geo-blocked (AU IP required)")
             sportsbet_note = (
                 f"_WARNING Sportsbet: 0 legs priced — {_cause}. Book/Edge columns show '—'. "
-                f"Fix: populate `{_sb_urls_path}` with this round's Sportsbet match URLs "
-                f"and rerun with `--sportsbet`._"
+                f"Fix: rerun with `--sportsbet` from an AU IP (optionally populate "
+                f"`{_sb_urls_path}` to force specific events)._"
             )
     else:
         sportsbet_note = (
-            f"_No Sportsbet prices this run. For real book prices: paste this round's "
-            f"Sportsbet match URLs into `{_sb_urls_path}` and rerun with `--sportsbet`._"
+            "_No Sportsbet prices this run. For real book prices, rerun with "
+            "`--sportsbet` — it auto-discovers this round's games (nothing to paste)._"
         )
 
     # Per-game greasiness overrides (Step 3 FIX-MARKS-CAP-ALL-LEGS-AND-GREASINESS).
@@ -1496,110 +1510,6 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
     snapshot_note = f" | odds snapshot: {odds_snapshot_path}" if odds_snapshot_path else ""
     print(f"\n[saved to {out_path} | predictions: {pred_path} | "
           f"multis: {multis_path} | odds template: {template_path}{snapshot_note}]")
-
-
-def grade_round(year: int, round_no: int) -> None:
-    """Grade a completed round (§10.5): score every saved prediction against
-    what actually happened, append to reports/calibration_log.csv, and print the
-    round + cumulative calibration. Feeds Section 2's calibration work."""
-    out_dir = ROOT_DIR / "reports"
-    pred_path = out_dir / f"{year}_r{round_no}_predictions.csv"
-    if not pred_path.exists():
-        print(f"No predictions file {pred_path}; run round-report for {year} r{round_no} first.",
-              file=sys.stderr)
-        return
-    preds = pd.read_csv(pred_path)
-
-    client = SquiggleClient()
-    games = client.get_completed_games(year)
-    games = games[games["round"] == round_no]
-    if games.empty:
-        print(f"{year} round {round_no} is not completed yet — nothing to grade.", file=sys.stderr)
-        return
-    # Actual player stats for the round, matched by the REAL round number.
-    # Past seasons: Fryzigg raw `match_round` (its to_player_log round is a
-    # chronological ordinal, §7.2, and its unixtime is unreliable). Current
-    # season: DFS, which carries the real round via the Squiggle join.
-    player_round = pd.DataFrame(columns=["player", "disposals", "goals", "marks", "tackles"])
-    try:
-        from afl_bot.data.fryzigg import fetch_fryzigg_player_stats
-        raw = fetch_fryzigg_player_stats()
-        raw = raw.assign(_year=pd.to_datetime(raw["match_date"]).dt.year,
-                         _player=(raw["player_first_name"].str.strip() + " "
-                                  + raw["player_last_name"].str.strip()))
-        rnd = raw[(raw["_year"] == year) & (raw["match_round"].astype(str) == str(round_no))]
-        if not rnd.empty:
-            player_round = rnd.rename(columns={"_player": "player"})
-    except Exception:  # noqa: BLE001
-        pass
-    if player_round.empty:
-        try:
-            from afl_bot.data.dfs_australia import fetch_player_stats
-            from afl_bot.data.dfs_australia import to_player_log as _dfs_to_log
-            dfs = _dfs_to_log(fetch_player_stats(), games)
-            player_round = dfs[dfs["round"] == round_no]
-        except Exception:  # noqa: BLE001
-            pass
-
-    # actual H2H/total per match (totals keyed by match_id)
-    h2h_actual, total_actual = {}, {}
-    for _, g in games.iterrows():
-        h2h_actual[g["hteam"]] = int(g["hscore"] > g["ascore"])
-        h2h_actual[g["ateam"]] = int(g["ascore"] > g["hscore"])
-        total_actual[f"{year}_r{round_no}_{g['hteam']}_v_{g['ateam']}"] = g["hscore"] + g["ascore"]
-    player_stat = {  # (player, stat) -> actual value that round
-        (r["player"], stat): r[stat]
-        for _, r in player_round.iterrows() for stat in ("disposals", "goals", "marks", "tackles")
-    }
-
-    graded = []
-    for _, p in preds.iterrows():
-        market, subject, line = p["market"], p["subject"], p["line"]
-        if market == "h2h":
-            if subject not in h2h_actual:
-                continue
-            actual = h2h_actual[subject]
-        elif market == "total_points":
-            tot = total_actual.get(p["match_id"])
-            actual = int(tot >= float(line)) if tot is not None else None
-        elif market.startswith("player_"):
-            stat = market.split("_", 1)[1]
-            val = player_stat.get((subject, stat))
-            actual = int(val >= float(line)) if val is not None else None
-        else:
-            actual = None
-        if actual is None:
-            continue
-        graded.append({"year": year, "round": round_no, "market": market, "subject": subject,
-                       "line": line, "prob": float(p["prob"]), "actual": actual})
-
-    if not graded:
-        print("No predictions could be matched to actuals (player names/rounds).", file=sys.stderr)
-        return
-    graded_df = pd.DataFrame(graded)
-
-    log_path = out_dir / "calibration_log.csv"
-    if log_path.exists():
-        prev = pd.read_csv(log_path)
-        combined = pd.concat([prev[prev["round"] != round_no] if "round" in prev else prev, graded_df],
-                             ignore_index=True)
-    else:
-        combined = graded_df
-    _cal_buf = io.StringIO()
-    combined.to_csv(_cal_buf, index=False)
-    atomic_write_text(log_path, _cal_buf.getvalue())
-
-    from afl_bot.backtest.walkforward import brier_score, log_loss
-    probs = graded_df["prob"].to_numpy()
-    actuals = graded_df["actual"].to_numpy(dtype=float)
-    print(f"=== Graded {year} Round {round_no}: {len(graded_df)} predictions ===")
-    print(f"  log loss {log_loss(probs, actuals):.4f} | brier {brier_score(probs, actuals):.4f} "
-          f"| mean pred {probs.mean():.3f} | hit rate {actuals.mean():.3f}")
-    cum_probs = combined["prob"].to_numpy()
-    cum_act = combined["actual"].to_numpy(dtype=float)
-    print(f"  cumulative ({len(combined)} preds across {combined['round'].nunique()} rounds): "
-          f"log loss {log_loss(cum_probs, cum_act):.4f} | brier {brier_score(cum_probs, cum_act):.4f}")
-    print(f"  [appended to {log_path}]")
 
 
 def grade_multis(years: list[int], rounds: list[int] | None, n_sims: int,

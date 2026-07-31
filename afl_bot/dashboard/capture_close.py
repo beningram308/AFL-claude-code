@@ -112,7 +112,9 @@ def capture_close(
                 if sb_p is not None and tab_p is not None:
                     try:
                         leg_probs.append(devig_consensus_single_sided([sb_p, tab_p]))
-                    except Exception:
+                    except Exception as exc:  # noqa: BLE001 - no consensus for this bet, not fatal to capture-close
+                        print(f"[capture-close] consensus devig failed for leg {name!r} ({exc!r}); "
+                              f"skipping CLV consensus for this bet.", file=sys.stderr)
                         break
                 else:
                     break

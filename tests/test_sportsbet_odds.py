@@ -10,6 +10,7 @@ import requests
 
 from afl_bot.data.sportsbet_odds import (
     _extract_event_id,
+    discover_afl_event_ids,
     fetch_event_odds,
     fetch_sportsbet_odds,
     parse_markets,
@@ -223,3 +224,40 @@ def test_fetch_sportsbet_odds_unparseable_entry_skipped(tmp_path):
         odds = fetch_sportsbet_odds(["not-a-url"], cache_dir=tmp_path)
     assert odds == {}
     mock_get.assert_not_called()
+
+
+# ── Auto-discovery (FIX-REAL-SPORTSBET-ODDS A3) ─────────────────────────────
+_NOW = 1_784_800_000  # fixed reference so the ±window is deterministic
+_DAY = 86_400
+COMPETITION_EVENTS = [
+    # Two matches inside the next-7-days window -> discovered.
+    {"id": 10703161, "name": "Adelaide Crows v Collingwood",
+     "eventSort": "MTCH", "startTime": _NOW + 3600},
+    {"id": 10703173, "name": "North Melbourne v St Kilda",
+     "eventSort": "MTCH", "startTime": _NOW + 3 * _DAY},
+    # A futures/specials market -> dropped (not eventSort MTCH).
+    {"id": 9641840, "name": "AFL Premiership Winner 2026",
+     "eventSort": "FUTR", "startTime": _NOW + 30 * _DAY},
+    # A match too far out (next round) -> dropped by the time window.
+    {"id": 10703999, "name": "Some Team v Another",
+     "eventSort": "MTCH", "startTime": _NOW + 20 * _DAY},
+]
+
+
+def test_discover_afl_event_ids_returns_only_matches_in_window(tmp_path):
+    with patch("afl_bot.data.sportsbet_odds.requests.get",
+               return_value=_json_response(COMPETITION_EVENTS)), \
+         patch("afl_bot.data.sportsbet_odds.time.time", return_value=_NOW):
+        ids = discover_afl_event_ids()
+    assert ids == ["10703161", "10703173"]   # futures + far-out match excluded
+
+
+def test_discover_afl_event_ids_geo_blocked_returns_empty():
+    with patch("afl_bot.data.sportsbet_odds.requests.get", return_value=_blocked_response()):
+        assert discover_afl_event_ids() == []
+
+
+def test_discover_afl_event_ids_network_failure_returns_empty():
+    with patch("afl_bot.data.sportsbet_odds.requests.get",
+               side_effect=requests.RequestException("timeout")):
+        assert discover_afl_event_ids() == []

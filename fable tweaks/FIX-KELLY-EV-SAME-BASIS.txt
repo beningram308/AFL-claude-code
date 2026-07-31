@@ -1,0 +1,57 @@
+# FIX: NO BET SHOWING ON POSITIVE-TOTAL-EV RUNGS — KELLY MUST USE THE SAME BASIS AS THE DISPLAYED EV
+
+**For:** Claude Code · 2026-07-03 · Single part, do fully, commit, push.
+
+## Diagnosis (verified by reading the code — don't re-derive, just fix)
+
+Dashboard rungs show e.g. Edge −25.4% / Total EV +7.9% / **NO BET**. Cause:
+
+- `report.py` computes the DISPLAYED `_total_ev = _priced_edge + promo` where
+  `_priced_edge` uses the **market-anchored (shrunk)** probability
+  (`market_anchored_prob(priced_joint, book, MULTI_MARKET_SHRINK) * book - 1`),
+  and `promo = _p_one_loss * BONUS_BET_FACTOR`.
+- But `recommend_units` → `multi_outcome_kelly(p_win, p_one_loss, p_dead, ...)`
+  is fed the **RAW sim mask probabilities** (`_p_all_win` etc.). Its gate is
+  `g'(0) = p_win*(M-1) + p_one*(R-1) - p_dead` = RAW edge + promo, which for
+  these rungs is ≤ 0 → NO BET, contradicting the positive displayed Total EV.
+
+Two probability bases; the display and the stake decision disagree by
+construction. Per project convention (MULTI_MARKET_SHRINK exists because raw
+joint overestimates compound), the **shrunk basis is the correct one for both**.
+
+## Fix
+
+1. In the staking call path (report.py's `recommend_units`/`multi_outcome_kelly`
+   call sites), replace the raw branch probs with the market-anchored set:
+   - `p_win' = market_anchored_prob(priced_joint, book, MULTI_MARKET_SHRINK)`
+     (the SAME value `_priced_edge` uses — compute once, use in both places).
+   - Rescale the loss branches to preserve their conditional split:
+     `scale = (1 - p_win') / (1 - p_all_raw)` (guard p_all_raw < 1);
+     `p_one' = p_one_raw * scale`, `p_dead' = p_dead_raw * scale`.
+     The three must sum to 1 (assert in a test).
+2. Consistency invariant, enforced by test: with these inputs,
+   `g'(0) > 0` ⟺ displayed `total_ev > 0` (same numbers, same sign — algebra:
+   g'(0) = p_win'*M − 1 + R*p_one' = edge_shrunk + promo_shrunk). This means
+   Total EV must ALSO switch its promo term to the rescaled `p_one'`
+   (`promo = p_one' * BONUS_BET_FACTOR`) so display and decision are one number.
+3. Behaviour after fix: any rung with displayed Total EV > 0 and a real book
+   price gets PROMO KELLY units (>= 0.25u, all existing caps unchanged);
+   NO BET only when the consistent Total EV ≤ 0. MODEL-ONLY (no book price)
+   unchanged — never staked.
+4. Do NOT touch: multi_outcome_kelly's math itself, UNIT_* config, refund cap,
+   round governor, Pull 'Em construction.
+
+## Tests
+- Rescaled branch probs sum to 1; conditional one-loss/dead ratio preserved.
+- Invariant test: total_ev > 0 ⟹ units > 0 with PROMO KELLY tag (given book
+  price + promo branches); total_ev ≤ 0 ⟹ NO BET. Use a case mirroring the
+  live bug: raw joint 0.48, book 1.39, p_one_raw 0.40, p_dead_raw 0.12 —
+  pre-fix NO BET, post-fix staked.
+- Existing suite green.
+
+## Acceptance
+Regenerate R17 (--sportsbet). In the dashboard: no rung shows a green positive
+Total EV next to NO BET — they get units; genuinely ≤0 rungs still NO BET.
+Commit ("staking: Kelly and Total EV on one market-shrunk basis"), push,
+confirm clean tree. Report how many R17 rungs changed from NO BET to staked
+and the new round total units vs the 15u cap.

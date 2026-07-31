@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from afl_bot.backtest.stake_cap import (
     GradedRung,
     SizedBet,

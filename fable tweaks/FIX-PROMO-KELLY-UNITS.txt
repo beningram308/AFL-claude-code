@@ -1,0 +1,52 @@
+# FIX: PROMO MULTIS — BOT-SIZED KELLY UNITS, NOT FLAT 0.5u
+
+**For:** Claude Code · 2026-07-02 · Single part, do fully, commit, push.
+
+Ben wants promo multis staked at **whatever the bot computes**, same as edge bets —
+not the flat PROMO_FLAT_UNITS. Replace the flat stake with a proper
+**multi-outcome Kelly** on the promo-adjusted payout structure (plan §4.4 already
+defines BONUS_BET_FACTOR = 0.75 as R for exactly this).
+
+## The sizing model
+
+For a promo-qualified multi (stake-back-as-bonus-bet if exactly one leg misses),
+per unit stake f of bankroll, the three outcomes from the SIM'S OWN per-iteration
+masks (not naive products):
+
+  - all legs hit          p_win        → +f·(book_odds − 1)
+  - exactly one leg miss  p_one_miss   → −f·(1 − BONUS_BET_FACTOR)   # stake back as bonus worth 0.75
+  - two+ legs miss        p_bust       → −f
+
+Full Kelly f* = argmax of E[log(1 + outcome)] over those three outcomes — solve
+numerically (scipy or a simple bounded golden-section; no closed form needed).
+Then apply the EXISTING pipeline unchanged: × KELLY_FRACTION (0.25), per-bet cap,
+UNIT_STEP rounding, UNIT_MAX / UNIT_MAX_LONGSHOT, round governor (promo bets now
+scale with the round cap like everything else — they're Kelly bets now).
+
+Rules:
+- f* ≤ 0 (promo value doesn't rescue the EV) → **0 units, NO BET**. No more
+  automatic 0.5u on negative-total-EV promo rungs — the bot decides, and
+  sometimes the answer is don't bet it.
+- f* > 0 → units as above, tagged **PROMO KELLY** with the promo EV contribution
+  shown next to the base edge so Ben can see why it's staked.
+- **Refund cap:** bookie bonus-back promos cap the refund. New config
+  `PROMO_REFUND_CAP = 50.0` (documented assumption — check the current Sportsbet
+  terms). Stake in dollars is additionally capped at PROMO_REFUND_CAP (staking
+  beyond the cap gets no promo protection on the excess). If the Kelly stake
+  exceeds it, print "(capped by promo refund limit)".
+- Pull 'Em SGMs: same treatment — their option EV already feeds total EV; if
+  total EV > 0 size by the same multi-outcome Kelly using (all-hit /
+  exactly-one-miss-with-option-recovery / bust) outcomes, else NO BET.
+- PROMO_FLAT_UNITS: delete the constant and every use. One staking path only.
+
+## Tests
+- Multi-outcome Kelly solver: known hand-computable case (e.g. p_win=0.5,
+  odds=2.5, p_one_miss=0.3, R=0.75) matches analytic/brute-force argmax.
+- f*≤0 → NO BET; f*>0 → rounded/capped units; refund-cap clamp; governor scaling
+  includes promo bets; PROMO_FLAT_UNITS fully gone (grep test).
+
+## Acceptance
+Full pytest green. Regenerate R17 (--sportsbet). Print the new unit-stake table:
+every previously "0.5u PROMO ONLY" rung now shows either "Nu PROMO KELLY (+X%
+promo EV)" or "NO BET". Commit ("staking: multi-outcome Kelly for promo multis"),
+push, confirm clean tree.

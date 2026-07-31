@@ -1,0 +1,29 @@
+# FIX: NO PLAYER DOUBLE-UPS ACROSS A LADDER'S RUNGS — NOTHING ELSE
+
+**For:** Claude Code · 2026-07-05 · Single part. Change ONLY rung selection
+diversity. Do not touch staking, bands, promo logic, leg pool, settlement,
+or anything else. Commit + push.
+
+## Why
+Port Adelaide vs North Melbourne Sportsbet ladder: Jack Lukosius 1+ goals
+leads ALL six rungs. If he misses, the entire ladder dies at once — zero
+diversification.
+
+## Change
+- Within each ladder (model ladder and Sportsbet ladder, per game), a player
+  may appear in AT MOST ONE rung. Build rungs in band order as now; once a
+  player is used in a rung, exclude all their legs from later rungs of that
+  same ladder.
+- Keep every other selection rule exactly as-is (band window, best Total EV,
+  disposals preference, tackles/marks cap, one-leg-per-player within a rung,
+  CHECK PRICING guard).
+- If a band genuinely cannot be filled without reusing a player, that band is
+  NO BET (no double-up) — same honest treatment as an empty band.
+
+## Verify
+- Test: no player name appears in more than one rung of any generated ladder.
+- Full suite green. Regenerate R17 with --sportsbet, refresh dashboard
+  multis.json, restart dashboard.
+- Print the Port Adelaide vs North Melbourne Sportsbet ladder: every rung
+  must have entirely distinct players.
+- Nothing else changed. Ledger untouched. Commit + push.

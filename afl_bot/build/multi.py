@@ -142,9 +142,18 @@ def promo_multi_ev(
     )
     p_dead = 1 - p_all - p_one_loss
 
+    # AUDIT FIX 2026-07-31: the one-loss branch loses the stake AND receives a
+    # bonus bet worth ``bonus_factor * stake`` — net (bonus_factor - 1) * stake,
+    # a LOSS for bonus_factor < 1. The previous formula credited
+    # ``+ p_one_loss * stake * bonus_factor`` without deducting the lost stake,
+    # overstating EV by exactly ``p_one_loss * stake`` (~+44pp on a typical
+    # 3x0.70 multi) and letting build_promo_multi surface deeply -EV multis as
+    # +EV. This now matches the exact identity EV/s = p_all*M - 1 +
+    # p_one_loss*R used by build/report.py (total_ev) and the g'(0) gate in
+    # build/staking.py multi_outcome_kelly.
     ev = (
         p_all * stake * (multi_odds - 1)
-        + p_one_loss * stake * bonus_factor
+        + p_one_loss * stake * (bonus_factor - 1.0)
         - p_dead * stake
     )
     return {

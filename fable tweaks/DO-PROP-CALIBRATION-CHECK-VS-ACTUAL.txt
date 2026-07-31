@@ -1,0 +1,64 @@
+========================================================================
+DO — PROP CALIBRATION CHECK: MODEL vs ACTUAL HIT RATE (not vs book)
+For: Claude Code   |  Written: 2026-07-01
+Diagnostic ONLY. No model/config change in this run. Commit the tool + report.
+========================================================================
+
+WHY
+The ev-diagnostic showed the model sits 7-11pp UNDER the book on prop legs
+(disposals +7.8, marks +11.4, tackles +9.6). Model-vs-book can't say who's
+right, because part of that gap is the book's margin on one-sided prop markets.
+The decisive test is model-vs-ACTUAL-HIT-RATE. This run measures that.
+
+RULES
+- Use the CALIBRATED prop probabilities the live report actually uses
+  (apply_prop_calibration / prop_calibrators.json ON), not the raw sim.
+- Anti-leakage: calibrators fitted on PRIOR years only (reuse the grade-multis
+  backtest cache pattern so live prop_calibrators.json is never corrupted).
+- Big out-of-sample sample: grade all of 2024-2025 (the ~900-multi / full-round
+  sample), not a handful of rounds.
+- No model or config change. Diagnostic + report + verdict only.
+
+WHAT TO BUILD
+1. A `prop-calibration-check` subcommand (or extend grade-round) that, over the
+   OOS sample, for every graded prop leg records:
+   - market (disposals / marks / tackles / goals) and line
+   - model calibrated probability
+   - actual outcome (hit = 1 / miss = 0)
+
+2. Report per MARKET, and per market x probability band (e.g. 0.3-0.5, 0.5-0.7,
+   0.7-0.9):
+   - n
+   - mean model probability
+   - actual hit rate
+   - gap = mean_model_prob - actual_hit_rate
+       (negative = model UNDER-predicts = genuinely too conservative)
+   - a simple reliability read (is predicted ≈ actual?)
+
+3. Overlay the book comparison from ev-diagnostic so all three sit side by side
+   per market:
+       model_prob   vs   actual_hit_rate   vs   book_devig_prob
+   and classify each market:
+   - model < actual (and < book)  -> GENUINELY CONSERVATIVE: real calibration
+        gap, model's fair odds on that market are too long -> worth tightening.
+   - model ≈ actual but < book    -> BOOK IS SHADING that market high: the -EV is
+        the book's margin, accept it and back value picks only.
+   - model > actual               -> model OVER-confident there (watch it).
+
+4. Print a one-paragraph verdict per market and an overall call: is there a real
+   edge to unlock (model too conservative vs reality) or just book margin to
+   accept? If there's a genuine gap, PROPOSE the follow-up fix (e.g. re-fit or
+   loosen the per-market calibrator for that market) but DO NOT implement it in
+   this run.
+
+5. Cross-check against reports/calibration_log.csv (the earlier 0.42-vs-0.46
+   prop under-prediction) so we can see whether calibration closed it or a
+   residual remains.
+
+OUTPUT
+- Save the table to a file (e.g. reports/prop_calibration_check_2024_2025.md)
+  and print the summary. Tests green. Commit. Push.
+
+READ ME THE VERDICT so I can decide whether to tighten the prop calibration or
+just accept the book's margin.
+========================================================================

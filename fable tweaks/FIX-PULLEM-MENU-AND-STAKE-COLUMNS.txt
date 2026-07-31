@@ -1,0 +1,59 @@
+# FIX: PULL 'EM REAL BOOK LINES + STAKE COLUMNS AGREE + RESTORE (AGAIN)
+
+**For:** Claude Code · 2026-07-04 · Do ALL parts in order, one run, commit + push.
+
+## Part 0 — Restore truncated tree (THIRD incident) and finally name the culprit
+- The working tree is truncated again AFTER commit 4982b9f: whitespace-ignored
+  diff shows ~1,180 deleted lines across 25 files (test_staking.py −23, etc.).
+  `git restore .` back to HEAD. Verify ledger still loads with 8 bets.
+- This keeps happening minutes after commits. Diagnose properly this time and
+  put the answer in your summary: is OneDrive syncing this Desktop folder
+  (check `attrib` cloud flags / OneDrive status icons on repo files)? If yes,
+  tell Ben the exact fix (exclude the repo folder from OneDrive backup, or
+  "Always keep on this device", or move repo to C:\dev — ask before moving).
+  Until this is fixed every run's work is at risk.
+
+## Part A — Pull 'Em legs must be lines PointsBet ACTUALLY OFFERS
+The current Pull 'Em has "Josh Ward 5+ marks" — PointsBet only offers 4+ or
+6+ marks for him, not 5+. The builder is inventing model lines.
+- Every anchor AND booster leg must come from the scraped PointsBet market
+  menu (reports/2026_r17_pointsbet_odds.json or live scrape): exact player,
+  exact market, exact LINE, and the book's real price for that line. Never
+  emit a line that isn't on the menu.
+- If the model's preferred line isn't offered, snap to the nearest offered
+  line and recompute the model prob for THAT line (5+ marks 45% is not the
+  prob of 4+ or 6+). If a leg has no offered line, drop it and pick another.
+- If the menu can't be scraped at all, print "PULL 'EM UNAVAILABLE — no
+  PointsBet menu" instead of building one from model lines.
+- Re-verify the other current legs (Newcombe 25+ disposals 1.38, D'Ambrosio
+  20+ 1.43, Steele 20+ 1.33) against the menu the same way.
+- Test: fixture menu with 4+/6+ marks only → builder never outputs 5+; leg
+  odds always equal the menu price for that exact line.
+
+## Part B — Stake %, Units and $ must be ONE number (kill the $3.75-everywhere bug)
+On the dashboard every rung shows $3.75 while tags say 3u/0.75u, and Stake %
+(5.0%) matches neither. Cause: the numeric `units` field in multis.json is
+being overwritten AFTER `units_tag`/stake% were formatted — almost certainly
+the per-round Kelly cap rescale (KELLY_PER_ROUND_CAP) flattening every rung's
+units to 0.25 while the tag keeps the pre-cap value. Fix properly:
+- Compute the FINAL units once per rung — Kelly frac → promo refund cap →
+  per-round cap — and only then derive all three display fields from that one
+  final number: units_tag, stake_pct = units*UNIT_SIZE/BANKROLL, dollars =
+  units*UNIT_SIZE. One source of truth in staking.py; report.py and the
+  dashboard render those fields and never recompute.
+- The round cap must NOT flatten everything to 0.25u. To fit under the cap,
+  drop the LOWEST shrunk-EV rungs to NO BET first and keep meaningful stakes
+  on the best rungs (that's the profit-maximizing allocation), then scale
+  proportionally if still over, 0.25u floor, EV ordering preserved.
+- Test: for every rendered rung, dollars == units*UNIT_SIZE, stake_pct
+  matches units, tag number == units; round total <= cap; and a rung with
+  higher shrunk EV never stakes less than a lower-EV rung in the same ladder.
+
+## Part C — Regenerate + verify
+- Full test suite green.
+- round-report --year 2026 --round 17 --sportsbet; refresh the dashboard's
+  multis.json (same path), restart dashboard.
+- Summary must show: Hawthorn vs Melbourne both ladders with Stake%/Units/$
+  agreeing on every rung, round total vs cap, and the new Pull 'Em with each
+  leg's line + the menu price proving it exists on PointsBet.
+- Ledger: 8 bets, Sydney still pending. Commit + push.

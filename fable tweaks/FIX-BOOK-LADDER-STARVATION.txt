@@ -1,0 +1,83 @@
+# FIX: BOOK LADDER STARVATION — LONGEST-BAND-FIRST + PLAYER CAP 2 — NOTHING ELSE
+
+**For:** Claude Code · 2026-07-30 · Single part. Change ONLY rung selection
+order and the diversity rule, and ONLY on the book/Sportsbet ladder. Do not
+touch staking, band windows, promo logic, leg pool, settlement, the model
+ladder, or anything else. Commit + push.
+
+**READ FIRST — the edits are ALREADY IN THE WORKING TREE.** `afl_bot/config.py`,
+`afl_bot/build/report.py` and `tests/test_report.py` were modified before you
+started. Read them, verify they match this spec, fix anything that doesn't,
+then run the checks and commit. Do NOT re-implement from scratch. Do NOT
+revert them. There is also a stale `.git/index.lock` — delete it before your
+first git command.
+
+## Why
+The book ladder leaves its longest (highest-EV) rungs empty. 2026 R21 filled
+41 of 48 rungs; every miss was at the $8.00 or $15.00 band. R20 was worse.
+
+This is NOT a band-window problem — 9 to 123 in-window combos existed per
+game. It was caused by FIX-NO-PLAYER-DOUBLE-UPS (commit 200b47b), which
+banned a player from more than one rung, combined with `search_market_sgms`
+filling bands short-to-long.
+
+The arithmetic: 6 rungs x 3 legs needs 18 DISTINCT priced players. A real
+Sportsbet/PointsBet scrape covers ~18-25 players per game. The first five
+rungs consumed 15 players, so the $15.00 band starved every single time.
+A hard one-appearance rule on the book ladder is infeasible by arithmetic,
+not by bad luck. That earlier fix's "if a band cannot be filled without
+reusing a player, that band is NO BET" is the line being overturned here —
+it made starvation the default outcome, not the rare one.
+
+## Change — `search_market_sgms` in `afl_bot/build/report.py` ONLY
+- Fill bands **longest-first** (iterate `sorted(target_odds, reverse=True)`).
+  The long bands have the thinnest in-window candidate pool, so whichever end
+  is filled last is the end that starves. Fill the scarce end while the
+  player pool is still untouched.
+- Replace the hard one-appearance ban with a COUNT cap: new config constant
+  `MAX_RUNGS_PER_PLAYER = 2` in `afl_bot/config.py`. A player may appear in at
+  most 2 of the 6 rungs.
+- `is_top` (the VALUE PICK promotion) must key off the band VALUE
+  (`target == target_odds[-1]`), not the loop index — the loop order changed.
+- Output order is UNCHANGED: safest -> longest. The existing sort at the end
+  of the function handles this; do not remove it.
+- A player still cannot appear twice INSIDE one rung. Unchanged.
+- Keep every other selection rule exactly as-is: band window
+  (`BAND_UPPER_FACTOR`), best Total EV, disposals preference, tackles/marks
+  cap, CHECK PRICING guard, corr_gain haircut, market shrink.
+
+## Do NOT change
+- `search_match_sgms` (the MODEL ladder). Its pool is unpriced and never
+  starves — it filled 54/54 in R21. It keeps the hard one-appearance rule.
+- Anything in `afl_bot/backtest/`. Nothing there calls `search_market_sgms`.
+- `BAND_UPPER_FACTOR`. Widening it would let a rung labelled $15 print $24;
+  that defeats FIX-RESTORE-BANDS. Leave it at 1.30.
+
+## Verify
+- `tests/test_report.py` green (101 tests). The old
+  `test_no_player_double_ups_in_market_ladder` pinned the BROKEN rule and has
+  been rewritten as `test_player_reuse_capped_in_market_ladder` — it must now
+  assert no player exceeds `MAX_RUNGS_PER_PLAYER`, and still assert no player
+  appears twice within a single rung.
+- `test_book_ladder_fills_long_bands_that_the_hard_rule_starved` must pass:
+  with only 12 distinct priced players the ladder must fill more than 4 rungs,
+  and the output bands must still be in ascending order.
+- Replay check against real data: rebuild the priced leg pool from
+  `reports/2026_r21_multis.json`, feed it to `search_market_sgms`, and confirm
+  **48/48 rungs filled across all 8 games**, band order ascending, and no
+  player used more than twice per game. Pre-fix this was 41/48.
+- Full suite green EXCEPT known-environment failures (`test_fryzigg` network
+  tests). `test_multis_backtest` is slow — let it finish, do not skip it.
+- Nothing else changed. Ledger untouched. Reports untouched. Commit + push.
+
+## Trade-off to state in the commit message
+A player can now carry two rungs, so one bust kills two multis on the slip.
+That correlated exposure is managed by staking, not by starving the ladder.
+Ordering alone would have given 44/48; the cap is what closes the last four.
+
+## SEPARATE ISSUE — do not fix in this commit
+Collingwood vs Geelong had ZERO priced legs in R21, so it got no book ladder
+at all. That is a scraper coverage failure in `afl_bot/data/sportsbet_odds.py`,
+not a ladder bug. There is uncommitted work already sitting in that file,
+`cli.py`, and `tests/test_sportsbet_odds.py`. Leave it alone here; raise it
+as its own task.

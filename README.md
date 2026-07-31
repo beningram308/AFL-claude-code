@@ -10,6 +10,19 @@ high-probability "anchor" legs + 1 high-value "edge" leg, sized for promo-style
 pip install -r requirements.txt
 ```
 
+### Reproducible install
+
+`requirements.txt` is the loose top-level dependency list. For a pinned,
+reproducible environment matching the one this bot is actually run and tested
+in, use the lockfile instead:
+
+```
+pip install -r requirements.lock
+```
+
+Regenerate it (`pip freeze > requirements.lock`) after deliberately upgrading
+a dependency; `requirements.txt` itself is unaffected.
+
 ## Pipeline (plan §1)
 
 | Stage | Module |
@@ -1311,8 +1324,13 @@ con.sql("SELECT hteam, ateam, hscore, ascore FROM games_2025 LIMIT 5").show()
 ## Tests
 
 ```
-pytest
+pytest               # full suite
+pytest -m "not slow" # fast suite, skips the long walk-forward backtests
 ```
+
+`tests/test_multis_backtest.py` and `tests/test_stake_cap_backtest.py` are
+marked `slow` (registered in `pytest.ini`) — walk-forward SGM-ladder backtests
+that can take minutes. Everything else runs in the fast suite.
 
 Beyond unit tests, the suite includes the CI backtest (plan §5.3): loader
 schema-contract tests (`tests/test_schemas.py`), Monte Carlo distribution-sanity

@@ -39,6 +39,12 @@ ELO_MOV_CORRECTION = 2.2     # 538-style MOV autocorrelation-correction constant
 # SHOT_ACCURACY_SIGMA. Kept here as calibration targets / for reference.
 MARGIN_SIGMA = 37.0   # empirical game-to-game spread of AFL margins (points)
 TOTAL_SIGMA = 25.0    # spread of total points
+# AUDIT 2026-07-31: the margin sigma that actually EMERGES from the scoring-
+# shots engine (and matches 2016-26 reality to 0.1): used to express the sim's
+# implied H2H win probability analytically, P(win) ~= Phi(mu_margin / sigma),
+# when fitting the H2H blend calibrator on the same distribution the sim feeds
+# it at predict time (afl_bot.backtest.ensemble.assemble_signals sim_style).
+SIM_MARGIN_SIGMA = 39.9
 
 # Scoring shots (goals + behinds) per team per game ~ NB(mu_shots, SHOT_DISPERSION).
 # Calibrated against 2015+ Squiggle results: mean ~22.3, std ~5.8 shots/team/game.

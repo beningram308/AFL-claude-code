@@ -87,15 +87,57 @@ def fetch_historical_odds(force_refresh: bool = False, cache_dir=CACHE_DIR,
     return df
 
 
-def attach_odds(games: pd.DataFrame, odds: pd.DataFrame) -> pd.DataFrame:
+def attach_odds(games: pd.DataFrame, odds: pd.DataFrame,
+                tolerance_days: int = 3) -> pd.DataFrame:
     """Left-join historical odds onto a Squiggle-style fixture/result
-    DataFrame, matching on ``(year, hteam, ateam)``. Each team plays each
-    opponent at most twice a season (once at each venue), so this triple is
-    a safe join key. Games without a matching odds row keep NaN odds
-    columns."""
-    odds_cols = [c for c in _COLUMN_MAP.values() if c not in ("date", "hteam", "ateam", "hscore", "ascore")]
-    return games.merge(
-        odds[["year", "hteam", "ateam", *odds_cols]],
-        on=["year", "hteam", "ateam"],
-        how="left",
+    DataFrame, matching on ``(hteam, ateam)`` + nearest match date within
+    ``tolerance_days``.
+
+    AUDIT FIX 2026-07-31: the old join key ``(year, hteam, ateam)`` was
+    documented as unique ("each team plays each opponent at most twice a
+    season, once at each venue") but is NOT — finals rematches and same-venue
+    rematches produce 63 duplicate keys in the 2016-26 games table alone, so
+    the old merge expanded 2,224 games to 2,354 rows and attached the wrong
+    game's odds to every duplicated pair (contaminating the market benchmark,
+    the ensemble blend training data and CLV). A date-proximity join is
+    unambiguous. Games without a matching odds row keep NaN odds columns."""
+    odds_cols = [c for c in _COLUMN_MAP.values()
+                 if c not in ("date", "hteam", "ateam", "hscore", "ascore")
+                 and c in odds.columns]
+
+    # Fallback for date-less frames (synthetic test seasons): legacy
+    # (year, hteam, ateam) join, but with the odds side deduplicated so the
+    # merge can never expand rows. Real Squiggle/ASB data always has dates and
+    # takes the unambiguous date-proximity path below.
+    if "date" not in games.columns or "date" not in odds.columns:
+        o = odds.drop_duplicates(["year", "hteam", "ateam"])
+        return games.merge(
+            o[["year", "hteam", "ateam", *odds_cols]],
+            on=["year", "hteam", "ateam"], how="left",
+        )
+
+    g = games.copy()
+    g["_orig_order"] = range(len(g))
+    g["_gdate"] = (pd.to_datetime(g["date"], errors="coerce")
+                   .dt.tz_localize(None).dt.normalize().astype("datetime64[ns]"))
+
+    o = odds[["date", "hteam", "ateam", *odds_cols]].copy()
+    o["_odate"] = (pd.to_datetime(o["date"], errors="coerce")
+                   .dt.tz_localize(None).dt.normalize().astype("datetime64[ns]"))
+    o = o.drop(columns=["date"]).dropna(subset=["_odate"]).sort_values("_odate")
+
+    joinable = g.dropna(subset=["_gdate"]).sort_values("_gdate")
+    merged = pd.merge_asof(
+        joinable, o,
+        left_on="_gdate", right_on="_odate",
+        by=["hteam", "ateam"],
+        direction="nearest",
+        tolerance=pd.Timedelta(days=tolerance_days),
     )
+    # Games with an unparseable date keep NaN odds columns (rare/defensive).
+    missing = g[g["_gdate"].isna()].copy()
+    for c in odds_cols:
+        missing[c] = float("nan")
+    out = pd.concat([merged, missing], ignore_index=True).sort_values("_orig_order")
+    out = out.drop(columns=["_gdate", "_odate", "_orig_order"], errors="ignore")
+    return out.reset_index(drop=True)

@@ -1,0 +1,57 @@
+# FIX: PULL 'EM SGM — $5.00 MINIMUM COMBO ODDS + ELIGIBLE-MARKET GATE
+
+**For:** Claude Code · 2026-07-03 · Single part, do fully, commit, push.
+
+## Problem (live, R17 Sydney vs Western Bulldogs)
+The Pull 'Em SGM builds 3 near-lock anchors (1.14/1.14/1.30) + booster (2.02)
+= book combo **$3.41**. Ben's Pull 'Em token requires **minimum $5.00 combined
+odds**, so the multi as built can't take the token at all. Anchors are too short.
+
+## Verified constraints (PointsBet support, July 2026 — encode these)
+- **Eligible AFL markets** (allowlist): Player Disposals O/U, To Get Disposals,
+  Anytime Goalscorer, To Get Goals, Player Fantasy, To Get Marks,
+  To Get Tackles, To Get Kicks. **NOT eligible: match result (h2h), total
+  points** — a Pull 'Em SGM must be player-prop legs only.
+- Pull deadline: **before the start of Q3** (decision at half-time — the
+  existing HT pull rule text is right; update any "second half" wording to
+  "3rd quarter" for AFL).
+- Min combined odds is a TOKEN condition, not on the support page — Ben
+  confirmed $5.00 from his app.
+
+## Fix
+
+1. **Config:**
+   - `PULL_EM_MIN_COMBO_ODDS = 5.0`  # token eligibility floor, Ben-confirmed
+   - `PULL_EM_ELIGIBLE_MARKETS = {"disposals", "goals", "marks", "tackles",
+     "kicks", "fantasy"}`  # per PointsBet AFL table; h2h/total_points excluded
+2. **`build_pull_em_sgm` selection:** choose the 4-leg combo that **maximises
+   Total EV (base + option EV) subject to combined odds >= PULL_EM_MIN_COMBO_ODDS**,
+   measured on BOOK combo when priced (fair-odds proxy when not, labelled
+   MODEL-ONLY as usual). Keep the structure honest and HT-readable:
+   - still disposals-first anchors, three different players — reach the $5
+     floor by RAISING DISPOSAL LINES (20+ → 25+ etc., prices ~1.25–1.50),
+     not by stacking volatile markets;
+   - anchor floor: model p >= 0.70 preferred; if no valid $5+ combo exists,
+     relax stepwise to 0.60 (print "anchors relaxed to p>=0.6X to meet token
+     min odds"); never below 0.60;
+   - booster stays 1 leg, p 0.45–0.65, marked PULL CANDIDATE;
+   - every leg must be in PULL_EM_ELIGIBLE_MARKETS and pass the existing
+     book-menu / one-leg-per-player / LEG_PROB_MAX gates;
+   - if no eligible combo reaches $5.00 even relaxed, print
+     "No Pull 'Em SGM meets the $5.00 token minimum this game" — do NOT emit
+     an ineligible multi.
+3. **Display:** show "token min $5.00 — combo $X.XX ELIGIBLE/INELIGIBLE" on the
+   Pull 'Em block so eligibility is never guesswork. Option EV / staking /
+   PULL_DETECTION_PROB labelling unchanged.
+4. **Tests:** combo odds >= 5.0 enforced (book and fair-proxy paths); h2h and
+   total_points legs rejected from Pull 'Em even if high-EV; line-raising
+   preferred over market-switching (construct a case where 25+ disposals and a
+   tackles leg both reach $5 — disposals wins); relax-to-0.60 message; the
+   "no valid combo" path; full suite green.
+
+## Acceptance
+Regenerate R17 (--sportsbet). Every game's Pull 'Em block shows combo odds
+>= $5.00 with the ELIGIBLE tag (or the explicit no-valid-combo message).
+Sydney vs Western Bulldogs specifically must no longer show $3.41. Commit
+("pull-em: enforce $5 token min odds + eligible-market allowlist"), push,
+confirm clean tree, and report each game's new Pull 'Em combo odds + Total EV.

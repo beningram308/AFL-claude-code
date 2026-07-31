@@ -330,8 +330,9 @@ def parse_footywire_injury_list(html: str) -> dict[str, set[str]]:
                 player_name = player_cell.get_text(strip=True)
             if player_name:
                 result.setdefault(canonical_team, set()).add(player_name)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - a parse failure returns {} rather than raising
+        print(f"Footywire injury list parse failed ({exc!r}); no auto-exclusion applied.",
+              file=sys.stderr)
     return result
 
 

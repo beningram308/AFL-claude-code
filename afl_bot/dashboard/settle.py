@@ -23,6 +23,7 @@ previously-phantom wins disappear and re-settle correctly when data arrives.
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -72,8 +73,9 @@ def _load_actuals(year: int, round_no: int) -> tuple[dict, dict, dict]:
                 for stat in ("disposals", "goals", "marks", "tackles"):
                     if stat in row:
                         player_stat[(row["_player"], stat)] = float(row[stat])
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - fryzigg is one of two fallback sources, must not abort settlement
+        print(f"WARNING: settle _load_actuals fryzigg fetch failed for {year} r{round_no} ({exc!r}); "
+              f"falling back to DFS Australia.", file=sys.stderr)
 
     if not player_stat:
         try:
@@ -88,8 +90,9 @@ def _load_actuals(year: int, round_no: int) -> tuple[dict, dict, dict]:
                 for stat in ("disposals", "goals", "marks", "tackles"):
                     if stat in row:
                         player_stat[(row["player"], stat)] = float(row[stat])
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - both player-stat sources exhausted, settle H2H/totals only
+            print(f"WARNING: settle _load_actuals DFS Australia fetch failed for {year} r{round_no} "
+                  f"({exc!r}); prop legs cannot be settled this call.", file=sys.stderr)
 
     return h2h_actual, total_actual, player_stat
 
