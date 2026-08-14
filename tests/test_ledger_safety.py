@@ -136,7 +136,7 @@ def test_reopen_bet_clears_manual_result(tmp_path):
     p = tmp_path / "bets_ledger.json"
     bet = _make_bet("reopen-001")
     save_ledger(p, [bet])
-    manual_settle_bet(p, "reopen-001", outcome="void")
+    manual_settle_bet(p, "reopen-001", outcome="void", void_confirmation="test note")
     reopen_bet(p, "reopen-001")
     loaded = load_ledger(p)
     b = next(b for b in loaded if b["bet_id"] == "reopen-001")

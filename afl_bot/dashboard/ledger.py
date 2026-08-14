@@ -15,6 +15,14 @@ Schema per bet:
   settled_at        ISO-8601 or null
   payout            float or null (stake*taken_odds on win, 0 on loss, stake on full void)
   leg_results       list of {"name":..., "hit": bool|null} or null
+  void_confirmation str or absent -- REQUIRED (non-empty) when manual_result is
+                    "void" (2026-08-15, AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md
+                    Finding 6: two 2026 R16 bets were marked void with no
+                    record of why, though box scores showed a leg in each
+                    actually lost). A short note proving the void against the
+                    book -- order ref, screenshot filename, in-app
+                    confirmation text. Bets voided before this change have no
+                    such field; left as historical record, not backfilled.
   -- CLV fields (added by capture-close / add_clv_snapshot) --
   open_odds         fill odds; CLV baseline (= taken_odds for bets placed at market price)
   close_captured_at ISO-8601 or null
@@ -251,14 +259,31 @@ def manual_settle_bet(
     bet_id: str,
     *,
     outcome: str,
+    void_confirmation: str | None = None,
 ) -> bool:
     """Manually force the outcome of a bet to *outcome* ("won"/"lost"/"void").
 
     Sets ``manual_result`` so ``settle_bets`` will honour it on the next pass.
+
+    ``void_confirmation`` is REQUIRED (a non-empty, non-whitespace string)
+    when ``outcome == "void"`` -- a short note proving the void against the
+    book (order ref, screenshot filename, in-app confirmation text).
+    AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md Finding 6 flagged two 2026 R16
+    bets marked void with no such record, even though box scores showed a
+    leg in each actually lost -- self-declared voids corrupt the one honest
+    feedback loop this ledger exists to provide. This closes that gap for
+    every void set from now on; it does not touch voids that predate it.
+
     Returns True if the bet was found, False otherwise.
     """
     if outcome not in ("won", "lost", "void"):
         raise ValueError(f"outcome must be won/lost/void, got {outcome!r}")
+    if outcome == "void" and not (void_confirmation and void_confirmation.strip()):
+        raise ValueError(
+            "void_confirmation is required to manually void a bet -- record "
+            "what confirms the void against the book (order ref, screenshot "
+            "filename, in-app confirmation note, etc.)"
+        )
     bets = load_ledger(ledger_path)
     for bet in bets:
         if bet["bet_id"] != bet_id:
@@ -273,6 +298,7 @@ def manual_settle_bet(
         else:
             bet["status"] = "void"
             bet["payout"] = bet["stake"]
+            bet["void_confirmation"] = void_confirmation.strip()
         bet["settled_at"] = _melbourne_now()
         save_ledger(ledger_path, bets)
         return True

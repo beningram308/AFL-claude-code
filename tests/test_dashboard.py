@@ -968,10 +968,44 @@ def test_manual_settle_bet_forces_void(tmp_path):
              "name": "First goal scorer", "book_odds": None}]
     bet = add_manual_bet(ledger_path, year=2026, round_no=16,
                          game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
-    manual_settle_bet(ledger_path, bet["bet_id"], outcome="void")
+    manual_settle_bet(ledger_path, bet["bet_id"], outcome="void",
+                      void_confirmation="Sportsbet app: bet cancelled, order #12345")
     bets = load_ledger(ledger_path)
     assert bets[0]["status"] == "void"
     assert bets[0]["payout"] == pytest.approx(10.0)
+    assert bets[0]["void_confirmation"] == "Sportsbet app: bet cancelled, order #12345"
+
+
+def test_manual_settle_void_without_confirmation_raises():
+    # AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md Finding 6: two 2026 R16 bets were
+    # marked void with no record of why. A manual void must now be blocked
+    # without a book-confirmation note.
+    ledger_path = None  # never reached -- the ValueError fires before any I/O
+    with pytest.raises(ValueError, match="void_confirmation"):
+        manual_settle_bet("unused-path", "some-bet-id", outcome="void")
+
+
+def test_manual_settle_void_whitespace_only_confirmation_raises(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
+    with pytest.raises(ValueError, match="void_confirmation"):
+        manual_settle_bet(ledger_path, bet["bet_id"], outcome="void", void_confirmation="   ")
+    # The bet must be untouched -- still pending, no partial void applied.
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "pending"
+    assert bets[0].get("manual_result") is None
+
+
+def test_manual_settle_won_and_lost_do_not_require_void_confirmation(tmp_path):
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    bet = add_manual_bet(ledger_path, year=2026, round_no=16,
+                         game="G1 vs G2", stake=10.0, taken_odds=3.0, legs=legs)
+    assert manual_settle_bet(ledger_path, bet["bet_id"], outcome="won") is True
 
 
 def test_manual_settle_unknown_bet_id_returns_false(tmp_path):
@@ -1146,6 +1180,63 @@ def test_dashboard_post_manual_bet_stores_book(tmp_path):
     assert len(bets) == 1
     assert bets[0]["book"] == "pointsbet"
     assert bets[0]["legs"][0]["book_odds"] == 1.50
+
+
+def test_dashboard_post_manual_settle_void_without_confirmation_rejected(tmp_path):
+    """POST /manual-settle outcome=void with no void_confirmation is rejected
+    (400, error page) and the bet is left pending -- the route-level guard
+    for AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md Finding 6."""
+    from afl_bot.dashboard.app import app
+
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    ledger_path = tmp_path / "bets_ledger.json"
+    bet = add_manual_bet(ledger_path, year=2026, round_no=17,
+                         game="Geelong vs Brisbane Lions", stake=10.0, taken_odds=3.0, legs=legs)
+
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        client = app.test_client()
+        resp = client.post("/manual-settle", data={
+            "bet_id": bet["bet_id"], "outcome": "void", "round_key": "2026_r17",
+        }, follow_redirects=False)
+
+    assert resp.status_code == 400
+    assert "void_confirmation" in resp.data.decode()
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "pending"
+    assert bets[0].get("manual_result") is None
+
+
+def test_dashboard_post_manual_settle_void_with_confirmation_stores_it(tmp_path):
+    """POST /manual-settle outcome=void with a void_confirmation note succeeds
+    and the note is persisted on the ledger entry."""
+    from afl_bot.dashboard.app import app
+
+    legs = [{"player": "", "market": "other", "line": None,
+             "name": "First goal scorer", "book_odds": None}]
+    ledger_path = tmp_path / "bets_ledger.json"
+    bet = add_manual_bet(ledger_path, year=2026, round_no=17,
+                         game="Geelong vs Brisbane Lions", stake=10.0, taken_odds=3.0, legs=legs)
+
+    with (
+        patch("afl_bot.dashboard.app.REPORTS_DIR", tmp_path),
+        patch("afl_bot.dashboard.app.LEDGER_PATH", ledger_path),
+    ):
+        app.config["TESTING"] = True
+        client = app.test_client()
+        resp = client.post("/manual-settle", data={
+            "bet_id": bet["bet_id"], "outcome": "void", "round_key": "2026_r17",
+            "void_confirmation": "Screenshot: sportsbet_void_2026-08-15.png",
+        }, follow_redirects=False)
+
+    assert resp.status_code in (301, 302)
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "void"
+    assert bets[0]["void_confirmation"] == "Screenshot: sportsbet_void_2026-08-15.png"
 
 
 def test_selection_is_deterministic_under_equal_scoring(tmp_path):

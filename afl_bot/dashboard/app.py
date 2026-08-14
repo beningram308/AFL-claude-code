@@ -311,9 +311,15 @@ def manual_settle():
     bet_id = request.form.get("bet_id", "")
     outcome = request.form.get("outcome", "")
     round_key = request.form.get("round_key", "")
+    void_confirmation = request.form.get("void_confirmation", "").strip()
     if bet_id and outcome in ("won", "lost", "void"):
         LEDGER_PATH.parent.mkdir(exist_ok=True)
-        manual_settle_bet(LEDGER_PATH, bet_id, outcome=outcome)
+        try:
+            manual_settle_bet(LEDGER_PATH, bet_id, outcome=outcome,
+                              void_confirmation=void_confirmation or None)
+        except ValueError as exc:
+            return _manual_bet_error(round_key, str(exc),
+                                     {"bet_id": bet_id, "outcome": outcome})
     return redirect(url_for("index", round_key=round_key) + "#tracker")
 
 
@@ -769,9 +775,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
       <form method="post" action="/manual-settle" style="display:contents">
         <input type="hidden" name="bet_id" value="{{ b.bet_id }}">
         <input type="hidden" name="round_key" value="{{ selected }}">
+        <input type="hidden" name="void_confirmation" value="">
         <button name="outcome" value="won" class="btn btn-sm" style="background:#1a3a2a;color:var(--green);border:1px solid var(--green)" onclick="return confirm('Mark this bet WON? This overrides auto-settlement.')">Won</button>
         <button name="outcome" value="lost" class="btn btn-sm" style="background:#3a1a1a;color:var(--red);border:1px solid var(--red)" onclick="return confirm('Mark this bet LOST? This overrides auto-settlement.')">Lost</button>
-        <button name="outcome" value="void" class="btn btn-sm" style="background:var(--border);color:var(--muted)" onclick="return confirm('Mark this bet VOID? This overrides auto-settlement.')">Void</button>
+        <button name="outcome" value="void" class="btn btn-sm" style="background:var(--border);color:var(--muted)" onclick="var c=prompt('Book confirmation required to void this bet (order ref, screenshot filename, or note proving this against the book):'); if(!c||!c.trim()){alert('Void needs a book confirmation note.'); return false;} this.form.void_confirmation.value=c.trim(); return confirm('Mark this bet VOID? This overrides auto-settlement.');">Void</button>
       </form>
     </div>
     {% endif %}
@@ -820,8 +827,15 @@ _TEMPLATE = r"""<!DOCTYPE html>
     </div>
     {% endif %}
     {% if b.get('manual_result') %}
-    <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+    <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:11px;color:var(--muted)">Manually settled as {{ b.manual_result }}</span>
+      {% if b.manual_result == 'void' %}
+        {% if b.get('void_confirmation') %}
+        <span style="font-size:11px;color:var(--muted)">· confirmation: {{ b.void_confirmation }}</span>
+        {% else %}
+        <span style="font-size:11px;color:var(--red)">· no book confirmation recorded (predates 2026-08-15)</span>
+        {% endif %}
+      {% endif %}
       <form method="post" action="/reopen-bet" style="margin:0">
         <input type="hidden" name="bet_id" value="{{ b.bet_id }}">
         <input type="hidden" name="round_key" value="{{ selected }}">
