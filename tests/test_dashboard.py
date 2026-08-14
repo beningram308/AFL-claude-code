@@ -725,6 +725,37 @@ def test_settle_1c_skips_manually_settled_bets(tmp_path):
     assert bets[0]["payout"] == 25.0
 
 
+def test_settle_bets_never_auto_voids_an_unresolvable_bet(tmp_path):
+    """No automated code path may ever set status='void' without a
+    PRE-EXISTING manual_result. Grepping the dashboard package for every
+    site that writes status='void' turns up exactly two: manual_settle_bet
+    (human-triggered, gated behind a required void_confirmation) and
+    settle_bets' own manual-override branch, which only ever REPLAYS a
+    manual_result that was already set -- it cannot originate one. An
+    unresolvable (ungradeable) bot bet with no manual override must stay
+    pending forever, however many times settle_bets (e.g. repeated
+    post-recovery re-grade passes) runs over it -- never silently void with
+    the stake returned. Answers AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md
+    Finding 6's open question: the ledger corruption recovery path
+    (afl_bot.dashboard.ledger._recover_ledger) doesn't touch status/
+    manual_result at all -- it only salvages complete pre-existing JSON
+    objects -- so it structurally cannot be the source of a fabricated void."""
+    ledger_path = tmp_path / "bets_ledger.json"
+    legs = [{"player": "Nobody Nowhere", "market": "disposals", "line": 20,
+             "name": "Nobody Nowhere 20+ disposals", "book_odds": 1.50}]
+    bet = _make_bet("unresolvable-1", 2026, 16, legs, stake=25.0, taken_odds=2.0)
+    save_ledger(ledger_path, [bet])
+
+    with patch("afl_bot.dashboard.settle._load_actuals", return_value=_mock_actuals()):
+        for _ in range(3):   # simulate repeated recovery/re-grade passes
+            settle_bets(ledger_path)
+
+    bets = load_ledger(ledger_path)
+    assert bets[0]["status"] == "pending"
+    assert bets[0]["payout"] is None
+    assert bets[0].get("manual_result") is None
+
+
 def test_settle_dfs_force_refresh_when_round_missing():
     """_load_actuals force-refreshes DFS data when the requested round is absent from cache."""
     from unittest.mock import MagicMock, patch as _patch
