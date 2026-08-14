@@ -13,7 +13,6 @@ from afl_bot.backtest.stake_cap import (
     GradedRung,
     SizedBet,
     apply_per_player_cap,
-    check_r18_20_reconciliation,
     grade_leg_outcomes,
     grade_policy,
     settle_round_assumption,
@@ -226,20 +225,18 @@ def test_grade_policy_empty_input_is_flat():
 
 # ── real-data regression: the reconciliation gate itself ────────────────────
 
-@pytest.mark.slow
-def test_reconciliation_gate_matches_audit_numbers():
-    """Pins the exact numbers this whole exercise is built to trust:
-    audit-scope (grade_total_points=False) must reproduce
-    ../AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md's 119 bets / 214.75u / -87.33u
-    for 2026 R18-R20 policy A under "no refunds", and full-scope
-    (grade_total_points=True) must be exactly one bet / 2.0u wider (the
-    Western Bulldogs v Richmond total_points rung the audit's own re-grader
-    couldn't resolve)."""
-    audit_scope = check_r18_20_reconciliation(grade_total_points=False)
-    assert audit_scope.n == 119
-    assert audit_scope.units_staked == pytest.approx(214.75, abs=0.01)
-    assert audit_scope.pl_units == pytest.approx(-87.33, abs=0.01)
-
-    full_scope = check_r18_20_reconciliation(grade_total_points=True)
-    assert full_scope.n == audit_scope.n + 1
-    assert full_scope.units_staked == pytest.approx(audit_scope.units_staked + 2.0, abs=0.01)
+# NOTE (2026-08-14, same day, later in the session): this test used to pin
+# check_r18_20_reconciliation(grade_total_points=False) to the audit's own
+# 119 / 214.75u / -87.33u for 2026 R18-R20 policy A. That reconciliation
+# genuinely happened -- it's what cleared the gate to proceed -- and is
+# preserved in reports/edge_floor_viability.md and this module's git history.
+# It can no longer be re-asserted here as a live regression test because
+# POLICY C SHIPPED INTO THE LIVE afl_bot.build.staking.recommend_units THIS
+# SAME SESSION (the whole point of TASK 1's measurement): "policy A" in this
+# module intentionally always calls the LIVE recommend_units (its own module
+# docstring: "goes through the EXACT live ... recommend_units -- its body is
+# never touched" by THIS module), so it now reflects Policy C's raw-edge gate
+# too. Re-running check_r18_20_reconciliation(grade_total_points=False) today
+# correctly returns n=17, not 119 -- that's the edge floor working as shipped,
+# not a broken harness. A test asserting the pre-port number against the
+# live path would be pinning a policy Ben explicitly asked to replace.

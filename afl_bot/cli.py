@@ -883,6 +883,81 @@ def _pull_em_units_fields(pull_em: dict) -> dict:
     return {"units": units, "units_tag": tag}
 
 
+def _apply_round_stake_caps(records: list[dict], year: int, round_no: int) -> None:
+    """Round-level allocator (restored 2026-08-14 -- DO-EDGE-FLOOR-VIABILITY-TEST
+    policy C, ported after backtest validation against real 2026 R16/18-20 data,
+    see reports/edge_floor_viability.md). Applies, IN PLACE, over every "model"/
+    "sportsbet" rung already sized by `_units_fields` (Pull 'Em is untouched --
+    it isn't part of the SGM ladder policy C measured, see stake_cap.py's own
+    module docstring):
+
+      1. Per-player cap: at most one staked multi per player per round. When a
+         player appears in more than one staked rung, keep only the rung with
+         the highest raw edge and NO-BET the rest.
+      2. Round cap: hard 15u ceiling across the WHOLE round (all games),
+         ranked by total_ev -- this is exactly the removed cli.py::_apply_round_cap
+         allocator (2026-07-10), reused verbatim via
+         afl_bot.backtest.stake_cap.apply_old_round_cap rather than
+         reimplemented.
+
+    Order matches the validated backtest (afl_bot.backtest.stake_cap.
+    size_rungs_policy_c): per-player cap first, round budget second, so the
+    round's 15u isn't spent filling a rung the per-player dedup would drop
+    anyway. `recommend_units` itself stays round-blind by design (each rung's
+    OWN units are unaffected by how many other rungs exist in the round) --
+    this function is the only place cross-rung state exists, exactly like the
+    backtest's post-`size_rungs_edge_floor` allocator step.
+    """
+    from afl_bot.backtest.stake_cap import (
+        GradedRung, OLD_ROUND_CAP_UNITS, SizedBet, _extract_players,
+        apply_old_round_cap, apply_per_player_cap,
+    )
+
+    staked = [r for r in records
+              if r.get("ladder") in ("model", "sportsbet")
+              and not r.get("no_bet")
+              and (r.get("units") or 0.0) > 0.0]
+    if not staked:
+        return
+
+    sized: list[SizedBet] = []
+    by_rung_id: dict[int, dict] = {}
+    for r in staked:
+        gr = GradedRung(
+            year=year, round_no=round_no, game=r.get("game", ""), ladder=r["ladder"],
+            band=r.get("band"), joint_prob=r.get("model_joint"), book_odds=r.get("book_combo"),
+            promo_ev=r.get("promo_ev"), total_ev=r.get("total_ev"),
+            p_win=r.get("p_all_win"), p_one_loss=r.get("p_one_loss"), p_dead=None,
+            outcome="pending",   # unknown at recommendation time -- unused by either cap
+            players=_extract_players(r.get("legs", [])),
+        )
+        sized.append(SizedBet(rung=gr, units=r["units"], tag=r.get("units_tag", ""),
+                              stake=r["units"] * UNIT_SIZE))
+        by_rung_id[id(gr)] = r
+
+    after_player_cap = apply_per_player_cap(sized)
+    kept_after_player_ids = {id(s.rung) for s in after_player_cap}
+    after_round_cap = apply_old_round_cap(after_player_cap, cap_units=OLD_ROUND_CAP_UNITS)
+    final_by_rung_id = {id(s.rung): s for s in after_round_cap}
+
+    for sb in sized:
+        rid = id(sb.rung)
+        r = by_rung_id[rid]
+        if rid not in kept_after_player_ids:
+            r["units"] = 0.0
+            r["units_tag"] = "NO BET (player cap)"
+        elif rid not in final_by_rung_id:
+            r["units"] = 0.0
+            r["units_tag"] = "NO BET (round cap)"
+        else:
+            final = final_by_rung_id[rid]
+            if final.units != sb.units:
+                r["units"] = final.units
+                old_tag = r.get("units_tag") or ""
+                r["units_tag"] = (re.sub(r"^[\d.]+u", f"{final.units:g}u", old_tag)
+                                  if old_tag else f"{final.units:g}u")
+
+
 def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims: int,
                  rain_mm: float | None = None, lineup_path: str | None = None,
                  use_live: bool = False, multis_only: bool = False,
@@ -1407,11 +1482,15 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         print(f"\nWARNING: {len(unmatched)} odds key(s) matched no priceable leg "
               f"(typo? player not in pool/lineup?): {', '.join(unmatched)}", file=sys.stderr)
 
-    # No round-level cap: each rung stakes independently off its own per-bet
-    # formula (UNIT_MAX/UNIT_MAX_LONGSHOT + PROMO_REFUND_CAP still apply per
-    # rung in recommend_units). Removed 2026-07-10 -- Ben wants every rung that
-    # clears PROMO_EV_MIN to show its own Kelly units, not get crowded out by
-    # a round-wide 15u budget allocator.
+    # Stage 2C (round-level cap restored 2026-08-14 -- DO-EDGE-FLOOR-VIABILITY-
+    # TEST policy C, see _apply_round_stake_caps below). Each rung's OWN units
+    # are still computed independently by recommend_units (round-blind by
+    # design); the per-player cap and the 15u round-wide budget are applied
+    # AFTER every match's rungs are built here, the only place cross-rung
+    # state exists. _sgm_refs pairs each JSON record with the original SGM
+    # rung dict so a cap-driven trim can be synced back onto the SAME object
+    # render_markdown reads below -- the .md and the JSON must never disagree.
+    _sgm_refs: list[tuple[dict, dict]] = []
     for m in matches:
         _home = m["_home_name"]
         _away = m["_away_name"]
@@ -1419,9 +1498,11 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
         _grs = m["_greasiness"]
         for _ladder_label, _rungs in (("model", m["sgms"]), ("sportsbet", m["market_sgms"])):
             for r in _rungs:
-                multis_records.append(_rung_to_json(
+                _rec = _rung_to_json(
                     r, _ladder_label, year, round_no, _home, _away, _leg_by_name, odds_book,
-                    greasiness=_grs))
+                    greasiness=_grs)
+                multis_records.append(_rec)
+                _sgm_refs.append((r, _rec))
         pe = m.get("pull_em")
         if pe and not pe.get("no_valid_combo"):
             h = _home.replace(" ", "_")
@@ -1446,6 +1527,12 @@ def round_report(year: int, round_no: int | None, odds_path: str | None, n_sims:
                 "units": pe.get("units", 0.0),
                 "units_tag": pe.get("units_tag", "NO BET"),
             })
+
+    _apply_round_stake_caps(multis_records, year, round_no)
+    for _r, _rec in _sgm_refs:
+        if _r.get("units") != _rec["units"] or _r.get("units_tag") != _rec["units_tag"]:
+            _r["units"] = _rec["units"]
+            _r["units_tag"] = _rec["units_tag"]
 
     _lineup_note = (
         f" Lineup: {lineup_source} — {n_auto_excluded} player(s) excluded as not named to play."

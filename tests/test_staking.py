@@ -130,24 +130,27 @@ def test_recommend_units_no_edge_returns_no_bet():
     assert tag == "NO BET"
 
 
-def test_recommend_units_promo_kelly_positive():
-    # No base edge (joint=0.20 × odds=3.5 = 0.70 < 1), but promo gives positive Kelly
-    # and promo_ev clears PROMO_EV_MIN (0.10).
-    # p_win=0.25, p_one_loss=0.40, p_dead=0.35, odds=3.5, R=0.75
-    # g'(0) = 0.25*2.5 + 0.40*(-0.25) - 0.35 = 0.625 - 0.10 - 0.35 = 0.175 > 0
+def test_recommend_units_no_raw_edge_returns_no_bet_even_with_promo_value():
+    # DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14): raw edge (joint*book_odds>1) is
+    # now a HARD PRECONDITION for any stake. No base edge (joint=0.20 x
+    # odds=3.5 = 0.70 < 1) used to still stake here purely off promo_ev
+    # clearing PROMO_EV_MIN -- exactly the AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY
+    # Finding 1 pattern (102/119 staked bets had zero-or-negative book edge).
+    # Promo can never create eligibility anymore, so this must be NO BET.
     units, tag = recommend_units(
         0.20, 3.5, promo_ev=0.15,
         p_win=0.25, p_one_loss=0.40, p_dead=0.35,
     )
-    assert units > 0.0
-    assert "PROMO KELLY" in tag
-    assert abs(units % UNIT_STEP) < 1e-9 or abs(units % UNIT_STEP - UNIT_STEP) < 1e-9
+    assert units == 0.0
+    assert tag == "NO BET"
 
 
 def test_recommend_units_promo_kelly_below_ev_floor_no_bet():
-    # No total_ev supplied -> gate falls back to promo_ev, which sits below
-    # PROMO_EV_MIN (0.10) -> must NOT stake even though multi_outcome_kelly
-    # itself would say f*>0.
+    # No raw edge (joint=0.20 x odds=3.5 = 0.70 < 1) -> NO BET on the hard
+    # raw-edge precondition alone (2026-08-14). Pre-2026-08-14 this was framed
+    # as "promo_ev sits below PROMO_EV_MIN" -- that check no longer exists in
+    # recommend_units at all (see its docstring), but the outcome is
+    # unchanged: still no stake.
     units, tag = recommend_units(
         0.20, 3.5, promo_ev=0.05,
         p_win=0.25, p_one_loss=0.40, p_dead=0.35,
@@ -157,12 +160,13 @@ def test_recommend_units_promo_kelly_below_ev_floor_no_bet():
 
 
 def test_recommend_units_promo_kelly_gates_on_total_ev_not_promo_ev_alone():
-    # The 2026-07-09 real-world case: promo_ev alone (0.234) is large -- it would
-    # pass even the >0.10 floor on its own -- but total_ev = edge + promo_ev nets
-    # out to only +0.056 because the raw edge underneath is deeply negative. The
-    # gate must use total_ev (the number actually shown to the user as
-    # "Total EV -- that's the number to bet on"), not the isolated promo_ev, so
-    # this must be NO BET.
+    # promo_ev alone (0.234) is large -- pre-2026-08-14 this test existed to
+    # confirm the (now-removed) total_ev>PROMO_EV_MIN gate used total_ev
+    # (0.056, below the old 0.10 floor) rather than the isolated promo_ev.
+    # That specific mechanism is gone (see recommend_units's docstring), but
+    # raw edge underneath (joint=0.20 x odds=3.5 = 0.70 < 1) is negative
+    # regardless, so the outcome is unchanged: NO BET, now on the raw-edge
+    # precondition alone.
     units, tag = recommend_units(
         0.20, 3.5, promo_ev=0.234, total_ev=0.056,
         p_win=0.25, p_one_loss=0.40, p_dead=0.35,
@@ -171,14 +175,35 @@ def test_recommend_units_promo_kelly_gates_on_total_ev_not_promo_ev_alone():
     assert tag == "NO BET"
 
 
-def test_recommend_units_promo_kelly_total_ev_above_floor_stakes():
-    # Same large promo_ev, but this time total_ev clears the floor -> stakeable.
+def test_recommend_units_promo_kelly_no_raw_edge_no_bet_even_when_total_ev_clears_old_floor():
+    # DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14): before this change, the same
+    # negative-raw-edge rung (joint=0.20 x odds=3.5 = 0.70 < 1) with total_ev
+    # clearing the old PROMO_EV_MIN floor (0.15 > 0.10) WOULD have staked --
+    # this exact shape is Finding 1's "-18% raw edge still nets +5.6% total EV"
+    # example. Promo can no longer create eligibility on its own, so this is
+    # now NO BET regardless of total_ev.
     units, tag = recommend_units(
         0.20, 3.5, promo_ev=0.234, total_ev=0.15,
         p_win=0.25, p_one_loss=0.40, p_dead=0.35,
     )
-    assert units > 0.0
-    assert "PROMO KELLY" in tag
+    assert units == 0.0
+    assert tag == "NO BET"
+
+
+def test_recommend_units_edge_minus_017_total_ev_plus_006_is_no_bet():
+    # DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14) required case (a): a rung with
+    # raw edge -0.17 and total_ev +0.06 -- the exact shape of 102 of the 119
+    # staked bets AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md Finding 1 found (book
+    # edge <= 0, staked anyway because total_ev cleared the promo floor) --
+    # must return NO BET now, unconditionally.
+    # joint_prob=0.415, book_odds=2.0 -> raw edge = 0.415*2.0 - 1 = -0.17 exactly.
+    units, tag = recommend_units(
+        joint_prob=0.415, book_odds=2.0,
+        promo_ev=0.30, total_ev=0.06,
+        p_win=0.35, p_one_loss=0.30, p_dead=0.35,
+    )
+    assert units == 0.0
+    assert tag == "NO BET"
 
 
 def test_recommend_units_promo_kelly_neg_ev_no_bet():
@@ -192,20 +217,27 @@ def test_recommend_units_promo_kelly_neg_ev_no_bet():
     assert tag == "NO BET"
 
 
-def test_recommend_units_promo_kelly_refund_cap():
-    # Verify the dollar cap: units × unit_size must not exceed promo_refund_cap.
-    # Use no base edge (joint=0.30, odds=3.0: kelly=(0.9-1)/2<0), large bankroll,
-    # small unit_size and large unit_max to let raw_units run high before dollar cap.
+def test_recommend_units_promo_refund_cap_no_longer_binds_for_eligible_bets():
+    # DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14): promo_refund_cap used to clip
+    # the promo-ONLY branch's dollar stake (a rung with no raw edge at all).
+    # That branch no longer exists -- a bet only ever reaches the promo-boosted
+    # path now if it ALREADY has positive raw edge, and in the live config
+    # unit_max/unit_max_longshot (3u=$45, 1u=$15) are always under
+    # promo_refund_cap ($50), so it never bound there anyway (see
+    # recommend_units's docstring). With unit_max artificially overridden well
+    # past $50 worth of units (not a real production config -- just to prove
+    # the cap truly isn't applied anymore, not that it's merely unreached),
+    # the boosted stake is NOT clipped to promo_refund_cap.
     from afl_bot.config import PROMO_REFUND_CAP
     units, tag = recommend_units(
-        0.30, 3.0, promo_ev=0.30,
-        p_win=0.40, p_one_loss=0.35, p_dead=0.25,
+        0.35, 3.0, promo_ev=0.30, total_ev=0.30,   # raw edge = 0.35*3.0-1 = +0.05
+        p_win=0.45, p_one_loss=0.40, p_dead=0.15,
         bankroll=100_000, unit_size=1.0, unit_step=1.0, unit_max=10_000.0,
         promo_refund_cap=PROMO_REFUND_CAP,
     )
-    assert units * 1.0 <= PROMO_REFUND_CAP + 1e-9
+    assert units * 1.0 > PROMO_REFUND_CAP, "promo_refund_cap must no longer clip an eligible bet"
     assert "PROMO KELLY" in tag
-    assert "capped by promo refund limit" in tag
+    assert "capped by promo refund limit" not in tag
 
 
 def test_recommend_units_promo_kelly_without_branch_probs_no_bet():
@@ -323,19 +355,26 @@ def test_monotonicity_preserves_tag_when_no_reduction():
 
 
 def test_promo_kelly_high_frac_gives_3u():
-    """Promo Kelly formula implying 3u+ raw → exactly 3u (UNIT_MAX), $45, correct tag."""
+    """Promo Kelly formula implying 3u+ raw → exactly 3u (UNIT_MAX), $45, correct tag.
+
+    DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14): the rung must now have
+    positive raw edge to be eligible at all -- joint_prob=0.35 x
+    book_odds=3.0 = 1.05 (raw edge +0.05, tiny but positive; plain Kelly
+    alone would only give ~0.5u). The promo branch (p_win=0.45,
+    p_one_loss=0.40, p_dead=0.15) is large enough to BOOST this already-
+    eligible bet up to the 3u cap.
+    """
     from afl_bot.build.staking import recommend_units
     from afl_bot.config import BANKROLL, UNIT_SIZE
 
-    # book_odds=3.0 (< 5.0, UNIT_MAX=3u cap); negative direct edge (joint_prob=0.30 < 1/3).
-    # Promo branch (p_win=0.35, p_one_loss=0.35, p_dead=0.30) yields large frac → hits cap.
     units, tag = recommend_units(
-        joint_prob=0.30,
+        joint_prob=0.35,
         book_odds=3.0,
         promo_ev=0.30,
-        p_win=0.35,
-        p_one_loss=0.35,
-        p_dead=0.30,
+        total_ev=0.30,
+        p_win=0.45,
+        p_one_loss=0.40,
+        p_dead=0.15,
     )
     assert units == 3.0, f"Expected 3u, got {units}u"
     assert tag == "3u PROMO KELLY", f"Expected '3u PROMO KELLY', got {tag!r}"
@@ -343,21 +382,40 @@ def test_promo_kelly_high_frac_gives_3u():
     assert abs(units * UNIT_SIZE / BANKROLL - 0.03) < 1e-9, "stake% must be 45/1500 = 3%"
 
 
-def test_apply_round_cap_fully_removed():
-    # Grep-style test: the round-level budget allocator must not exist anywhere
-    # (2026-07-10: removed per Ben's request -- every rung that clears
-    # PROMO_EV_MIN now shows its own per-bet Kelly units, nothing gets
-    # crowded out into "NO BET (round cap)" by a round-wide 15u ceiling).
-    import subprocess, sys
-    result = subprocess.run(
-        [sys.executable, "-c",
-         "import afl_bot.cli as c\n"
-         "assert not hasattr(c, '_apply_round_cap'), '_apply_round_cap still in cli.py'\n"
-         "import afl_bot.config as cfg\n"
-         "assert not hasattr(cfg, 'KELLY_PER_ROUND_CAP'), 'KELLY_PER_ROUND_CAP still in config'\n"],
-        capture_output=True, text=True,
+def test_round_cap_restored_reuses_backtest_allocator_not_reimplemented():
+    # Supersedes the old "round cap fully removed" grep-style test: the
+    # 2026-07-10 removal is itself reversed as of 2026-08-14
+    # (DO-EDGE-FLOOR-VIABILITY-TEST policy C, measured in
+    # reports/edge_floor_viability.md before shipping). The round-level
+    # allocator is back as afl_bot.cli._apply_round_stake_caps, but it must
+    # be a THIN caller of afl_bot.backtest.stake_cap.apply_old_round_cap
+    # (the validated backtest's own allocator), not a fresh reimplementation
+    # of the trim-by-total_ev logic -- and the removed KELLY_PER_ROUND_CAP
+    # config constant stays removed (the 15u cap is sourced from stake_cap's
+    # own OLD_ROUND_CAP_UNITS, not re-added to config.py).
+    import inspect
+
+    import afl_bot.cli as c
+    import afl_bot.config as cfg
+    from afl_bot.backtest import stake_cap
+
+    assert hasattr(c, "_apply_round_stake_caps"), (
+        "the round-level allocator must exist in cli.py again"
     )
-    assert result.returncode == 0, result.stderr
+    assert not hasattr(cfg, "KELLY_PER_ROUND_CAP"), (
+        "the round cap is sourced from stake_cap.OLD_ROUND_CAP_UNITS, not a new config constant"
+    )
+    src = inspect.getsource(c._apply_round_stake_caps)
+    assert "apply_old_round_cap" in src, (
+        "_apply_round_stake_caps must call stake_cap.apply_old_round_cap, not reimplement it"
+    )
+    assert "apply_per_player_cap" in src, (
+        "_apply_round_stake_caps must call stake_cap.apply_per_player_cap, not reimplement it"
+    )
+    # And the reused functions really do live in the backtest module (not
+    # shadowed/redefined somewhere on the way in).
+    assert stake_cap.apply_old_round_cap.__module__ == "afl_bot.backtest.stake_cap"
+    assert stake_cap.apply_per_player_cap.__module__ == "afl_bot.backtest.stake_cap"
 
 
 # ── FIX-BUDGET-IS-CEILING-NOT-TARGET ──────────────────────────────────────────

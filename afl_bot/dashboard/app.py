@@ -487,7 +487,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
   {% else %}
   <div style="margin:8px 0 12px 0;font-size:12px;color:var(--muted)">
     Round total: <strong>{{ '%.2f'|format(round_total_units) }}u / ${{ '%.2f'|format(round_total_dollars) }}</strong>
-    (no round cap — every rung stakes its own per-bet-capped Kelly)
+    (15u round cap + 1 staked multi/player/round, restored 2026-08-14)
   </div>
   {% endif %}
 

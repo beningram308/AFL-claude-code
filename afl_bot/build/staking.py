@@ -196,68 +196,79 @@ def recommend_units(
 ) -> tuple[float, str]:
     """Return ``(units, tag)`` for a multi rung.
 
+    DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14) policy-C port: raw edge
+    (``joint_prob * book_odds > 1``) is now a HARD PRECONDITION for any stake
+    at all. This inverts the pre-2026-08-14 behaviour, where a rung with no
+    (or negative) raw edge could still be staked purely because
+    ``total_ev = edge + promo_ev`` cleared ``promo_ev_min`` -- confirmed by
+    ``AUDIT-ROUNDS-16-20-BET-LOSS-AUTOPSY.md`` Finding 1 as the direct cause
+    of -83u of a -87u simulated loss across 2026 R18-R20 (102 of 119 staked
+    bets had zero-or-negative book edge; the promo gate let them through
+    anyway). The backtest port (``afl_bot.backtest.stake_cap`` policy C) was
+    measured against real 2026 R16/18-20 data before this landed -- see
+    ``reports/edge_floor_viability.md``.
+
     Rules:
     - No book price at all → ``(0.0, "MODEL-ONLY")`` — never stake off model fair odds.
-    - Positive edge (market-shrunk prob × book_odds > 1) → Kelly → rounded down to
-      ``unit_step``, clipped to ``[unit_step, unit_max]`` (``unit_max_longshot`` when
-      book_odds >= 5.0). Tag = ``"Nu"``.
-    - No/negative edge, promo branch probs available, and total_ev clears
-      ``promo_ev_min`` (a real combined-edge floor -- ``promo_ev`` alone is just the
-      isolated one-miss-refund component, p_one_loss*refund_factor, which is almost
-      always sizeable and says nothing about whether the bet is actually good; the
-      raw edge can still be deeply negative underneath it. ``total_ev`` = edge +
-      promo_ev is the number actually shown to the user as "Total EV -- that's the
-      number to bet on", so it's what has to clear the floor) → multi-outcome
-      Kelly on the promo-adjusted payout; if f* ≤ 0 → ``(0.0, "NO BET")``, else
-      ``(units, "Nu PROMO KELLY")``. Dollar stake capped at ``promo_refund_cap`` (bookie
-      bonus-back cap); prints "(capped by promo refund limit)" when the cap bites.
-    - No edge, no promo (or total_ev below the floor) → ``(0.0, "NO BET")``.
+    - No positive raw edge (``joint_prob`` is ``None``, or
+      ``joint_prob * book_odds <= 1``) → ``(0.0, "NO BET")``, full stop —
+      regardless of ``promo_ev``/``total_ev``. Promo/refund value can never be
+      the reason a rung is eligible.
+    - Positive raw edge → the stake is the LARGER of the plain fractional-Kelly
+      stake (ignores promo entirely) and, when branch probabilities are
+      available, the promo-aware multi-outcome Kelly stake (prices in the
+      one-miss stake-back refund) -- promo may only ever SIZE an
+      already-eligible bet UP, never down and never from zero. Rounded down to
+      ``unit_step``, clipped to ``[unit_step, unit_max]`` (``unit_max_longshot``
+      when book_odds >= 5.0). Tag is ``"Nu"`` for the plain stake, or
+      ``"Nu PROMO KELLY"`` when the promo-aware stake is the larger one.
+      ``promo_refund_cap`` is deliberately NOT applied in this branch (see
+      note below) -- it only ever bit the old promo-only path, and
+      ``unit_max``/``unit_max_longshot`` (3u/$45 and 1u/$15) are already both
+      under it, so it would never bind here regardless.
+    - ``promo_ev_min`` is no longer read by this function: it used to gate the
+      promo-only branch (the one just removed), and requiring it again here
+      for the "does promo widen an already-eligible stake" decision would
+      diverge from exactly what the backtest measured and Ben approved
+      (multi_outcome_kelly already returns 0 when the promo-adjusted EV isn't
+      positive, so `max(plain, promo)` can't be tricked into staking a
+      non-edge). Kept as a parameter for call-site compatibility; the config
+      constant itself is untouched.
 
-    There is no round-level cap: each rung sizes independently with no
-    cross-rung influence, capped only per-bet (``unit_max``/``unit_max_longshot``,
-    ``promo_refund_cap``) and by the ``promo_ev_min``/edge eligibility gates above.
-    ``refund_factor`` (default BONUS_BET_FACTOR=0.75) is the value of the returned stake
-    as a fraction; pass a higher R for Pull 'Em where the recovery payout can exceed the
-    original stake.
+    There is a round-level cap again (restored 2026-08-14, 15u --
+    ``afl_bot.cli._apply_round_stake_caps``, reusing
+    ``afl_bot.backtest.stake_cap.apply_old_round_cap`` verbatim) and a
+    per-player cap (one staked multi per player per round). Neither lives in
+    this function -- ``recommend_units`` has no visibility into the rest of
+    the round, by design (see ``test_same_rung_gets_identical_units_...``);
+    both caps are applied by the round-level allocator AFTER every rung in
+    the round has been sized here, same architecture the backtest validated.
+    ``refund_factor`` (default BONUS_BET_FACTOR=0.75) is the value of the
+    returned stake as a fraction; pass a higher R for Pull 'Em where the
+    recovery payout can exceed the original stake.
     """
     if book_odds is None:
         return (0.0, "MODEL-ONLY")
+    if joint_prob is None or joint_prob * book_odds <= 1.0:
+        return (0.0, "NO BET")
 
-    frac = (fractional_kelly_fraction(joint_prob or 0.0, book_odds)
-            if joint_prob is not None else 0.0)
-    raw_units = frac * bankroll / unit_size
+    frac = fractional_kelly_fraction(joint_prob, book_odds)
+    cap = unit_max_longshot if book_odds >= 5.0 else unit_max
 
-    if raw_units > 0.0:
-        # Round DOWN to nearest unit_step, apply longshot cap.
-        cap = unit_max_longshot if book_odds >= 5.0 else unit_max
+    frac_promo = 0.0
+    if p_win is not None and p_one_loss is not None and p_dead is not None:
+        frac_promo = multi_outcome_kelly(p_win, p_one_loss, p_dead, book_odds, refund_factor)
+
+    if frac_promo > frac:
+        raw_units = frac_promo * bankroll / unit_size
         units = min(math.floor(raw_units / unit_step) * unit_step, cap)
-        units = max(units, unit_step)   # at least 0.25u if Kelly says anything
-        return (units, f"{units:g}u")
-
-    _real_ev = total_ev if total_ev is not None else promo_ev
-    if (p_win is not None and p_one_loss is not None and p_dead is not None
-            and promo_ev is not None and _real_ev is not None
-            and _real_ev > promo_ev_min):
-        frac_promo = multi_outcome_kelly(
-            p_win, p_one_loss, p_dead, book_odds, refund_factor,
-        )
-        if frac_promo <= 0.0:
-            return (0.0, "NO BET")
-        raw_units_promo = frac_promo * bankroll / unit_size
-        cap = unit_max_longshot if book_odds >= 5.0 else unit_max
-        units = min(math.floor(raw_units_promo / unit_step) * unit_step, cap)
         units = max(units, unit_step)
-        capped = False
-        if units * unit_size > promo_refund_cap:
-            units = math.floor(promo_refund_cap / unit_size / unit_step) * unit_step
-            units = max(units, unit_step)
-            capped = True
-        tag = f"{units:g}u PROMO KELLY"
-        if capped:
-            tag += " (capped by promo refund limit)"
-        return (units, tag)
+        return (units, f"{units:g}u PROMO KELLY")
 
-    return (0.0, "NO BET")
+    raw_units = frac * bankroll / unit_size
+    units = min(math.floor(raw_units / unit_step) * unit_step, cap)
+    units = max(units, unit_step)   # at least 0.25u if Kelly says anything
+    return (units, f"{units:g}u")
 
 
 def bankroll_report(sim: dict, bankroll0: float) -> dict:
