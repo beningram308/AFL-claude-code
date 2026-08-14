@@ -112,14 +112,34 @@ def test_settle_dollar_two_plus_miss_is_dead_full_loss():
 # ── size_rungs: bigger cap never gives fewer units ──────────────────────────
 
 def test_bigger_unit_max_never_reduces_stake():
-    # A strong promo-eligible rung whose formula wants more than any of these caps.
-    graded = [_rung(book_odds=3.5, joint_prob=0.20, promo_ev=0.30, total_ev=0.30,
-                    p_win=0.30, p_one_loss=0.35, p_dead=0.35)]
+    # DO-EDGE-FLOOR-VIABILITY-TEST (2026-08-14): raw edge is now a hard
+    # precondition for any stake at all (afl_bot.build.staking.recommend_units),
+    # so this fixture must have POSITIVE raw edge to be staked at all -- the
+    # old fixture (joint_prob=0.20, book_odds=3.5 -> raw edge = -0.30) would
+    # now go NO BET at every cap, making the monotonicity assertions below
+    # vacuously true over an all-zero sequence. joint_prob=0.35, book_odds=3.0
+    # -> raw edge = +0.05, still promo-boosted (p_win/p_one_loss/p_dead) past
+    # its own plain-Kelly stake, same shape as before.
+    #
+    # The monotonicity guarantee itself still holds under the edge floor --
+    # the eligibility gate only decides IF a rung stakes, not how the sizing
+    # formula scales with unit_max once it's eligible -- so this is a fix to
+    # the fixture, not a reason to delete the test.
+    graded = [_rung(book_odds=3.0, joint_prob=0.35, promo_ev=0.30, total_ev=0.30,
+                    p_win=0.45, p_one_loss=0.40, p_dead=0.15)]
+    assert graded[0].raw_edge > 0.0, "fixture must have positive raw edge to be eligible at all"
+
     caps = [1.0, 1.5, 2.0, 3.0, 4.0, 6.0]
     units_by_cap = {}
     for cap in caps:
         sized = size_rungs(graded, cap)
         units_by_cap[cap] = sized[0].units if sized else 0.0
+
+    assert units_by_cap[caps[0]] > 0.0, (
+        "fixture must actually produce a stake at the smallest cap -- if this "
+        "reads 0.0, the test has gone vacuous again and the fixture needs fixing, "
+        "not the assertions below (which would pass trivially over all zeros)"
+    )
 
     ordered_units = [units_by_cap[c] for c in caps]
     assert ordered_units == sorted(ordered_units), (
