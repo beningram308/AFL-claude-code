@@ -631,10 +631,26 @@
     "open_odds": 2.66,
     "taken_odds": 2.66,
     "placed_at": "2026-07-10T18:25:23.252243+10:00",
-    "status": "pending",
-    "settled_at": null,
-    "payout": null,
-    "leg_results": null,
+    "status": "lost",
+    "settled_at": "2026-08-03T13:12:55.246780+10:00",
+    "payout": 0.0,
+    "leg_results": [
+      {
+        "name": "Scott Pendlebury 20+ disposals",
+        "hit": false,
+        "reason": null
+      },
+      {
+        "name": "Angus Anderson 1+ goals",
+        "hit": false,
+        "reason": null
+      },
+      {
+        "name": "Harry Sheezel 25+ disposals",
+        "hit": true,
+        "reason": null
+      }
+    ],
     "source": "bot",
     "manual_result": null,
     "close_captured_at": null,
